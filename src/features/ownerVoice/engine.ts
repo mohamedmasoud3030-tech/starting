@@ -81,7 +81,11 @@ export interface OwnerVoiceState {
 }
 
 export interface OwnerVoiceEngineOptions {
-  /** Injectable engine; defaults to window.speechSynthesis. null = unsupported. */
+  /**
+   * Injectable engine. Omitted → auto-detect browser `window.speechSynthesis`.
+   * Explicit `null` → unsupported (never falls back to the browser). Injected
+   * object → used as-is.
+   */
   synth?: SpeechSynthesisLike | null;
   /** Injectable utterance factory; defaults to `new SpeechSynthesisUtterance`. */
   utteranceFactory?: (text: string) => SpeechSynthesisUtteranceLike;
@@ -163,7 +167,17 @@ export class OwnerVoiceEngine {
   };
 
   constructor(options: OwnerVoiceEngineOptions = {}) {
-    this.synth = options.synth ?? resolveBrowserSpeechSynthesis();
+    // `options.synth` semantics:
+    //  - omitted (undefined)  → auto-detect browser speechSynthesis
+    //  - explicit null        → UNSUPPORTED (must NOT fall back to the browser)
+    //  - injected fake/engine → use the injected implementation
+    // This matters for tests: `synth: null` proves the engine never touches
+    // the browser API, and an unsupported state cannot silently become
+    // supported just because window.speechSynthesis exists.
+    this.synth =
+      options.synth === undefined
+        ? resolveBrowserSpeechSynthesis()
+        : options.synth;
     this.utteranceFactory =
       options.utteranceFactory ?? createNativeUtterance;
     this.setIntervalFn =

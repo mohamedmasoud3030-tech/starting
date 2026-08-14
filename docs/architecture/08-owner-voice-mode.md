@@ -54,8 +54,12 @@ menus, technical IDs, decorative labels, and unnecessary form controls.
 
 ## Privacy boundary
 
-- **No network TTS in V1.** Speech is produced by the browser's native
-  `speechSynthesis`; no text leaves the device.
+- **No network TTS in V1.** The application makes **no explicit network TTS
+  request** and sends **no business data to a TTS provider itself**.
+  `speechSynthesis` execution is controlled by the browser/operating system
+  and may be platform-dependent (e.g. an OS or browser-level voice service
+  could process the utterance outside the application's control). The app
+  never chooses a network provider and never transmits the text itself.
 - **No business data is logged** by the voice layer, and summaries never
   include internal notes or supplier-confidential data.
 - **No automatic speech.** Nothing speaks on page load or after any state

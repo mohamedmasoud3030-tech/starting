@@ -33,6 +33,67 @@ describe("OwnerVoiceEngine", () => {
     engine.dispose();
   });
 
+  it("explicit synth:null does NOT fall back to window.speechSynthesis", () => {
+    // Regression: a present browser speechSynthesis must not turn an explicit
+    // `synth: null` into a supported engine.
+    const browserSynth = new FakeSpeechSynthesis([AR_OM_VOICE]);
+    const original = window.speechSynthesis;
+    Object.defineProperty(window, "speechSynthesis", {
+      configurable: true,
+      value: browserSynth,
+    });
+    try {
+      const engine = new OwnerVoiceEngine({
+        synth: null,
+        utteranceFactory: () => new FakeUtterance(),
+      });
+      expect(engine.getSnapshot().supported).toBe(false);
+      expect(engine.getSnapshot().voices).toHaveLength(0);
+      expect(engine.getSnapshot().voice).toBeNull();
+      expect(engine.speak("نص")).toBe(false);
+      expect(browserSynth.utterances).toHaveLength(0);
+      expect(browserSynth.cancelCount).toBe(0);
+      engine.dispose();
+    } finally {
+      if (original === undefined) {
+        // jsdom has no speechSynthesis by default; remove the stub again.
+        Reflect.deleteProperty(window, "speechSynthesis");
+      } else {
+        Object.defineProperty(window, "speechSynthesis", {
+          configurable: true,
+          value: original,
+        });
+      }
+    }
+  });
+
+  it("omitted synth auto-detects the browser speechSynthesis", () => {
+    const browserSynth = new FakeSpeechSynthesis([AR_OM_VOICE]);
+    const original = window.speechSynthesis;
+    Object.defineProperty(window, "speechSynthesis", {
+      configurable: true,
+      value: browserSynth,
+    });
+    try {
+      const engine = new OwnerVoiceEngine({
+        utteranceFactory: () => new FakeUtterance(),
+      });
+      expect(engine.getSnapshot().supported).toBe(true);
+      expect(engine.speak("نص")).toBe(true);
+      expect(browserSynth.utterances).toHaveLength(1);
+      engine.dispose();
+    } finally {
+      if (original === undefined) {
+        Reflect.deleteProperty(window, "speechSynthesis");
+      } else {
+        Object.defineProperty(window, "speechSynthesis", {
+          configurable: true,
+          value: original,
+        });
+      }
+    }
+  });
+
   it("ignores empty text without speaking", () => {
     const { synth, engine } = createTestEngine();
     expect(engine.speak("   ")).toBe(false);
