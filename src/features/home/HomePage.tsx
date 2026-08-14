@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useQueries } from "@tanstack/react-query";
 import { Boxes, Package, Users } from "lucide-react";
 import { useAuth } from "@/app/AuthContext";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -6,6 +7,13 @@ import { Card } from "@/components/ui/Card";
 import { useCatalogItems } from "@/features/catalog/catalog.api";
 import { usePackages } from "@/features/packages/packages.api";
 import { useCustomers } from "@/features/customers/customers.api";
+import { eventReadinessQuery, useEvents } from "@/features/events/events.api";
+import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
+import {
+  buildHomeVoiceSummary,
+  DEFAULT_TIME_ZONE,
+  isSameLocalDay,
+} from "@/features/ownerVoice/screenSummary";
 
 export function HomePage() {
   const { profile, currentOrganization } = useAuth();
@@ -14,6 +22,26 @@ export function HomePage() {
   const catalog = useCatalogItems(orgId);
   const packages = usePackages(orgId);
   const customers = useCustomers(orgId);
+  const events = useEvents(orgId);
+
+  const todayEvents = (events.data ?? []).filter(
+    (e) =>
+      e.status !== "CANCELLED" &&
+      isSameLocalDay(e.start_at, new Date(), DEFAULT_TIME_ZONE),
+  );
+  const readinessQueries = useQueries({
+    queries: todayEvents.map((e) => eventReadinessQuery(orgId, e.id)),
+  });
+  const readinessSettled =
+    events.isSuccess && readinessQueries.every((q) => q.isFetched);
+  const voiceSummary = readinessSettled
+    ? buildHomeVoiceSummary({
+        events: todayEvents.map((e, index) => ({
+          ...e,
+          readiness: readinessQueries[index]?.data ?? null,
+        })),
+      })
+    : null;
 
   const name = profile?.full_name || "أهلاً بك";
 
@@ -43,6 +71,7 @@ export function HomePage() {
       <PageHeader
         title={`${name}، ${currentOrganization?.name ?? ""}`}
         description="مرحباً بك في نظام إدارة عمليات الضيافة"
+        actions={<OwnerVoiceButton summary={voiceSummary} />}
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
