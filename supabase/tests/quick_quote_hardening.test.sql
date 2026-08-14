@@ -54,7 +54,7 @@ select throws_ok($$
     null,null,null,null,null,null,null,
     '10000000-0000-0000-0000-000000000101'
   )
-$$,'IDEMPOTENCY_KEY_REUSED',null,'idempotency key reuse with different payload rejected');
+$$,'P0001','IDEMPOTENCY_KEY_REUSED','idempotency key reuse with different payload rejected');
 
 -- 5. Add one fixed-price line.
 select lives_ok($$
@@ -100,7 +100,7 @@ select throws_ok($$
      set status='ISSUED'
    where id=(select quotation_id from public.quick_quotes
               where idempotency_key='10000000-0000-0000-0000-000000000101')
-$$,'QUOTATION_IMMUTABLE',null,'accepted quotation cannot revert to ISSUED');
+$$,'P0001','QUOTATION_IMMUTABLE','accepted quotation cannot revert to ISSUED');
 
 -- 10. Operational staff cannot directly read commercial quick-quote drafts.
 set local role authenticated;

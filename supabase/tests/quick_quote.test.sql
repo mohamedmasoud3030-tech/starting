@@ -32,11 +32,11 @@ insert into public.catalog_items (id, organization_id, name, item_type, pricing_
   ('00000000-0000-0000-0000-0000000000c2', '00000000-0000-0000-0000-0000000000a1', 'Dates',  'CONSUMABLE', 'PER_UNIT', 0.300, 0.800);
 
 insert into public.packages (id, organization_id, name, base_guest_count, status) values
-  ('00000000-0000-0000-0000-0000000000p1', '00000000-0000-0000-0000-0000000000a1', 'Package A', 50, 'ACTIVE');
+  ('00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000a1', 'Package A', 50, 'ACTIVE');
 
 insert into public.package_items (organization_id, package_id, catalog_item_id, quantity, sort_order) values
-  ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000p1', '00000000-0000-0000-0000-0000000000c1', 1, 0),
-  ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000p1', '00000000-0000-0000-0000-0000000000c2', 5, 1);
+  ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000c1', 1, 0),
+  ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000c2', 5, 1);
 
 insert into public.customers (id, organization_id, name, phone, customer_type) values
   ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000a1', 'Mohammed', '91234567', 'INDIVIDUAL'),
@@ -83,13 +83,13 @@ select lives_ok($$select public.save_quick_quote_line('00000000-0000-0000-0000-0
 select is((select total_selling::text from public.quick_quote_lines where organization_id='00000000-0000-0000-0000-0000000000a1' and description='Coffee extra'),'336.000','PER_GUEST line total exact to 3 decimals');
 
 -- 11. package applies as selling-only lines
-select is((select public.apply_package_to_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002'),'00000000-0000-0000-0000-0000000000p1')),2,'package applies 2 lines to draft');
+select is((select public.apply_package_to_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002'),'00000000-0000-0000-0000-0000000000e1')),2,'package applies 2 lines to draft');
 
 -- 12. draft line totals exact: 336.000 + 336.000 + 4.000 = 676.000
 select is((select sum(total_selling)::text from public.quick_quote_lines where quick_quote_id=(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002')),'676.000','draft totals exact (336 + 336 + 4)');
 
 -- 13. double-applying the same package is rejected
-select throws_ok($$select public.apply_package_to_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002'),'00000000-0000-0000-0000-0000000000p1')$$,'PACKAGE_ALREADY_APPLIED',null,'double package apply rejected');
+select throws_ok($$select public.apply_package_to_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002'),'00000000-0000-0000-0000-0000000000e1')$$,'PACKAGE_ALREADY_APPLIED',null,'double package apply rejected');
 
 -- 14. issue creates a real quotation
 select lives_ok($$select public.issue_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002'),null,null,'20000000-0000-0000-0000-000000000011')$$,'draft issued as a quotation');

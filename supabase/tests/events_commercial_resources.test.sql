@@ -28,7 +28,7 @@ set local role authenticated;
 set local "request.jwt.claims"='{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated"}';
 select lives_ok($$select public.create_event('10000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-0000000000c1','Wedding','WEDDING','2026-09-01 10:00+04','2026-09-01 14:00+04',100,'Muscat',null,null,null,null,'11000000-0000-0000-0000-000000000001')$$,'create Event succeeds');
 select is((select status::text from public.events where idempotency_key='11000000-0000-0000-0000-000000000001'),'DRAFT','new Event is DRAFT');
-select like((select event_number from public.events where idempotency_key='11000000-0000-0000-0000-000000000001'),'EV-2026-%','readable yearly Event number');
+select ok((select event_number from public.events where idempotency_key='11000000-0000-0000-0000-000000000001') like 'EV-2026-%','readable yearly Event number');
 select is((select count(*)::int from public.event_status_history h join public.events e on e.id=h.event_id where e.idempotency_key='11000000-0000-0000-0000-000000000001'),1,'creation writes history');
 select throws_ok($$select public.create_event('10000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-0000000000c1','Bad','X','2026-09-01 14:00+04','2026-09-01 10:00+04',1,'M',null,null,null,null,null,'11000000-0000-0000-0000-000000000002')$$,'22007',null,'invalid schedule rejected');
 select throws_ok($$select public.create_event('10000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-0000000000c2','Cross','X','2026-09-01 10:00+04','2026-09-01 11:00+04',1,'M',null,null,null,null,null,'11000000-0000-0000-0000-000000000003')$$,'23503',null,'cross-org customer rejected');
