@@ -382,6 +382,114 @@ export type Database = {
           },
         ]
       }
+      event_equipment_movements: {
+        Row: {
+          actor_id: string
+          condition_notes: string | null
+          created_at: string
+          damage_loss_valuation_omr: number | null
+          damaged_quantity: number
+          dispatched_quantity: number
+          equipment_capacity_id: string
+          event_id: string
+          id: string
+          idempotency_key: string
+          lost_quantity: number
+          movement_kind: Database["public"]["Enums"]["warehouse_movement_kind"]
+          organization_id: string
+          reference: string | null
+          request_fingerprint: string
+          reservation_id: string
+          returned_good_quantity: number
+          unit_valuation_omr: number | null
+          valuation_basis:
+            | Database["public"]["Enums"]["warehouse_valuation_basis"]
+            | null
+        }
+        Insert: {
+          actor_id: string
+          condition_notes?: string | null
+          created_at?: string
+          damage_loss_valuation_omr?: number | null
+          damaged_quantity?: number
+          dispatched_quantity?: number
+          equipment_capacity_id: string
+          event_id: string
+          id?: string
+          idempotency_key: string
+          lost_quantity?: number
+          movement_kind: Database["public"]["Enums"]["warehouse_movement_kind"]
+          organization_id: string
+          reference?: string | null
+          request_fingerprint: string
+          reservation_id: string
+          returned_good_quantity?: number
+          unit_valuation_omr?: number | null
+          valuation_basis?:
+            | Database["public"]["Enums"]["warehouse_valuation_basis"]
+            | null
+        }
+        Update: {
+          actor_id?: string
+          condition_notes?: string | null
+          created_at?: string
+          damage_loss_valuation_omr?: number | null
+          damaged_quantity?: number
+          dispatched_quantity?: number
+          equipment_capacity_id?: string
+          event_id?: string
+          id?: string
+          idempotency_key?: string
+          lost_quantity?: number
+          movement_kind?: Database["public"]["Enums"]["warehouse_movement_kind"]
+          organization_id?: string
+          reference?: string | null
+          request_fingerprint?: string
+          reservation_id?: string
+          returned_good_quantity?: number
+          unit_valuation_omr?: number | null
+          valuation_basis?:
+            | Database["public"]["Enums"]["warehouse_valuation_basis"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movements_capacity_fk"
+            columns: ["organization_id", "equipment_capacity_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_capacity"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "movements_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "movements_reservation_fk"
+            columns: ["organization_id", "reservation_id"]
+            isOneToOne: false
+            referencedRelation: "event_equipment_reservations"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "movements_reservation_fk"
+            columns: ["organization_id", "reservation_id"]
+            isOneToOne: false
+            referencedRelation: "event_warehouse_lines"
+            referencedColumns: ["organization_id", "reservation_id"]
+          },
+          {
+            foreignKeyName: "movements_reservation_fk"
+            columns: ["organization_id", "reservation_id"]
+            isOneToOne: false
+            referencedRelation: "event_warehouse_lines_valued"
+            referencedColumns: ["organization_id", "reservation_id"]
+          },
+        ]
+      }
       event_equipment_reservations: {
         Row: {
           created_at: string
@@ -551,6 +659,65 @@ export type Database = {
             foreignKeyName: "event_status_history_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      event_warehouse_reconciliations: {
+        Row: {
+          actor_id: string
+          event_id: string
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          reconciled_at: string
+          request_fingerprint: string
+          total_damage_loss_valuation_omr: number
+          total_damaged_quantity: number
+          total_dispatched_quantity: number
+          total_lost_quantity: number
+          total_reserved_quantity: number
+          total_returned_good_quantity: number
+        }
+        Insert: {
+          actor_id: string
+          event_id: string
+          id?: string
+          idempotency_key: string
+          notes?: string | null
+          organization_id: string
+          reconciled_at?: string
+          request_fingerprint: string
+          total_damage_loss_valuation_omr: number
+          total_damaged_quantity: number
+          total_dispatched_quantity: number
+          total_lost_quantity: number
+          total_reserved_quantity: number
+          total_returned_good_quantity: number
+        }
+        Update: {
+          actor_id?: string
+          event_id?: string
+          id?: string
+          idempotency_key?: string
+          notes?: string | null
+          organization_id?: string
+          reconciled_at?: string
+          request_fingerprint?: string
+          total_damage_loss_valuation_omr?: number
+          total_damaged_quantity?: number
+          total_dispatched_quantity?: number
+          total_lost_quantity?: number
+          total_reserved_quantity?: number
+          total_returned_good_quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliations_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: true
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1492,6 +1659,80 @@ export type Database = {
           },
         ]
       }
+      event_warehouse_lines: {
+        Row: {
+          capacity_total_quantity: number | null
+          catalog_item_id: string | null
+          damaged_quantity: number | null
+          dispatched_quantity: number | null
+          equipment_capacity_id: string | null
+          equipment_name: string | null
+          equipment_unit: string | null
+          event_id: string | null
+          is_reconciled: boolean | null
+          lost_quantity: number | null
+          organization_id: string | null
+          outstanding_quantity: number | null
+          reconciled_at: string | null
+          reservation_id: string | null
+          reservation_status:
+            | Database["public"]["Enums"]["reservation_status"]
+            | null
+          reserved_from: string | null
+          reserved_quantity: number | null
+          reserved_until: string | null
+          returned_good_quantity: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_equipment_reservations_organization_id_equipment_cap_fkey"
+            columns: ["organization_id", "equipment_capacity_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_capacity"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      event_warehouse_lines_valued: {
+        Row: {
+          damage_loss_valuation_omr: number | null
+          damaged_quantity: number | null
+          dispatched_quantity: number | null
+          equipment_capacity_id: string | null
+          event_id: string | null
+          lost_quantity: number | null
+          organization_id: string | null
+          outstanding_quantity: number | null
+          reservation_id: string | null
+          reserved_quantity: number | null
+          returned_good_quantity: number | null
+          unit_valuation_omr: number | null
+          valuation_basis: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_equipment_reservations_organization_id_equipment_cap_fkey"
+            columns: ["organization_id", "equipment_capacity_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_capacity"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       quotation_lines_customer: {
         Row: {
           description: string | null
@@ -2007,6 +2248,46 @@ export type Database = {
         Args: { p_org_id: string; p_quick_quote_id: string; p_reason?: string }
         Returns: undefined
       }
+      dispatch_event_equipment: {
+        Args: {
+          p_event_id: string
+          p_idempotency_key: string
+          p_notes: string
+          p_org_id: string
+          p_quantity: number
+          p_reference: string
+          p_reservation_id: string
+        }
+        Returns: {
+          actor_id: string
+          condition_notes: string | null
+          created_at: string
+          damage_loss_valuation_omr: number | null
+          damaged_quantity: number
+          dispatched_quantity: number
+          equipment_capacity_id: string
+          event_id: string
+          id: string
+          idempotency_key: string
+          lost_quantity: number
+          movement_kind: Database["public"]["Enums"]["warehouse_movement_kind"]
+          organization_id: string
+          reference: string | null
+          request_fingerprint: string
+          reservation_id: string
+          returned_good_quantity: number
+          unit_valuation_omr: number | null
+          valuation_basis:
+            | Database["public"]["Enums"]["warehouse_valuation_basis"]
+            | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_equipment_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       equipment_availability: {
         Args: {
           p_capacity_id: string
@@ -2023,6 +2304,10 @@ export type Database = {
         }[]
       }
       event_readiness: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: Json
+      }
+      event_warehouse_summary: {
         Args: { p_event_id: string; p_org_id: string }
         Returns: Json
       }
@@ -2128,6 +2413,36 @@ export type Database = {
         Args: { p_kind: string; p_org: string; p_prefix: string }
         Returns: string
       }
+      reconcile_event_warehouse: {
+        Args: {
+          p_event_id: string
+          p_idempotency_key: string
+          p_notes: string
+          p_org_id: string
+        }
+        Returns: {
+          actor_id: string
+          event_id: string
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          reconciled_at: string
+          request_fingerprint: string
+          total_damage_loss_valuation_omr: number
+          total_damaged_quantity: number
+          total_dispatched_quantity: number
+          total_lost_quantity: number
+          total_reserved_quantity: number
+          total_returned_good_quantity: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_warehouse_reconciliations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       record_audit: {
         Args: {
           p_action: string
@@ -2159,6 +2474,48 @@ export type Database = {
       reset_quick_quote_lines: {
         Args: { p_org_id: string; p_quick_quote_id: string }
         Returns: undefined
+      }
+      return_event_equipment: {
+        Args: {
+          p_condition_notes: string
+          p_damaged_quantity: number
+          p_event_id: string
+          p_idempotency_key: string
+          p_lost_quantity: number
+          p_org_id: string
+          p_reference: string
+          p_reservation_id: string
+          p_returned_good_quantity: number
+        }
+        Returns: {
+          actor_id: string
+          condition_notes: string | null
+          created_at: string
+          damage_loss_valuation_omr: number | null
+          damaged_quantity: number
+          dispatched_quantity: number
+          equipment_capacity_id: string
+          event_id: string
+          id: string
+          idempotency_key: string
+          lost_quantity: number
+          movement_kind: Database["public"]["Enums"]["warehouse_movement_kind"]
+          organization_id: string
+          reference: string | null
+          request_fingerprint: string
+          reservation_id: string
+          returned_good_quantity: number
+          unit_valuation_omr: number | null
+          valuation_basis:
+            | Database["public"]["Enums"]["warehouse_valuation_basis"]
+            | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_equipment_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       save_event_commercial_line: {
         Args: {
@@ -2289,6 +2646,18 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      warehouse_fingerprint: { Args: { p_payload: Json }; Returns: string }
+      warehouse_reservation_state: {
+        Args: { p_org_id: string; p_reservation_id: string }
+        Returns: {
+          damaged_quantity: number
+          dispatched_quantity: number
+          lost_quantity: number
+          outstanding_quantity: number
+          reserved_quantity: number
+          returned_good_quantity: number
+        }[]
+      }
     }
     Enums: {
       app_role: "OWNER" | "MANAGER" | "SUPERVISOR" | "WAREHOUSE" | "ACCOUNTANT"
@@ -2340,6 +2709,8 @@ export type Database = {
         | "DRIVER"
         | "WAREHOUSE"
         | "OTHER"
+      warehouse_movement_kind: "DISPATCH" | "RETURN"
+      warehouse_valuation_basis: "CATALOG_COST_SNAPSHOT"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2521,6 +2892,8 @@ export const Constants = {
         "WAREHOUSE",
         "OTHER",
       ],
+      warehouse_movement_kind: ["DISPATCH", "RETURN"],
+      warehouse_valuation_basis: ["CATALOG_COST_SNAPSHOT"],
     },
   },
 } as const
