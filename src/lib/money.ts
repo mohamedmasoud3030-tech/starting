@@ -91,15 +91,81 @@ export function formatOMR(millis: MilliOMR): string {
   return `${toOMRString(millis)} ${OMR_SYMBOL}`;
 }
 
-/** Accept a DB string (numeric serialized by PostgREST) → milli-OMR. */
-export function fromDbAmount(value: string | null | undefined): MilliOMR {
+/**
+ * A monetary value exactly as PostgREST transports it.
+ *
+ * PostgreSQL `numeric(12,3)` is serialized into JSON by PostgREST as a JSON
+ * number, which `supabase gen types` therefore types as `number`. That
+ * transport shape is the DATABASE TRUTH and is preserved verbatim at the
+ * generated boundary — it is never redefined as `string`. Older code paths
+ * (and hand-written row interfaces) may still carry the value as a decimal
+ * string, so both are accepted here and normalized on the way in.
+ *
+ * A JS `number` is NEVER used for arithmetic: `fromDbAmount` converts it to
+ * exact integer milli-OMR immediately, and all business math runs on that.
+ */
+export type DbAmount = number | string | null | undefined;
+
+/**
+ * Exact decimal text of a JSON-transported numeric, without float arithmetic.
+ *
+ * `Number.prototype.toString()` yields the shortest decimal string that
+ * round-trips to the same IEEE-754 double. Because the persisted domain is
+ * numeric(12,3) — at most 3 decimal places and at most 9 integer digits —
+ * every representable value's shortest form IS its exact decimal form, so no
+ * precision is invented or lost. Values outside that domain are rejected by
+ * `parseOMR` rather than being silently rounded.
+ */
+function numericToDecimalString(value: number): string {
+  if (!Number.isFinite(value)) {
+    throw new MoneyError("مبلغ غير صالح من قاعدة البيانات");
+  }
+  // Reject exponential notation defensively: it cannot occur within
+  // numeric(12,3), so its presence means the value is out of domain.
+  const text = value.toString();
+  if (text.includes("e") || text.includes("E")) {
+    throw new MoneyError("المبلغ خارج النطاق المسموح به");
+  }
+  return text;
+}
+
+/**
+ * Normalize a money value received from the database into exact milli-OMR.
+ *
+ * This is the single boundary where database transport becomes authoritative
+ * in-memory money. Accepts the generated `number` transport shape and the
+ * legacy decimal-string shape; both normalize to the identical integer.
+ */
+export function fromDbAmount(value: DbAmount): MilliOMR {
   if (value == null) return 0;
+  if (typeof value === "number") {
+    return parseOMR(numericToDecimalString(value));
+  }
   return parseOMR(value);
 }
 
 /** Convert milli-OMR to a numeric string acceptable by PostgREST numeric. */
 export function toDbAmount(millis: MilliOMR): string {
   return toOMRString(millis);
+}
+
+/**
+ * Convert milli-OMR to the JSON number shape the generated types declare for
+ * `numeric(12,3)` write payloads.
+ *
+ * This is a lossless round trip within the persisted domain: `toOMRString`
+ * produces the exact decimal, `Number` selects the nearest double, and that
+ * double's shortest round-trip representation is that same decimal (proved by
+ * `fromDbNumericRoundTrips` coverage in money.test.ts). PostgreSQL re-parses
+ * it into exact numeric on arrival, so the database remains the financial
+ * authority — the double is transport only, never an arithmetic input.
+ */
+export function toDbNumeric(millis: MilliOMR): number {
+  const exact = Number(toOMRString(millis));
+  if (fromDbAmount(exact) !== millis) {
+    throw new MoneyError("تعذّر تمثيل المبلغ بدقة عند الإرسال");
+  }
+  return exact;
 }
 
 /** Parse an optional user-typed money string, returning 0 for empty input. */
@@ -153,10 +219,11 @@ export function multiplyOMR(
  */
 export function parseQuantityMilli(input: string | number): MilliOMR {
   if (typeof input === "number") {
+    // Route through the exact decimal text rather than `input * 1000`, which
+    // is binary floating-point multiplication and can land on the wrong
+    // milli-unit (e.g. 2.435 * 1000 === 2434.9999999999995).
     if (!Number.isFinite(input)) throw new MoneyError("كمية غير صالحة");
-    const millis = Math.round(input * 1000);
-    if (!inDomain(millis)) throw new MoneyError("كمية خارج النطاق المسموح به");
-    return millis;
+    return parseOMR(numericToDecimalString(input));
   }
   return parseOMR(input);
 }

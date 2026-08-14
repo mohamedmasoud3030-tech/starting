@@ -14,6 +14,10 @@ import { HomePage } from "@/features/home/HomePage";
 import { CatalogPage } from "@/features/catalog/CatalogPage";
 import { PackagesPage } from "@/features/packages/PackagesPage";
 import { CustomersPage } from "@/features/customers/CustomersPage";
+import { EventsPage } from "@/features/events/EventsPage";
+import { EventWorkspace } from "@/features/events/EventWorkspace";
+import { QuotesPage } from "@/features/quotes/QuotesPage";
+import { QuotePage } from "@/features/quotes/QuotePage";
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -82,10 +86,50 @@ const customersRoute = createRoute({
   component: CustomersPage,
 });
 
+const eventsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/events",
+  component: EventsPage,
+});
+
+const eventWorkspaceRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/events/$eventId",
+  component: EventWorkspace,
+});
+
+const quotesRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/quotes",
+  component: QuotesPage,
+});
+
+const quoteNewRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/quotes/new",
+  component: QuotePage,
+});
+
+const quoteDetailRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/quotes/$quoteId",
+  component: QuotePage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
-  appRoute.addChildren([homeRoute, catalogRoute, packagesRoute, customersRoute]),
+  appRoute.addChildren([
+    homeRoute,
+    eventsRoute,
+    eventWorkspaceRoute,
+    quotesRoute,
+    quoteNewRoute,
+    quoteDetailRoute,
+    catalogRoute,
+    packagesRoute,
+    customersRoute,
+  ]),
 ]);
 
 export const router = createRouter({ routeTree });

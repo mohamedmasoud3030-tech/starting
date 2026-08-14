@@ -6,15 +6,18 @@ import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/domain";
 import { Badge } from "@/components/ui/Badge";
 
-const NAV_ITEMS = [
+type NavTarget = "/home" | "/events" | "/quotes" | "/catalog" | "/packages" | "/customers";
+const NAV_ITEMS: ReadonlyArray<{ to: NavTarget; label: string; commercial?: boolean }> = [
   { to: "/home", label: "الرئيسية" },
+  { to: "/events", label: "المناسبات" },
+  { to: "/quotes", label: "عروض الأسعار", commercial: true },
   { to: "/catalog", label: "الكتالوج" },
   { to: "/packages", label: "الباقات" },
   { to: "/customers", label: "العملاء" },
-] as const;
+];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, profile, currentOrganization, currentRole, logout } = useAuth();
+  const { user, profile, currentOrganization, currentRole, logout, canManageCommercial } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -39,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-1 md:flex" aria-label="التنقل الرئيسي">
-            {NAV_ITEMS.map((item) => {
+            {NAV_ITEMS.filter((item) => !item.commercial || canManageCommercial).map((item) => {
               const active = pathname === item.to;
               return (
                 <Link
@@ -93,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="border-t border-slate-200 bg-white px-4 py-3 md:hidden"
             aria-label="التنقل على الجوال"
           >
-            {NAV_ITEMS.map((item) => {
+            {NAV_ITEMS.filter((item) => !item.commercial || canManageCommercial).map((item) => {
               const active = pathname === item.to;
               return (
                 <Link

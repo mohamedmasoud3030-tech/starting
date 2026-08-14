@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { Field } from "@/components/ui/Field";
-import { parseOMR, toOMRString } from "@/lib/money";
-import type { PackageStatus } from "@/lib/database.types";
+import { fromDbAmount, parseOMR, toOMRString } from "@/lib/money";
+import type { PackageStatus } from "@/lib/dbTypes";
 import type { CatalogListItem } from "@/features/catalog/catalog.api";
 import { parseBaseGuestCount, validatePackage } from "./packageForm";
 import {
@@ -53,7 +53,7 @@ export function PackageDialog({
       ? target.lines.map((l) => ({
           key: nextLineKey(),
           catalogItemId: l.catalog_item_id,
-          quantityText: trimQuantity(toOMRString(parseOMR(l.quantity))),
+          quantityText: trimQuantity(toOMRString(fromDbAmount(l.quantity))),
         }))
       : [],
   );
@@ -80,7 +80,7 @@ export function PackageDialog({
           target.lines.map((l) => ({
             key: nextLineKey(),
             catalogItemId: l.catalog_item_id,
-            quantityText: trimQuantity(toOMRString(parseOMR(l.quantity))),
+            quantityText: trimQuantity(toOMRString(fromDbAmount(l.quantity))),
           })),
         );
       } else {

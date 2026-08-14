@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { CustomerRow, CustomerType } from "@/lib/database.types";
+import type { CustomerRow, CustomerType } from "@/lib/dbTypes";
 
 export interface CustomerFormValues {
   name: string;

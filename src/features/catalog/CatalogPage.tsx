@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { ITEM_TYPE_LABELS, PRICING_METHOD_LABELS } from "@/lib/domain";
 import { formatOMR, fromDbAmount } from "@/lib/money";
-import type { CatalogItemType } from "@/lib/database.types";
+import type { CatalogItemType } from "@/lib/dbTypes";
 import { CatalogItemDialog } from "./CatalogItemDialog";
 import {
   type CatalogListItem,
