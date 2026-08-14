@@ -9,9 +9,12 @@ import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
+import { Textarea } from "@/components/ui/Textarea";
 import { formatOMR } from "@/lib/money";
 import type {
+  Capability,
   ProcurementAccess,
+  ProcurementConsumableOption,
   ProcurementDataSource,
   ProcurementEventOption,
   ProcurementOrderDetail,
@@ -31,6 +34,26 @@ import { OrderCreateDialog } from "./OrderCreateDialog";
 import { ReceivingDialog } from "./ReceivingDialog";
 
 const ORDER_STATUSES = Object.keys(ORDER_STATUS_LABELS) as ProcurementOrderStatus[];
+
+type LifecycleAction = "approve" | "send" | "confirm" | "cancel";
+
+const ACTION_LABELS: Record<LifecycleAction, string> = {
+  approve: "اعتماد الطلب",
+  send: "إرسال للمورد",
+  confirm: "تأكيد موافقة المورد",
+  cancel: "إلغاء الطلب",
+};
+
+const ACTION_CONFIRM_LABELS: Record<LifecycleAction, string> = {
+  approve: "نعم، اعتماد الطلب",
+  send: "نعم، إرسال الطلب",
+  confirm: "نعم، تأكيد موافقة المورد",
+  cancel: "نعم، إلغاء الطلب",
+};
+
+function newIntentKey(): string {
+  return globalThis.crypto.randomUUID();
+}
 
 function OrderStatusBadge({ status }: { status: ProcurementOrderStatus }) {
   return <Badge tone={ORDER_STATUS_TONES[status]}>{ORDER_STATUS_LABELS[status]}</Badge>;
@@ -75,6 +98,33 @@ function QuantityStat({ label, value, tone = "slate" }: { label: string; value: 
   return <div className={`rounded-xl p-2 text-center ${styles}`}><dt className="text-xs font-semibold opacity-75">{label}</dt><dd className="mt-1 text-lg font-black">{formatQuantity(value)}</dd></div>;
 }
 
+function ActionControl({
+  action,
+  capability,
+  onSelect,
+}: {
+  action: LifecycleAction;
+  capability: Capability;
+  onSelect: (action: LifecycleAction) => void;
+}) {
+  return (
+    <div>
+      <Button
+        variant={action === "cancel" ? "danger" : action === "approve" ? "primary" : "secondary"}
+        disabled={!capability.allowed}
+        onClick={() => onSelect(action)}
+      >
+        {ACTION_LABELS[action]}
+      </Button>
+      {!capability.allowed && (
+        <p className="mt-1 max-w-56 text-xs font-semibold text-slate-500">
+          {capabilityMessage(capability.reason)}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function OrderDetailDialog({
   orderId,
   dataSource,
@@ -92,7 +142,9 @@ function OrderDetailDialog({
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [reload, setReload] = useState(0);
-  const [confirmAction, setConfirmAction] = useState<"approve" | "cancel" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<LifecycleAction | null>(null);
+  const [actionKey, setActionKey] = useState(newIntentKey);
+  const [cancelReason, setCancelReason] = useState("");
   const [receiving, setReceiving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -113,19 +165,53 @@ function OrderDetailDialog({
     return () => { current = false; };
   }, [dataSource, orderId, reload]);
 
-  async function runAction(action: "approve" | "cancel") {
+  function selectAction(action: LifecycleAction) {
+    setSuccess("");
+    setActionError("");
+    setCancelReason("");
+    setActionKey(newIntentKey());
+    setConfirmAction(action);
+  }
+
+  function updateCancelReason(value: string) {
+    if (value !== cancelReason) setActionKey(newIntentKey());
+    setCancelReason(value);
+    setActionError("");
+  }
+
+  async function runAction(action: LifecycleAction) {
     if (!orderId) return;
+    if (action === "cancel" && cancelReason.trim().length < 3) {
+      setActionError("اكتب سبب الإلغاء بوضوح (3 أحرف على الأقل).");
+      return;
+    }
     setBusy(true);
     setActionError("");
     try {
-      const updated = action === "approve"
-        ? await dataSource.approveOrder(orderId)
-        : await dataSource.cancelOrder(orderId);
+      let updated: ProcurementOrderDetail;
+      if (action === "approve") {
+        updated = await dataSource.approveOrder(orderId, actionKey);
+      } else if (action === "send") {
+        updated = await dataSource.sendOrder(orderId, actionKey);
+      } else if (action === "confirm") {
+        updated = await dataSource.confirmOrder(orderId, actionKey);
+      } else {
+        updated = await dataSource.cancelOrder(orderId, cancelReason.trim(), actionKey);
+      }
       setDetail(updated);
       setConfirmAction(null);
-      setSuccess(action === "approve" ? "تم اعتماد الطلب بنجاح." : "تم إلغاء الطلب.");
+      setSuccess(
+        action === "approve"
+          ? "تم اعتماد الطلب بنجاح."
+          : action === "send"
+            ? "تم تسجيل إرسال الطلب للمورد."
+            : action === "confirm"
+              ? "تم تسجيل تأكيد المورد."
+              : "تم إلغاء الطلب.",
+      );
       onChanged();
     } catch (cause) {
+      // actionKey remains stable for an unchanged retry after an ambiguous error.
       setActionError(procurementErrorMessage(cause));
     } finally {
       setBusy(false);
@@ -174,16 +260,48 @@ function OrderDetailDialog({
 
             {confirmAction ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <p className="text-lg font-black">{confirmAction === "approve" ? "هل تريد اعتماد هذا الطلب؟" : "هل تريد إلغاء هذا الطلب؟"}</p>
-                <p className="mt-1 text-slate-700">{confirmAction === "approve" ? "بعد الاعتماد قد لا تكون المسودة قابلة للتعديل." : "لن تُحذف بيانات الطلب أو سجل الاستلام السابق."}</p>
+                <p className="text-lg font-black">
+                  {confirmAction === "approve"
+                    ? "هل تريد اعتماد هذا الطلب؟"
+                    : confirmAction === "send"
+                      ? "هل تم إرسال الطلب فعلياً للمورد؟"
+                      : confirmAction === "confirm"
+                        ? "هل أكد المورد هذا الطلب؟"
+                        : "هل تريد إلغاء هذا الطلب؟"}
+                </p>
+                <p className="mt-1 text-slate-700">
+                  {confirmAction === "approve"
+                    ? "بعد الاعتماد تصبح البيانات التجارية لقطة تاريخية غير قابلة للتعديل."
+                    : confirmAction === "send"
+                      ? "سجّل الإرسال فقط بعد إرسال الطلب للمورد فعلياً."
+                      : confirmAction === "confirm"
+                        ? "التأكيد يفتح الطلب للاستلام الفعلي حسب الصلاحيات."
+                        : "لن تُحذف بيانات الطلب أو أي استلام سابق."}
+                </p>
+                {confirmAction === "cancel" && (
+                  <Field className="mt-3" label="سبب الإلغاء" htmlFor="procurement-cancel-reason" required>
+                    <Textarea
+                      id="procurement-cancel-reason"
+                      rows={2}
+                      value={cancelReason}
+                      onChange={(event) => updateCancelReason(event.target.value)}
+                      placeholder="مثال: المورد غير قادر على الالتزام بموعد التسليم"
+                    />
+                  </Field>
+                )}
                 {actionError && <p role="alert" className="mt-3 rounded-xl bg-red-100 p-3 font-bold text-red-800">{actionError}</p>}
-                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row"><Button variant="outline" disabled={busy} onClick={() => { setConfirmAction(null); setActionError(""); }}>العودة</Button><Button variant={confirmAction === "cancel" ? "danger" : "primary"} disabled={busy} onClick={() => void runAction(confirmAction)}>{busy ? "جارٍ التنفيذ…" : confirmAction === "approve" ? "نعم، اعتماد الطلب" : "نعم، إلغاء الطلب"}</Button></div>
+                <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row">
+                  <Button variant="outline" disabled={busy} onClick={() => { setConfirmAction(null); setActionError(""); }}>العودة</Button>
+                  <Button variant={confirmAction === "cancel" ? "danger" : "primary"} disabled={busy} onClick={() => void runAction(confirmAction)}>{busy ? "جارٍ التنفيذ…" : ACTION_CONFIRM_LABELS[confirmAction]}</Button>
+                </div>
               </div>
             ) : (
               <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-                <div><Button disabled={!detail.capabilities.approve.allowed} onClick={() => { setSuccess(""); setConfirmAction("approve"); }}>اعتماد الطلب</Button>{!detail.capabilities.approve.allowed && <p className="mt-1 max-w-56 text-xs font-semibold text-slate-500">{capabilityMessage(detail.capabilities.approve.reason)}</p>}</div>
+                <ActionControl action="approve" capability={detail.capabilities.approve} onSelect={selectAction} />
+                <ActionControl action="send" capability={detail.capabilities.send} onSelect={selectAction} />
+                <ActionControl action="confirm" capability={detail.capabilities.confirm} onSelect={selectAction} />
                 <div><Button variant="secondary" disabled={!detail.capabilities.receive.allowed} onClick={() => { setSuccess(""); setReceiving(true); }}><PackageCheck aria-hidden="true" />تسجيل استلام</Button>{!detail.capabilities.receive.allowed && <p className="mt-1 max-w-56 text-xs font-semibold text-slate-500">{capabilityMessage(detail.capabilities.receive.reason)}</p>}</div>
-                <div><Button variant="danger" disabled={!detail.capabilities.cancel.allowed} onClick={() => { setSuccess(""); setConfirmAction("cancel"); }}>إلغاء الطلب</Button>{!detail.capabilities.cancel.allowed && <p className="mt-1 max-w-56 text-xs font-semibold text-slate-500">{capabilityMessage(detail.capabilities.cancel.reason)}</p>}</div>
+                <ActionControl action="cancel" capability={detail.capabilities.cancel} onSelect={selectAction} />
               </div>
             )}
           </div>
@@ -218,6 +336,7 @@ export function OrdersArea({
 }) {
   const [orders, setOrders] = useState<ProcurementOrderListItem[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierListItem[]>([]);
+  const [consumables, setConsumables] = useState<ProcurementConsumableOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
@@ -230,8 +349,18 @@ export function OrdersArea({
     let current = true;
     setLoading(true);
     setError("");
-    void Promise.all([dataSource.listOrders(), dataSource.listSuppliers()]).then(
-      ([orderItems, supplierItems]) => { if (current) { setOrders(orderItems); setSuppliers(supplierItems); } },
+    void Promise.all([
+      dataSource.listOrders(),
+      dataSource.listSuppliers(),
+      dataSource.listConsumableOptions(),
+    ]).then(
+      ([orderItems, supplierItems, consumableItems]) => {
+        if (current) {
+          setOrders(orderItems);
+          setSuppliers(supplierItems);
+          setConsumables(consumableItems);
+        }
+      },
       (cause) => { if (current) setError(procurementErrorMessage(cause)); },
     ).finally(() => { if (current) setLoading(false); });
     return () => { current = false; };
@@ -249,16 +378,16 @@ export function OrdersArea({
 
   return (
     <section aria-labelledby="orders-heading" className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 id="orders-heading" className="text-2xl font-black">طلبات التوريد</h2><p className="mt-1 text-slate-600">من المسودة حتى الاستلام الكامل، مع توضيح المتبقي في كل بند.</p></div>{access.canCreateOrder && <Button size="lg" onClick={() => setCreating(true)}><Plus aria-hidden="true" />طلب جديد</Button>}</div>
+      <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 id="orders-heading" className="text-2xl font-black">طلبات التوريد</h2><p className="mt-1 text-slate-600">من المسودة إلى الإرسال والتأكيد والاستلام الكامل، مع توضيح المتبقي في كل بند.</p></div>{access.canCreateOrder && <Button size="lg" onClick={() => setCreating(true)}><Plus aria-hidden="true" />طلب جديد</Button>}</div>
       <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:grid-cols-[1fr_14rem]">
         <Field label="بحث" htmlFor="order-search"><div className="relative"><Search className="pointer-events-none absolute right-3 top-3.5 h-5 w-5 text-slate-400" aria-hidden="true" /><Input id="order-search" type="search" className="pr-10" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="رقم الطلب أو المورد أو المناسبة" /></div></Field>
         <Field label="الحالة" htmlFor="order-status-filter"><Select id="order-status-filter" value={status} onChange={(event) => setStatus(event.target.value as ProcurementOrderStatus | "ALL")}><option value="ALL">كل الحالات</option>{ORDER_STATUSES.map((value) => <option key={value} value={value}>{ORDER_STATUS_LABELS[value]}</option>)}</Select></Field>
       </div>
       {loading && <div className="flex min-h-52 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white" aria-busy="true"><Spinner /><span className="font-bold text-slate-600">جارٍ تحميل طلبات التوريد…</span></div>}
       {!loading && error && <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800"><p className="font-black">تعذر تحميل الطلبات</p><p className="mt-1 font-semibold">{error}</p><Button variant="outline" className="mt-4" onClick={() => setReload((value) => value + 1)}>إعادة المحاولة</Button></div>}
-      {!loading && !error && visible.length === 0 && <EmptyState title={filtered ? "لا توجد طلبات مطابقة" : "لا توجد طلبات توريد بعد"} description={filtered ? "جرّب تغيير البحث أو حالة الطلب." : "أنشئ مسودة طلب جديدة وحدد المورد وموعد التوريد."} action={filtered ? <Button variant="outline" onClick={() => { setSearch(""); setStatus("ALL"); }}>مسح عوامل التصفية</Button> : access.canCreateOrder ? <Button onClick={() => setCreating(true)}>إنشاء أول طلب</Button> : undefined} />}
+      {!loading && !error && visible.length === 0 && <EmptyState title={filtered ? "لا توجد طلبات مطابقة" : "لا توجد طلبات توريد بعد"} description={filtered ? "جرّب تغيير البحث أو حالة الطلب." : "أنشئ مسودة طلب جديدة وحدد المورد وبنود التوريد."} action={filtered ? <Button variant="outline" onClick={() => { setSearch(""); setStatus("ALL"); }}>مسح عوامل التصفية</Button> : access.canCreateOrder ? <Button onClick={() => setCreating(true)}>إنشاء أول طلب</Button> : undefined} />}
       {!loading && !error && visible.length > 0 && <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite">{visible.map((order) => <OrderCard key={order.id} order={order} access={access} onOpen={() => setSelectedOrderId(order.id)} />)}</div>}
-      <OrderCreateDialog key={creating ? "create-open" : "create-closed"} open={creating} dataSource={dataSource} access={access} suppliers={suppliers} events={events} onOpenChange={setCreating} onCreated={(order) => { setSelectedOrderId(order.id); setReload((value) => value + 1); }} />
+      <OrderCreateDialog key={creating ? "create-open" : "create-closed"} open={creating} dataSource={dataSource} access={access} suppliers={suppliers} consumables={consumables} events={events} onOpenChange={setCreating} onCreated={(order) => { setSelectedOrderId(order.id); setReload((value) => value + 1); }} />
       <OrderDetailDialog orderId={selectedOrderId} dataSource={dataSource} access={access} onClose={() => setSelectedOrderId(null)} onChanged={() => setReload((value) => value + 1)} />
     </section>
   );
