@@ -62,6 +62,11 @@ jobs:
       - name: Run pgTAP tests (authoritative security/RLS evidence)
         run: supabase test db
 
+      - name: Run two-session warehouse concurrency proof
+        env:
+          DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: node scripts/native-db/warehouse_concurrency.mjs
+
       - name: Generate types from the replayed schema
         run: supabase gen types typescript --local --schema public > /tmp/database.types.ts
 
