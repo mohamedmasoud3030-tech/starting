@@ -295,13 +295,25 @@ $$;
 
 -- ---------------------------------------------------------------------------
 -- Grants
+--
+-- A Supabase database ships with
+--   alter default privileges in schema public grant all on tables to anon, authenticated;
+-- so a NEWLY CREATED table silently starts with full DML already granted to
+-- both client roles. Creating a table and merely "not granting" write is
+-- therefore NOT least privilege — the grant is already present. Every new
+-- table must revoke it EXPLICITLY, from `authenticated` as well as `anon`,
+-- before re-granting only what the client legitimately needs.
+--
+-- This is defence in depth alongside the RLS policies (no write policy exists)
+-- and the append-only triggers: all three must independently agree that the
+-- RPC commands are the only write path.
 -- ---------------------------------------------------------------------------
 revoke all on table
   public.event_equipment_movements,
   public.event_warehouse_reconciliations,
   public.event_warehouse_lines,
   public.event_warehouse_lines_valued
-  from anon;
+  from anon, authenticated;
 
 -- SELECT only. There is no client INSERT/UPDATE/DELETE grant on the ledger or
 -- the reconciliation: the RPC commands are the only write path.
