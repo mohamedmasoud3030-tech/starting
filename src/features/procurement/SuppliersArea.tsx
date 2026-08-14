@@ -32,6 +32,10 @@ import {
 
 const SUPPLIER_KINDS = Object.keys(SUPPLIER_KIND_LABELS) as SupplierKind[];
 
+function newIntentKey(): string {
+  return globalThis.crypto.randomUUID();
+}
+
 interface SuppliersAreaProps {
   dataSource: ProcurementDataSource;
   access: ProcurementAccess;
@@ -47,7 +51,7 @@ function SupplierForm({
   target: SupplierDetail | null;
   busy: boolean;
   submitError: string;
-  onSubmit: (draft: SupplierFormDraft) => void;
+  onSubmit: (draft: SupplierFormDraft, idempotencyKey: string) => void;
   onCancel: () => void;
 }) {
   const [draft, setDraft] = useState<SupplierFormDraft>(() => ({
@@ -59,13 +63,15 @@ function SupplierForm({
   }));
   const [errors, setErrors] = useState(() => validateSupplierDraft({
     name: target?.name ?? "مورد",
-    kind: target?.kind ?? "OTHER",
+    kind: target?.kind ?? "GENERAL",
     phone: target?.phone ?? "",
     contactName: target?.contactName ?? "",
     notes: target?.notes ?? "",
   }));
+  const [intentKey, setIntentKey] = useState(newIntentKey);
 
   function update(patch: Partial<SupplierFormDraft>) {
+    setIntentKey(newIntentKey());
     setDraft((current) => ({ ...current, ...patch }));
   }
 
@@ -74,7 +80,7 @@ function SupplierForm({
     const nextErrors = validateSupplierDraft(draft);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
-    onSubmit(draft);
+    onSubmit(draft, intentKey);
   }
 
   return (
@@ -85,7 +91,6 @@ function SupplierForm({
           value={draft.name}
           autoComplete="organization"
           aria-invalid={Boolean(errors.name)}
-          aria-describedby={errors.name ? "procurement-supplier-name-error" : undefined}
           onChange={(event) => update({ name: event.target.value })}
           placeholder="مثال: شركة الضيافة العمانية"
         />
@@ -96,7 +101,6 @@ function SupplierForm({
             id="procurement-supplier-kind"
             value={draft.kind}
             aria-invalid={Boolean(errors.kind)}
-            aria-describedby={errors.kind ? "procurement-supplier-kind-error" : undefined}
             onChange={(event) => update({ kind: event.target.value as SupplierKind })}
           >
             <option value="">اختر النوع</option>
@@ -113,7 +117,6 @@ function SupplierForm({
             autoComplete="tel"
             value={draft.phone}
             aria-invalid={Boolean(errors.phone)}
-            aria-describedby={errors.phone ? "procurement-supplier-phone-error" : undefined}
             onChange={(event) => update({ phone: event.target.value })}
             placeholder="+968 9000 0000"
           />
@@ -164,11 +167,11 @@ function SupplierCreateDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  async function submit(draft: SupplierFormDraft) {
+  async function submit(draft: SupplierFormDraft, idempotencyKey: string) {
     setBusy(true);
     setError("");
     try {
-      await dataSource.createSupplier(supplierDraftToInput(draft));
+      await dataSource.createSupplier(supplierDraftToInput(draft, idempotencyKey));
       onOpenChange(false);
       onCreated();
     } catch (cause) {
@@ -191,7 +194,7 @@ function SupplierCreateDialog({
           target={null}
           busy={busy}
           submitError={error}
-          onSubmit={(draft) => void submit(draft)}
+          onSubmit={(draft, key) => void submit(draft, key)}
           onCancel={() => onOpenChange(false)}
         />
       )}
@@ -226,6 +229,7 @@ function SupplierDetailDialog({
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
   const [reload, setReload] = useState(0);
+  const [deactivateKey, setDeactivateKey] = useState(newIntentKey);
 
   useEffect(() => {
     if (!supplierId) return;
@@ -249,12 +253,15 @@ function SupplierDetailDialog({
     };
   }, [dataSource, supplierId, reload]);
 
-  async function save(draft: SupplierFormDraft) {
+  async function save(draft: SupplierFormDraft, idempotencyKey: string) {
     if (!supplierId) return;
     setBusy(true);
     setActionError("");
     try {
-      const updated = await dataSource.updateSupplier(supplierId, supplierDraftToInput(draft));
+      const updated = await dataSource.updateSupplier(
+        supplierId,
+        supplierDraftToInput(draft, idempotencyKey),
+      );
       setDetail(updated);
       setMode("details");
       onChanged();
@@ -270,11 +277,12 @@ function SupplierDetailDialog({
     setBusy(true);
     setActionError("");
     try {
-      const updated = await dataSource.deactivateSupplier(supplierId);
+      const updated = await dataSource.deactivateSupplier(supplierId, deactivateKey);
       setDetail(updated);
       setMode("details");
       onChanged();
     } catch (cause) {
+      // Keep deactivateKey unchanged for an ambiguous retry.
       setActionError(procurementErrorMessage(cause));
     } finally {
       setBusy(false);
@@ -302,7 +310,7 @@ function SupplierDetailDialog({
           target={detail}
           busy={busy}
           submitError={actionError}
-          onSubmit={(draft) => void save(draft)}
+          onSubmit={(draft, key) => void save(draft, key)}
           onCancel={() => { setMode("details"); setActionError(""); }}
         />
       )}
@@ -336,12 +344,12 @@ function SupplierDetailDialog({
           {actionError && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{actionError}</p>}
           <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row">
             <div>
-              <Button variant="secondary" disabled={!detail.capabilities.edit.allowed} onClick={() => setMode("edit")}>تعديل البيانات</Button>
+              <Button variant="secondary" disabled={!detail.capabilities.edit.allowed} onClick={() => { setActionError(""); setMode("edit"); }}>تعديل البيانات</Button>
               {!detail.capabilities.edit.allowed && <p className="mt-1 max-w-64 text-xs font-semibold text-slate-500">{capabilityMessage(detail.capabilities.edit.reason)}</p>}
             </div>
             {detail.status === "ACTIVE" && (
               <div>
-                <Button variant="danger" disabled={!detail.capabilities.deactivate.allowed} onClick={() => setMode("deactivate")}>إيقاف المورد</Button>
+                <Button variant="danger" disabled={!detail.capabilities.deactivate.allowed} onClick={() => { setActionError(""); setDeactivateKey(newIntentKey()); setMode("deactivate"); }}>إيقاف المورد</Button>
                 {!detail.capabilities.deactivate.allowed && <p className="mt-1 max-w-64 text-xs font-semibold text-slate-500">{capabilityMessage(detail.capabilities.deactivate.reason)}</p>}
               </div>
             )}
