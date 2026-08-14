@@ -58,6 +58,63 @@ begin
 end;
 $$;
 
+create or replace function public.ok(condition boolean, description text)
+returns text
+language plpgsql
+as $$
+declare
+  msg text;
+begin
+  if coalesce(condition, false) then
+    msg := 'ok - ' || description;
+  else
+    msg := 'not ok - ' || description;
+  end if;
+  insert into public._pgtap_results (ok, description)
+  values (coalesce(condition, false), msg);
+  return msg;
+end;
+$$;
+
+create or replace function public.isnt(actual anyelement, expected anyelement, description text)
+returns text
+language plpgsql
+as $$
+declare
+  ok boolean := actual is distinct from expected;
+  msg text;
+begin
+  if ok then
+    msg := 'ok - ' || description;
+  else
+    msg := 'not ok - ' || description
+      || ' (both were ' || coalesce(actual::text, 'NULL') || ')';
+  end if;
+  insert into public._pgtap_results (ok, description) values (ok, msg);
+  return msg;
+end;
+$$;
+
+create or replace function public.lives_ok(sql text, description text)
+returns text
+language plpgsql
+as $$
+declare
+  msg text;
+begin
+  begin
+    execute sql;
+  exception when others then
+    msg := 'not ok - ' || description || ' (raised ' || sqlstate || ': ' || sqlerrm || ')';
+    insert into public._pgtap_results (ok, description) values (false, msg);
+    return msg;
+  end;
+  msg := 'ok - ' || description;
+  insert into public._pgtap_results (ok, description) values (true, msg);
+  return msg;
+end;
+$$;
+
 create or replace function public.throws_ok(sql text, errcode text, errmsg text, description text)
 returns text
 language plpgsql
@@ -117,5 +174,8 @@ $$;
 
 grant execute on function public.plan(int) to public;
 grant execute on function public.is(anyelement, anyelement, text) to public;
+grant execute on function public.ok(boolean, text) to public;
+grant execute on function public.isnt(anyelement, anyelement, text) to public;
+grant execute on function public.lives_ok(text, text) to public;
 grant execute on function public.throws_ok(text, text, text, text) to public;
 grant execute on function public.finish() to public;
