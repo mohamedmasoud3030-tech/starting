@@ -220,6 +220,13 @@ export type Database = {
             foreignKeyName: "consumable_movements_event_fk"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "consumable_movements_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -477,6 +484,13 @@ export type Database = {
             foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -547,6 +561,13 @@ export type Database = {
           total_wasted_quantity?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "consumable_reconciliations_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: true
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
           {
             foreignKeyName: "consumable_reconciliations_event_fk"
             columns: ["organization_id", "event_id"]
@@ -638,6 +659,13 @@ export type Database = {
             foreignKeyName: "movements_event_fk"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "movements_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -716,6 +744,13 @@ export type Database = {
             foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -778,6 +813,13 @@ export type Database = {
             foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -829,6 +871,13 @@ export type Database = {
           to_status?: Database["public"]["Enums"]["event_status"]
         }
         Relationships: [
+          {
+            foreignKeyName: "event_status_history_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
           {
             foreignKeyName: "event_status_history_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
@@ -888,6 +937,13 @@ export type Database = {
           total_returned_good_quantity?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "reconciliations_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: true
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
           {
             foreignKeyName: "reconciliations_event_fk"
             columns: ["organization_id", "event_id"]
@@ -1168,6 +1224,422 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      procurement_command_idempotency: {
+        Row: {
+          actor_id: string
+          command_name: string
+          created_at: string
+          idempotency_key: string
+          organization_id: string
+          request_fingerprint: string
+          response_payload: Json
+          result_entity: string
+          result_id: string
+        }
+        Insert: {
+          actor_id: string
+          command_name: string
+          created_at?: string
+          idempotency_key: string
+          organization_id: string
+          request_fingerprint: string
+          response_payload: Json
+          result_entity: string
+          result_id: string
+        }
+        Update: {
+          actor_id?: string
+          command_name?: string
+          created_at?: string
+          idempotency_key?: string
+          organization_id?: string
+          request_fingerprint?: string
+          response_payload?: Json
+          result_entity?: string
+          result_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_command_idempotency_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      procurement_order_lines: {
+        Row: {
+          agreed_total_cost: number
+          agreed_unit_cost: number
+          catalog_item_id: string | null
+          created_at: string
+          description: string
+          id: string
+          line_kind: Database["public"]["Enums"]["procurement_line_kind"]
+          order_id: string
+          organization_id: string
+          quantity: number
+          sort_order: number
+          stock_item_id: string | null
+          unit: string
+        }
+        Insert: {
+          agreed_total_cost: number
+          agreed_unit_cost: number
+          catalog_item_id?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          line_kind: Database["public"]["Enums"]["procurement_line_kind"]
+          order_id: string
+          organization_id: string
+          quantity: number
+          sort_order?: number
+          stock_item_id?: string | null
+          unit: string
+        }
+        Update: {
+          agreed_total_cost?: number
+          agreed_unit_cost?: number
+          catalog_item_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          line_kind?: Database["public"]["Enums"]["procurement_line_kind"]
+          order_id?: string
+          organization_id?: string
+          quantity?: number
+          sort_order?: number
+          stock_item_id?: string | null
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_order_lines_catalog_fk"
+            columns: ["organization_id", "catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_catalog_fk"
+            columns: ["organization_id", "catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_details"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_summaries"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_orders"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_receiving_order_summaries"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_stock_item_fk"
+            columns: ["organization_id", "stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_stock_items"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_stock_item_fk"
+            columns: ["organization_id", "stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_stock_summary"
+            referencedColumns: ["organization_id", "stock_item_id"]
+          },
+        ]
+      }
+      procurement_orders: {
+        Row: {
+          agreed_total_cost: number
+          approved_at: string | null
+          approved_by: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string
+          event_id: string | null
+          expected_delivery_at: string | null
+          id: string
+          notes: string | null
+          order_date: string
+          order_number: string
+          organization_id: string
+          sent_at: string | null
+          sent_by: string | null
+          status: Database["public"]["Enums"]["procurement_order_status"]
+          supplier_contact_name_snapshot: string | null
+          supplier_id: string
+          supplier_name_snapshot: string | null
+          supplier_phone_snapshot: string | null
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          agreed_total_cost?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by: string
+          event_id?: string | null
+          expected_delivery_at?: string | null
+          id?: string
+          notes?: string | null
+          order_date: string
+          order_number: string
+          organization_id: string
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: Database["public"]["Enums"]["procurement_order_status"]
+          supplier_contact_name_snapshot?: string | null
+          supplier_id: string
+          supplier_name_snapshot?: string | null
+          supplier_phone_snapshot?: string | null
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          agreed_total_cost?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string
+          event_id?: string | null
+          expected_delivery_at?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string
+          order_number?: string
+          organization_id?: string
+          sent_at?: string | null
+          sent_by?: string | null
+          status?: Database["public"]["Enums"]["procurement_order_status"]
+          supplier_contact_name_snapshot?: string | null
+          supplier_id?: string
+          supplier_name_snapshot?: string | null
+          supplier_phone_snapshot?: string | null
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_orders_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_summaries"
+            referencedColumns: ["organization_id", "supplier_id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      procurement_receipt_lines: {
+        Row: {
+          consumable_movement_id: string | null
+          created_at: string
+          id: string
+          order_id: string
+          order_line_id: string
+          organization_id: string
+          quantity: number
+          receipt_id: string
+        }
+        Insert: {
+          consumable_movement_id?: string | null
+          created_at?: string
+          id?: string
+          order_id: string
+          order_line_id: string
+          organization_id: string
+          quantity: number
+          receipt_id: string
+        }
+        Update: {
+          consumable_movement_id?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string
+          order_line_id?: string
+          organization_id?: string
+          quantity?: number
+          receipt_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_receipt_lines_movement_fk"
+            columns: ["organization_id", "consumable_movement_id"]
+            isOneToOne: true
+            referencedRelation: "consumable_movements"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_receipt_lines_order_line_fk"
+            columns: ["organization_id", "order_id", "order_line_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_line_summaries"
+            referencedColumns: ["organization_id", "order_id", "order_line_id"]
+          },
+          {
+            foreignKeyName: "procurement_receipt_lines_order_line_fk"
+            columns: ["organization_id", "order_id", "order_line_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_lines"
+            referencedColumns: ["organization_id", "order_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_receipt_lines_order_line_fk"
+            columns: ["organization_id", "order_id", "order_line_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_receiving_line_summaries"
+            referencedColumns: ["organization_id", "order_id", "order_line_id"]
+          },
+          {
+            foreignKeyName: "procurement_receipt_lines_receipt_fk"
+            columns: ["organization_id", "receipt_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_receipt_summaries"
+            referencedColumns: ["organization_id", "receipt_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_receipt_lines_receipt_fk"
+            columns: ["organization_id", "receipt_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_receipts"
+            referencedColumns: ["organization_id", "id", "order_id"]
+          },
+        ]
+      }
+      procurement_receipts: {
+        Row: {
+          created_at: string
+          id: string
+          idempotency_key: string
+          notes: string | null
+          order_id: string
+          organization_id: string
+          received_at: string
+          received_by: string
+          reference: string | null
+          request_fingerprint: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          notes?: string | null
+          order_id: string
+          organization_id: string
+          received_at: string
+          received_by: string
+          reference?: string | null
+          request_fingerprint: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          notes?: string | null
+          order_id?: string
+          organization_id?: string
+          received_at?: string
+          received_by?: string
+          reference?: string | null
+          request_fingerprint?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_receipts_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_details"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_receipts_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_summaries"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_receipts_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_orders"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_receipts_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_receiving_order_summaries"
+            referencedColumns: ["organization_id", "order_id"]
           },
         ]
       }
@@ -1540,6 +2012,13 @@ export type Database = {
             foreignKeyName: "quotations_converted_event_org_fk"
             columns: ["organization_id", "converted_event_id"]
             isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "quotations_converted_event_org_fk"
+            columns: ["organization_id", "converted_event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1549,6 +2028,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "quotations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
           },
           {
             foreignKeyName: "quotations_organization_id_event_id_fkey"
@@ -1605,6 +2091,68 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "staff_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          category: Database["public"]["Enums"]["supplier_category"]
+          commercial_registration_number: string | null
+          contact_name: string | null
+          created_at: string
+          created_by: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          status: Database["public"]["Enums"]["supplier_status"]
+          updated_at: string
+          updated_by: string
+          whatsapp: string | null
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["supplier_category"]
+          commercial_registration_number?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          organization_id: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["supplier_status"]
+          updated_at?: string
+          updated_by: string
+          whatsapp?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["supplier_category"]
+          commercial_registration_number?: string | null
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          status?: Database["public"]["Enums"]["supplier_status"]
+          updated_at?: string
+          updated_by?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -1780,6 +2328,13 @@ export type Database = {
             foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1827,6 +2382,13 @@ export type Database = {
             foreignKeyName: "consumable_movements_event_fk"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "consumable_movements_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1843,6 +2405,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "consumable_stock_summary"
             referencedColumns: ["organization_id", "stock_item_id"]
+          },
+        ]
+      }
+      event_procurement_cost_summaries: {
+        Row: {
+          active_committed_cost: number | null
+          active_order_count: number | null
+          all_approved_order_cost: number | null
+          cancelled_order_count: number | null
+          delivered_cost: number | null
+          event_id: string | null
+          event_number: string | null
+          organization_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1884,6 +2467,13 @@ export type Database = {
           status?: Database["public"]["Enums"]["assignment_status"] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
           {
             foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
@@ -1943,6 +2533,13 @@ export type Database = {
             foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1976,7 +2573,400 @@ export type Database = {
             foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      procurement_order_details: {
+        Row: {
+          agreed_total_cost: number | null
+          approved_at: string | null
+          approved_by: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string | null
+          created_by: string | null
+          event_id: string | null
+          event_number: string | null
+          event_title: string | null
+          expected_delivery_at: string | null
+          notes: string | null
+          order_date: string | null
+          order_id: string | null
+          order_number: string | null
+          organization_id: string | null
+          sent_at: string | null
+          sent_by: string | null
+          status: Database["public"]["Enums"]["procurement_order_status"] | null
+          supplier_contact_name_snapshot: string | null
+          supplier_id: string | null
+          supplier_name: string | null
+          supplier_name_snapshot: string | null
+          supplier_phone_snapshot: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_orders_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_summaries"
+            referencedColumns: ["organization_id", "supplier_id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      procurement_order_line_summaries: {
+        Row: {
+          agreed_total_cost: number | null
+          agreed_unit_cost: number | null
+          catalog_item_id: string | null
+          created_at: string | null
+          description: string | null
+          line_kind: Database["public"]["Enums"]["procurement_line_kind"] | null
+          order_id: string | null
+          order_line_id: string | null
+          ordered_quantity: number | null
+          organization_id: string | null
+          received_quantity: number | null
+          remaining_quantity: number | null
+          sort_order: number | null
+          stock_item_id: string | null
+          unit: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_order_lines_catalog_fk"
+            columns: ["organization_id", "catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_catalog_fk"
+            columns: ["organization_id", "catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_details"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_summaries"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_orders"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_receiving_order_summaries"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_stock_item_fk"
+            columns: ["organization_id", "stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_stock_items"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_stock_item_fk"
+            columns: ["organization_id", "stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_stock_summary"
+            referencedColumns: ["organization_id", "stock_item_id"]
+          },
+        ]
+      }
+      procurement_order_summaries: {
+        Row: {
+          agreed_total_cost: number | null
+          approved_at: string | null
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string | null
+          event_id: string | null
+          event_number: string | null
+          event_title: string | null
+          expected_delivery_at: string | null
+          line_count: number | null
+          order_date: string | null
+          order_id: string | null
+          order_number: string | null
+          organization_id: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["procurement_order_status"] | null
+          supplier_id: string | null
+          supplier_name: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_orders_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_summaries"
+            referencedColumns: ["organization_id", "supplier_id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      procurement_receipt_summaries: {
+        Row: {
+          created_at: string | null
+          event_id: string | null
+          has_stock_movements: boolean | null
+          line_count: number | null
+          notes: string | null
+          order_id: string | null
+          order_number: string | null
+          order_status:
+            | Database["public"]["Enums"]["procurement_order_status"]
+            | null
+          organization_id: string | null
+          receipt_id: string | null
+          received_at: string | null
+          received_by: string | null
+          reference: string | null
+          supplier_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_receipts_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_details"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_receipts_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_summaries"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_receipts_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_orders"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_receipts_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_receiving_order_summaries"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+        ]
+      }
+      procurement_receiving_line_summaries: {
+        Row: {
+          catalog_item_id: string | null
+          description: string | null
+          line_kind: Database["public"]["Enums"]["procurement_line_kind"] | null
+          order_id: string | null
+          order_line_id: string | null
+          ordered_quantity: number | null
+          organization_id: string | null
+          received_quantity: number | null
+          remaining_quantity: number | null
+          sort_order: number | null
+          stock_item_id: string | null
+          unit: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_order_lines_catalog_fk"
+            columns: ["organization_id", "catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_catalog_fk"
+            columns: ["organization_id", "catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_details"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_summaries"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_orders"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_receiving_order_summaries"
+            referencedColumns: ["organization_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_stock_item_fk"
+            columns: ["organization_id", "stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_stock_items"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_order_lines_stock_item_fk"
+            columns: ["organization_id", "stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_stock_summary"
+            referencedColumns: ["organization_id", "stock_item_id"]
+          },
+        ]
+      }
+      procurement_receiving_order_summaries: {
+        Row: {
+          confirmed_at: string | null
+          event_id: string | null
+          event_number: string | null
+          event_title: string | null
+          expected_delivery_at: string | null
+          order_date: string | null
+          order_id: string | null
+          order_number: string | null
+          organization_id: string | null
+          status: Database["public"]["Enums"]["procurement_order_status"] | null
+          supplier_contact_name: string | null
+          supplier_id: string | null
+          supplier_name: string | null
+          supplier_phone: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_orders_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_summaries"
+            referencedColumns: ["organization_id", "supplier_id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -2113,6 +3103,13 @@ export type Database = {
             foreignKeyName: "quotations_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "quotations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -2158,6 +3155,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "staff_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_summaries: {
+        Row: {
+          category: Database["public"]["Enums"]["supplier_category"] | null
+          contact_name: string | null
+          created_at: string | null
+          name: string | null
+          organization_id: string | null
+          phone: string | null
+          status: Database["public"]["Enums"]["supplier_status"] | null
+          supplier_id: string | null
+          updated_at: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["supplier_category"] | null
+          contact_name?: string | null
+          created_at?: string | null
+          name?: string | null
+          organization_id?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["supplier_status"] | null
+          supplier_id?: string | null
+          updated_at?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["supplier_category"] | null
+          contact_name?: string | null
+          created_at?: string | null
+          name?: string | null
+          organization_id?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["supplier_status"] | null
+          supplier_id?: string | null
+          updated_at?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -2296,8 +3340,54 @@ export type Database = {
         }
         Returns: number
       }
+      approve_procurement_order: {
+        Args: {
+          p_idempotency_key: string
+          p_order_id: string
+          p_org_id: string
+        }
+        Returns: {
+          agreed_total_cost: number
+          approved_at: string | null
+          approved_by: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string
+          event_id: string | null
+          expected_delivery_at: string | null
+          id: string
+          notes: string | null
+          order_date: string
+          order_number: string
+          organization_id: string
+          sent_at: string | null
+          sent_by: string | null
+          status: Database["public"]["Enums"]["procurement_order_status"]
+          supplier_contact_name_snapshot: string | null
+          supplier_id: string
+          supplier_name_snapshot: string | null
+          supplier_phone_snapshot: string | null
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "procurement_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       assert_consumable_quantity: {
         Args: { p_allow_negative?: boolean; p_quantity: number }
+        Returns: undefined
+      }
+      assert_procurement_omr: { Args: { p_amount: number }; Returns: undefined }
+      assert_procurement_quantity: {
+        Args: { p_quantity: number }
         Returns: undefined
       }
       assign_event_staff: {
@@ -2335,6 +3425,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      begin_procurement_command: {
+        Args: {
+          p_fingerprint: string
+          p_idempotency_key: string
+          p_org_id: string
+        }
+        Returns: Json
       }
       can_manage_commercial: { Args: { p_org_id: string }; Returns: boolean }
       can_read_cost: { Args: { p_org_id: string }; Returns: boolean }
@@ -2376,6 +3474,48 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cancel_procurement_order: {
+        Args: {
+          p_idempotency_key: string
+          p_order_id: string
+          p_org_id: string
+          p_reason: string
+        }
+        Returns: {
+          agreed_total_cost: number
+          approved_at: string | null
+          approved_by: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string
+          event_id: string | null
+          expected_delivery_at: string | null
+          id: string
+          notes: string | null
+          order_date: string
+          order_number: string
+          organization_id: string
+          sent_at: string | null
+          sent_by: string | null
+          status: Database["public"]["Enums"]["procurement_order_status"]
+          supplier_contact_name_snapshot: string | null
+          supplier_id: string
+          supplier_name_snapshot: string | null
+          supplier_phone_snapshot: string | null
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "procurement_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       commercial_total: {
         Args: {
           p_guests: number
@@ -2384,6 +3524,47 @@ export type Database = {
           p_unit: number
         }
         Returns: number
+      }
+      confirm_procurement_order: {
+        Args: {
+          p_idempotency_key: string
+          p_order_id: string
+          p_org_id: string
+        }
+        Returns: {
+          agreed_total_cost: number
+          approved_at: string | null
+          approved_by: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string
+          event_id: string | null
+          expected_delivery_at: string | null
+          id: string
+          notes: string | null
+          order_date: string
+          order_number: string
+          organization_id: string
+          sent_at: string | null
+          sent_by: string | null
+          status: Database["public"]["Enums"]["procurement_order_status"]
+          supplier_contact_name_snapshot: string | null
+          supplier_id: string
+          supplier_name_snapshot: string | null
+          supplier_phone_snapshot: string | null
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "procurement_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       consumable_stock_on_hand: {
         Args: { p_org_id: string; p_stock_item_id: string }
@@ -2514,6 +3695,52 @@ export type Database = {
         Args: { p_display_name?: string; p_name: string }
         Returns: string
       }
+      create_procurement_order: {
+        Args: {
+          p_event_id: string
+          p_expected_delivery_at: string
+          p_idempotency_key: string
+          p_lines: Json
+          p_notes: string
+          p_order_date: string
+          p_org_id: string
+          p_supplier_id: string
+        }
+        Returns: {
+          agreed_total_cost: number
+          approved_at: string | null
+          approved_by: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string
+          event_id: string | null
+          expected_delivery_at: string | null
+          id: string
+          notes: string | null
+          order_date: string
+          order_number: string
+          organization_id: string
+          sent_at: string | null
+          sent_by: string | null
+          status: Database["public"]["Enums"]["procurement_order_status"]
+          supplier_contact_name_snapshot: string | null
+          supplier_id: string
+          supplier_name_snapshot: string | null
+          supplier_phone_snapshot: string | null
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "procurement_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_quick_quote: {
         Args: {
           p_end_at?: string
@@ -2555,6 +3782,43 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "quick_quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_supplier: {
+        Args: {
+          p_category: Database["public"]["Enums"]["supplier_category"]
+          p_commercial_registration_number: string
+          p_contact_name: string
+          p_email: string
+          p_idempotency_key: string
+          p_name: string
+          p_notes: string
+          p_org_id: string
+          p_phone: string
+          p_whatsapp: string
+        }
+        Returns: {
+          category: Database["public"]["Enums"]["supplier_category"]
+          commercial_registration_number: string | null
+          contact_name: string | null
+          created_at: string
+          created_by: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          status: Database["public"]["Enums"]["supplier_status"]
+          updated_at: string
+          updated_by: string
+          whatsapp: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "suppliers"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -2643,6 +3907,18 @@ export type Database = {
       event_warehouse_summary: {
         Args: { p_event_id: string; p_org_id: string }
         Returns: Json
+      }
+      finish_procurement_command: {
+        Args: {
+          p_command_name: string
+          p_fingerprint: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_response: Json
+          p_result_entity: string
+          p_result_id: string
+        }
+        Returns: undefined
       }
       has_org_role: {
         Args: {
@@ -2778,6 +4054,10 @@ export type Database = {
         Args: { p_kind: string; p_org: string; p_prefix: string }
         Returns: string
       }
+      procurement_line_total: {
+        Args: { p_quantity: number; p_unit_cost: number }
+        Returns: number
+      }
       receive_consumable_stock: {
         Args: {
           p_idempotency_key: string
@@ -2805,6 +4085,35 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "consumable_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      receive_procurement_order: {
+        Args: {
+          p_idempotency_key: string
+          p_lines: Json
+          p_notes: string
+          p_order_id: string
+          p_org_id: string
+          p_received_at: string
+          p_reference: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          idempotency_key: string
+          notes: string | null
+          order_id: string
+          organization_id: string
+          received_at: string
+          received_by: string
+          reference: string | null
+          request_fingerprint: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "procurement_receipts"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -2920,6 +4229,10 @@ export type Database = {
       release_staff_assignment: {
         Args: { p_assignment_id: string; p_org_id: string }
         Returns: undefined
+      }
+      replace_procurement_lines_internal: {
+        Args: { p_lines: Json; p_order_id: string; p_org_id: string }
+        Returns: number
       }
       reserve_event_equipment: {
         Args: {
@@ -3124,6 +4437,78 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      send_procurement_order: {
+        Args: {
+          p_idempotency_key: string
+          p_order_id: string
+          p_org_id: string
+        }
+        Returns: {
+          agreed_total_cost: number
+          approved_at: string | null
+          approved_by: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string
+          event_id: string | null
+          expected_delivery_at: string | null
+          id: string
+          notes: string | null
+          order_date: string
+          order_number: string
+          organization_id: string
+          sent_at: string | null
+          sent_by: string | null
+          status: Database["public"]["Enums"]["procurement_order_status"]
+          supplier_contact_name_snapshot: string | null
+          supplier_id: string
+          supplier_name_snapshot: string | null
+          supplier_phone_snapshot: string | null
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "procurement_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_supplier_status: {
+        Args: {
+          p_idempotency_key: string
+          p_org_id: string
+          p_status: Database["public"]["Enums"]["supplier_status"]
+          p_supplier_id: string
+        }
+        Returns: {
+          category: Database["public"]["Enums"]["supplier_category"]
+          commercial_registration_number: string | null
+          contact_name: string | null
+          created_at: string
+          created_by: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          status: Database["public"]["Enums"]["supplier_status"]
+          updated_at: string
+          updated_by: string
+          whatsapp: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "suppliers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       transition_event_status: {
         Args: {
           p_event_id: string
@@ -3158,6 +4543,91 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_procurement_order: {
+        Args: {
+          p_event_id: string
+          p_expected_delivery_at: string
+          p_idempotency_key: string
+          p_lines: Json
+          p_notes: string
+          p_order_date: string
+          p_order_id: string
+          p_org_id: string
+          p_supplier_id: string
+        }
+        Returns: {
+          agreed_total_cost: number
+          approved_at: string | null
+          approved_by: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string
+          event_id: string | null
+          expected_delivery_at: string | null
+          id: string
+          notes: string | null
+          order_date: string
+          order_number: string
+          organization_id: string
+          sent_at: string | null
+          sent_by: string | null
+          status: Database["public"]["Enums"]["procurement_order_status"]
+          supplier_contact_name_snapshot: string | null
+          supplier_id: string
+          supplier_name_snapshot: string | null
+          supplier_phone_snapshot: string | null
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "procurement_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_supplier: {
+        Args: {
+          p_category: Database["public"]["Enums"]["supplier_category"]
+          p_commercial_registration_number: string
+          p_contact_name: string
+          p_email: string
+          p_idempotency_key: string
+          p_name: string
+          p_notes: string
+          p_org_id: string
+          p_phone: string
+          p_supplier_id: string
+          p_whatsapp: string
+        }
+        Returns: {
+          category: Database["public"]["Enums"]["supplier_category"]
+          commercial_registration_number: string | null
+          contact_name: string | null
+          created_at: string
+          created_by: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          status: Database["public"]["Enums"]["supplier_status"]
+          updated_at: string
+          updated_by: string
+          whatsapp: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "suppliers"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -3281,6 +4751,15 @@ export type Database = {
         | "PER_HOUR"
         | "PER_DAY"
         | "MANUAL"
+      procurement_line_kind: "CONSUMABLE" | "CATERING_SERVICE" | "OTHER"
+      procurement_order_status:
+        | "DRAFT"
+        | "APPROVED"
+        | "SENT"
+        | "CONFIRMED"
+        | "PARTIALLY_RECEIVED"
+        | "RECEIVED"
+        | "CANCELLED"
       quick_quote_status:
         | "DRAFT"
         | "ISSUED"
@@ -3296,6 +4775,12 @@ export type Database = {
         | "DRIVER"
         | "WAREHOUSE"
         | "OTHER"
+      supplier_category:
+        | "CATERING_RESTAURANT"
+        | "CONSUMABLES"
+        | "EQUIPMENT_RENTAL"
+        | "GENERAL"
+      supplier_status: "ACTIVE" | "INACTIVE"
       warehouse_movement_kind: "DISPATCH" | "RETURN"
       warehouse_valuation_basis: "CATALOG_COST_SNAPSHOT"
     }
@@ -3471,6 +4956,16 @@ export const Constants = {
         "PER_DAY",
         "MANUAL",
       ],
+      procurement_line_kind: ["CONSUMABLE", "CATERING_SERVICE", "OTHER"],
+      procurement_order_status: [
+        "DRAFT",
+        "APPROVED",
+        "SENT",
+        "CONFIRMED",
+        "PARTIALLY_RECEIVED",
+        "RECEIVED",
+        "CANCELLED",
+      ],
       quick_quote_status: [
         "DRAFT",
         "ISSUED",
@@ -3488,6 +4983,13 @@ export const Constants = {
         "WAREHOUSE",
         "OTHER",
       ],
+      supplier_category: [
+        "CATERING_RESTAURANT",
+        "CONSUMABLES",
+        "EQUIPMENT_RENTAL",
+        "GENERAL",
+      ],
+      supplier_status: ["ACTIVE", "INACTIVE"],
       warehouse_movement_kind: ["DISPATCH", "RETURN"],
       warehouse_valuation_basis: ["CATALOG_COST_SNAPSHOT"],
     },

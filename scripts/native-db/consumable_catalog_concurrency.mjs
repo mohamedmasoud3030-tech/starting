@@ -7,6 +7,7 @@
  * profile creation and catalog re-typing race in opposite directions.
  */
 import { readdirSync, readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
@@ -236,6 +237,24 @@ async function main() {
   }
 
   console.log("\nCONSUMABLE CATALOG/PROFILE CONCURRENCY PROOF: PASSED");
+
+  // This script is the existing CI concurrency-suite entrypoint. Keep every
+  // native S4B/S5A proof chained here so CI cannot accidentally skip a race
+  // harness when the workflow invokes this single entrypoint.
+  for (const harness of [
+    "consumable_concurrency.mjs",
+    "procurement_concurrency.mjs",
+    "procurement_lifecycle_concurrency.mjs",
+  ]) {
+    const child = spawnSync(process.execPath, [join(__dirname, harness)], {
+      cwd: root,
+      env: process.env,
+      stdio: "inherit",
+    });
+    if (child.status !== 0) {
+      throw new Error(`${harness} failed with status ${child.status ?? "unknown"}`);
+    }
+  }
 }
 
 main().catch((error) => {
