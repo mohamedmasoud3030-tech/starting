@@ -2,6 +2,7 @@ import { vi } from "vitest";
 import type {
   EventProcurementSummary,
   ProcurementAccess,
+  ProcurementConsumableOption,
   ProcurementDataSource,
   ProcurementOrderDetail,
   ProcurementOrderListItem,
@@ -19,11 +20,16 @@ export const fullAccess: ProcurementAccess = {
   canCreateOrder: true,
 };
 
+export const consumableOptions: ProcurementConsumableOption[] = [
+  { id: "catalog-consumable-coffee", name: "قهوة عمانية", unit: "كجم" },
+  { id: "catalog-consumable-water", name: "مياه معدنية", unit: "كرتون" },
+];
+
 export function supplierFixture(overrides: Partial<SupplierDetail> = {}): SupplierDetail {
   return {
     id: "supplier-internal-id",
     name: "مؤسسة النخبة للضيافة",
-    kind: "CATERING",
+    kind: "CATERING_RESTAURANT",
     phone: "+968 9000 1111",
     status: "ACTIVE",
     lastOrderAt: "2026-08-12T08:00:00Z",
@@ -39,6 +45,7 @@ export function orderFixture(
   status: ProcurementOrderStatus = "DRAFT",
   overrides: Partial<ProcurementOrderDetail> = {},
 ): ProcurementOrderDetail {
+  const receivable = ["CONFIRMED", "PARTIALLY_RECEIVED"].includes(status);
   return {
     id: `order-internal-${status}`,
     orderNumber: `PO-${status}`,
@@ -51,8 +58,10 @@ export function orderFixture(
     outstandingDeliveryCount: status === "RECEIVED" ? 0 : 1,
     capabilities: {
       approve: status === "DRAFT" ? allowed : denied,
-      cancel: ["DRAFT", "APPROVED", "CONFIRMED", "PARTIALLY_RECEIVED"].includes(status) ? allowed : denied,
-      receive: ["APPROVED", "CONFIRMED", "PARTIALLY_RECEIVED"].includes(status) ? allowed : denied,
+      send: status === "APPROVED" ? allowed : denied,
+      confirm: status === "SENT" ? allowed : denied,
+      cancel: ["DRAFT", "APPROVED", "SENT", "CONFIRMED", "PARTIALLY_RECEIVED"].includes(status) ? allowed : denied,
+      receive: receivable ? allowed : denied,
     },
     notes: "التسليم صباحاً",
     lines: [
@@ -60,25 +69,27 @@ export function orderFixture(
         id: "line-consumable-internal",
         description: "قهوة عمانية",
         kind: "CONSUMABLE",
+        catalogItemId: "catalog-consumable-coffee",
         unit: "كجم",
         orderedQuantityMilli: 10_000,
         receivedQuantityMilli: status === "PARTIALLY_RECEIVED" ? 4_000 : status === "RECEIVED" ? 10_000 : 0,
         remainingQuantityMilli: status === "PARTIALLY_RECEIVED" ? 6_000 : status === "RECEIVED" ? 0 : 10_000,
         unitCostMilli: 1_235,
         lineTotalMilli: 12_350,
-        receive: ["APPROVED", "CONFIRMED", "PARTIALLY_RECEIVED"].includes(status) ? allowed : denied,
+        receive: receivable ? allowed : denied,
       },
       {
         id: "line-service-internal",
         description: "خدمة تقديم القهوة",
         kind: "CATERING_SERVICE",
+        catalogItemId: null,
         unit: "خدمة",
         orderedQuantityMilli: 1_000,
         receivedQuantityMilli: 0,
         remainingQuantityMilli: 1_000,
         unitCostMilli: 20_000,
         lineTotalMilli: 20_000,
-        receive: ["APPROVED", "CONFIRMED", "PARTIALLY_RECEIVED"].includes(status) ? allowed : denied,
+        receive: receivable ? allowed : denied,
       },
     ],
     receipts: [],
@@ -90,6 +101,7 @@ export interface TestSourceControls {
   source: ProcurementDataSource;
   suppliers: SupplierDetail[];
   orders: ProcurementOrderDetail[];
+  consumables: ProcurementConsumableOption[];
   access: ProcurementAccess;
   eventSummary: EventProcurementSummary;
   failures: Partial<Record<keyof ProcurementDataSource, unknown>>;
@@ -97,7 +109,10 @@ export interface TestSourceControls {
     receipt: ReturnType<typeof vi.fn>;
     createSupplier: ReturnType<typeof vi.fn>;
     updateSupplier: ReturnType<typeof vi.fn>;
+    deactivateSupplier: ReturnType<typeof vi.fn>;
     approve: ReturnType<typeof vi.fn>;
+    send: ReturnType<typeof vi.fn>;
+    confirm: ReturnType<typeof vi.fn>;
     cancel: ReturnType<typeof vi.fn>;
     createOrder: ReturnType<typeof vi.fn>;
   };
@@ -114,11 +129,13 @@ function failIfSet(
 export function createTestSource(options?: {
   suppliers?: SupplierDetail[];
   orders?: ProcurementOrderDetail[];
+  consumables?: ProcurementConsumableOption[];
   access?: ProcurementAccess;
   eventSummary?: EventProcurementSummary;
 }): TestSourceControls {
   const suppliers = options?.suppliers ?? [supplierFixture()];
   const orders = options?.orders ?? [orderFixture()];
+  const consumables = options?.consumables ?? [...consumableOptions];
   const access = options?.access ?? { ...fullAccess };
   const failures: TestSourceControls["failures"] = {};
   const eventSummary = options?.eventSummary ?? {
@@ -131,10 +148,30 @@ export function createTestSource(options?: {
     receipt: vi.fn(),
     createSupplier: vi.fn(),
     updateSupplier: vi.fn(),
+    deactivateSupplier: vi.fn(),
     approve: vi.fn(),
+    send: vi.fn(),
+    confirm: vi.fn(),
     cancel: vi.fn(),
     createOrder: vi.fn(),
   };
+
+  function replaceOrder(id: string, status: ProcurementOrderStatus): ProcurementOrderDetail {
+    const index = orders.findIndex((order) => order.id === id);
+    const current = orders[index];
+    if (index < 0 || !current) throw new Error("NOT_FOUND");
+    const item = orderFixture(status, {
+      ...current,
+      status,
+      capabilities: orderFixture(status).capabilities,
+      lines: current.lines.map((line) => ({
+        ...line,
+        receive: orderFixture(status).lines.find((candidate) => candidate.kind === line.kind)?.receive ?? denied,
+      })),
+    });
+    orders[index] = item;
+    return item;
+  }
 
   const source: ProcurementDataSource = {
     async getAccess() {
@@ -174,18 +211,30 @@ export function createTestSource(options?: {
       if (index < 0) throw new Error("NOT_FOUND");
       const current = suppliers[index];
       if (!current) throw new Error("NOT_FOUND");
-      const item = { ...current, ...input };
+      const item = {
+        ...current,
+        name: input.name,
+        kind: input.kind,
+        phone: input.phone,
+        contactName: input.contactName,
+        notes: input.notes,
+      };
       suppliers[index] = item;
       return item;
     },
-    async deactivateSupplier(id) {
+    async deactivateSupplier(id, idempotencyKey) {
       failIfSet(failures, "deactivateSupplier");
+      calls.deactivateSupplier(id, idempotencyKey);
       const index = suppliers.findIndex((supplier) => supplier.id === id);
       const current = suppliers[index];
       if (index < 0 || !current) throw new Error("NOT_FOUND");
       const item = { ...current, status: "INACTIVE" as const };
       suppliers[index] = item;
       return item;
+    },
+    async listConsumableOptions() {
+      failIfSet(failures, "listConsumableOptions");
+      return consumables;
     },
     async listOrders(): Promise<ProcurementOrderListItem[]> {
       failIfSet(failures, "listOrders");
@@ -204,25 +253,25 @@ export function createTestSource(options?: {
       orders.push(item);
       return item;
     },
-    async approveOrder(id) {
+    async approveOrder(id, idempotencyKey) {
       failIfSet(failures, "approveOrder");
-      calls.approve(id);
-      const index = orders.findIndex((order) => order.id === id);
-      const current = orders[index];
-      if (index < 0 || !current) throw new Error("NOT_FOUND");
-      const item = orderFixture("APPROVED", { ...current, status: "APPROVED", capabilities: orderFixture("APPROVED").capabilities });
-      orders[index] = item;
-      return item;
+      calls.approve(id, idempotencyKey);
+      return replaceOrder(id, "APPROVED");
     },
-    async cancelOrder(id) {
+    async sendOrder(id, idempotencyKey) {
+      failIfSet(failures, "sendOrder");
+      calls.send(id, idempotencyKey);
+      return replaceOrder(id, "SENT");
+    },
+    async confirmOrder(id, idempotencyKey) {
+      failIfSet(failures, "confirmOrder");
+      calls.confirm(id, idempotencyKey);
+      return replaceOrder(id, "CONFIRMED");
+    },
+    async cancelOrder(id, reason, idempotencyKey) {
       failIfSet(failures, "cancelOrder");
-      calls.cancel(id);
-      const index = orders.findIndex((order) => order.id === id);
-      const current = orders[index];
-      if (index < 0 || !current) throw new Error("NOT_FOUND");
-      const item = orderFixture("CANCELLED", { ...current, status: "CANCELLED", capabilities: orderFixture("CANCELLED").capabilities });
-      orders[index] = item;
-      return item;
+      calls.cancel(id, reason, idempotencyKey);
+      return replaceOrder(id, "CANCELLED");
     },
     async recordReceipt(input) {
       failIfSet(failures, "recordReceipt");
@@ -230,7 +279,7 @@ export function createTestSource(options?: {
       return {
         id: "receipt-internal-id",
         receiptNumber: "REC-100",
-        receivedAt: "2026-08-14T10:00:00Z",
+        receivedAt: input.receivedAt,
         lines: input.lines,
       };
     },
@@ -240,5 +289,5 @@ export function createTestSource(options?: {
     },
   };
 
-  return { source, suppliers, orders, access, eventSummary, failures, calls };
+  return { source, suppliers, orders, consumables, access, eventSummary, failures, calls };
 }
