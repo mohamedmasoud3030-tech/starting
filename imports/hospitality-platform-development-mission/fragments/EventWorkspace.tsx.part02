@@ -1,0 +1,350 @@
+    sell: 0,
+    cost: 0,
+  });
+
+  function run(label: string, fn: () => void) {
+    setBusy(label);
+    setError("");
+    try {
+      fn();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {error ? <Alert>{error}</Alert> : null}
+
+      {canWrite && !event.acceptedQuotationId ? (
+        <Card>
+          <CardBody className="space-y-3">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Select value={pkgId} onChange={(e) => setPkgId(e.target.value)}>
+                {packages.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                loading={busy === "pkg"}
+                onClick={() =>
+                  run("pkg", () => applyPackageToEvent(session, eventId, pkgId))
+                }
+              >
+                تطبيق الباقة
+              </Button>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Select
+                value={catalogId}
+                onChange={(e) => setCatalogId(e.target.value)}
+              >
+                {catalog.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nameAr}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                variant="outline"
+                loading={busy === "cat"}
+                onClick={() =>
+                  run("cat", () => addCatalogLineToEvent(session, eventId, catalogId))
+                }
+              >
+                إضافة صنف
+              </Button>
+              <Button variant="secondary" onClick={() => setCustomOpen(true)}>
+                سطر مخصص
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
+      ) : null}
+
+      <div className="space-y-3">
+        {lines.map((line) => (
+          <Card key={line.id}>
+            <CardBody className="space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-lg font-extrabold">{line.description}</p>
+                  <p className="text-sm text-slate-500">
+                    {ITEM_TYPE_LABELS[line.itemType]} ·{" "}
+                    {PRICING_METHOD_LABELS[line.pricingMethod]}
+                    {line.isCustom ? " · مخصص" : ""}
+                  </p>
+                </div>
+                {canWrite && !event.acceptedQuotationId ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => run("rm", () => removePricingLine(session, line.id))}
+                  >
+                    حذف
+                  </Button>
+                ) : null}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label="الكمية">
+                  <Input
+                    disabled={!canWrite || !!event.acceptedQuotationId}
+                    defaultValue={toOMRString(line.quantityMilli).replace(/\.000$/, "")}
+                    key={`${line.id}-qty`}
+                    onBlur={(e) => {
+                      try {
+                        updatePricingLine(session, line.id, {
+                          quantityMilli: parseQuantityMilli(e.target.value),
+                        });
+                      } catch (err) {
+                        setError(errorMessage(err));
+                      }
+                    }}
+                  />
+                </Field>
+                <Field label="سعر البيع">
+                  <MoneyInput
+                    key={`${line.id}-sell`}
+                    valueMilli={line.unitSellingPriceMilli}
+                    disabled={!canWrite || !!event.acceptedQuotationId}
+                    onChangeMilli={(v) =>
+                      updatePricingLine(session, line.id, { unitSellingPriceMilli: v })
+                    }
+                  />
+                </Field>
+                {canCost ? (
+                  <Field label="التكلفة المتوقعة">
+                    <MoneyInput
+                      key={`${line.id}-cost`}
+                      valueMilli={line.unitExpectedCostMilli}
+                      disabled={!canWrite || !!event.acceptedQuotationId}
+                      onChangeMilli={(v) =>
+                        updatePricingLine(session, line.id, {
+                          unitExpectedCostMilli: v,
+                        })
+                      }
+                    />
+                  </Field>
+                ) : null}
+              </div>
+              <p className="text-base font-extrabold text-brand-800">
+                الإجمالي: {formatOMR(line.sellingTotalMilli)}
+              </p>
+            </CardBody>
+          </Card>
+        ))}
+      </div>
+
+      <Card className="bg-brand-50">
+        <CardBody className="grid gap-3 sm:grid-cols-3">
+          <Total label="سعر العميل" value={formatOMR(totals.selling)} />
+          {canCost ? (
+            <>
+              <Total label="التكلفة المتوقعة" value={formatOMR(totals.cost)} />
+              <Total label="الربح المتوقع" value={formatOMR(totals.profit)} />
+            </>
+          ) : (
+            <p className="text-sm text-slate-500 sm:col-span-2">
+              تفاصيل التكلفة ظاهرة للمالك والمدير والمحاسب فقط.
+            </p>
+          )}
+        </CardBody>
+      </Card>
+
+      {canWrite && !event.acceptedQuotationId ? (
+        <Button
+          size="lg"
+          loading={busy === "issue"}
+          onClick={() =>
+            run("issue", () => issueEventQuotation(session, eventId))
+          }
+        >
+          إصدار العرض
+        </Button>
+      ) : null}
+
+      {quotes.length > 0 ? (
+        <div className="space-y-3">
+          <h3 className="text-lg font-extrabold">سجل العروض</h3>
+          {quotes.map((q) => (
+            <Card key={q.id}>
+              <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-extrabold">
+                    {q.quotationNumber} · الإصدار {q.version}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {formatMuscatDateTime(q.issuedAt)} · {formatOMR(q.sellingTotalMilli)}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <QuoteStatusBadge status={q.status} />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPreviewId(q.id)}
+                  >
+                    معاينة العميل
+                  </Button>
+                  {canWrite && q.status === "ISSUED" && !event.acceptedQuotationId ? (
+                    <Button
+                      size="sm"
+                      loading={busy === `acc-${q.id}`}
+                      onClick={() =>
+                        run(`acc-${q.id}`, () => acceptEventQuotation(session, q.id))
+                      }
+                    >
+                      قبول العرض
+                    </Button>
+                  ) : null}
+                </div>
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      ) : null}
+
+      <Dialog
+        open={customOpen}
+        onOpenChange={setCustomOpen}
+        title="سطر مخصص"
+        description="خدمة أو بند لمرة واحدة دون إضافته للكتالوج."
+      >
+        <div className="space-y-4">
+          <Field label="الوصف">
+            <Input
+              value={custom.description}
+              onChange={(e) => setCustom({ ...custom, description: e.target.value })}
+            />
+          </Field>
+          <Field
+            label="طريقة التسعير"
+            hint={PRICING_METHOD_HELP[custom.pricingMethod]}
+          >
+            <Select
+              value={custom.pricingMethod}
+              onChange={(e) =>
+                setCustom({
+                  ...custom,
+                  pricingMethod: e.target.value as PricingMethod,
+                })
+              }
+            >
+              {Object.entries(PRICING_METHOD_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="الكمية">
+            <Input
+              value={custom.qty}
+              onChange={(e) => setCustom({ ...custom, qty: e.target.value })}
+            />
+          </Field>
+          <Field label="سعر البيع">
+            <MoneyInput
+              valueMilli={custom.sell}
+              onChangeMilli={(v) => setCustom({ ...custom, sell: v })}
+            />
+          </Field>
+          {canCost ? (
+            <Field label="التكلفة المتوقعة">
+              <MoneyInput
+                valueMilli={custom.cost}
+                onChangeMilli={(v) => setCustom({ ...custom, cost: v })}
+              />
+            </Field>
+          ) : null}
+          <Button
+            className="w-full"
+            onClick={() => {
+              run("custom", () => {
+                addCustomLineToEvent(session, eventId, {
+                  description: custom.description,
+                  pricingMethod: custom.pricingMethod,
+                  quantityMilli: parseQuantityMilli(custom.qty),
+                  unitSellingPriceMilli: custom.sell,
+                  unitExpectedCostMilli: custom.cost,
+                });
+                setCustomOpen(false);
+              });
+            }}
+          >
+            إضافة
+          </Button>
+        </div>
+      </Dialog>
+
+      {previewId ? (
+        <QuotePreview
+          quotationId={previewId}
+          onClose={() => setPreviewId(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function Total({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-sm font-bold text-slate-600">{label}</p>
+      <p className="text-2xl font-extrabold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function QuotePreview({
+  quotationId,
+  onClose,
+}: {
+  quotationId: string;
+  onClose: () => void;
+}) {
+  const { session } = useSession();
+  const state = useEngine();
+  const view = useMemo(
+    () => toCustomerQuoteView(state, session!, quotationId),
+    [state, session, quotationId],
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 p-4">
+      <div className="print-sheet mx-auto max-w-2xl rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+        <div className="no-print mb-4 flex justify-between">
+          <Button variant="outline" onClick={onClose}>
+            إغلاق
+          </Button>
+          <Button onClick={() => window.print()}>طباعة / مشاركة</Button>
+        </div>
+        <div className="border-b border-sand-200 pb-4">
+          <p className="text-sm font-bold text-brand-700">{view.officeCity}</p>
+          <h2 className="text-2xl font-extrabold">{view.officeName}</h2>
+          <p className="text-slate-500" dir="ltr">
+            {view.officePhone}
+          </p>
+        </div>
+        <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+          <p>
+            <span className="text-slate-500">عرض رقم</span>{" "}
+            <b>
+              {view.quotationNumber} v{view.version}
+            </b>
+          </p>
+          <p>
+            <span className="text-slate-500">العميل</span> <b>{view.customerName}</b>
+          </p>
+          <p>
+            <span className="text-slate-500">المناسبة</span>{" "}
+            <b>
+              {view.eventNumber} · {view.eventTitle}
+            </b>
+          </p>
+          <p>
+            <span className="text-slate-500">الضيوف</span> <b>{view.guestCount}</b>
