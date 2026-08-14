@@ -40,8 +40,8 @@ insert into public.package_items (organization_id, package_id, catalog_item_id, 
 
 insert into public.customers (id, organization_id, name, phone, customer_type) values
   ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000a1', 'Mohammed', '91234567', 'INDIVIDUAL'),
-  ('00000000-0000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000a1', 'Said',     '99887766', 'INDIVIDUAL'),
-  ('00000000-0000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000a1', 'Khalid',   '91234567', 'INDIVIDUAL');
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000a1', 'Said',     '99887766', 'INDIVIDUAL'),
+  ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000a1', 'Khalid',   '91234567', 'INDIVIDUAL');
 
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}';
