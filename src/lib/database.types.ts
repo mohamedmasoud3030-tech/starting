@@ -40,7 +40,15 @@ export type Database = {
           organization_id?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "audit_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       catalog_categories: {
         Row: {
@@ -73,7 +81,15 @@ export type Database = {
           sort_order?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "catalog_categories_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       catalog_items: {
         Row: {
@@ -136,10 +152,17 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "catalog_items_org_category_fk"
-            columns: ["organization_id", "category_id"]
+            columns: ["category_id", "organization_id"]
             isOneToOne: false
             referencedRelation: "catalog_categories"
-            referencedColumns: ["organization_id", "id"]
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "catalog_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -180,31 +203,44 @@ export type Database = {
           updated_at?: string
           whatsapp?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       document_sequences: {
         Row: {
           kind: string
           last_value: number
           organization_id: string
-          updated_at: string
           year: number
         }
         Insert: {
           kind: string
           last_value?: number
           organization_id: string
-          updated_at?: string
           year: number
         }
         Update: {
           kind?: string
           last_value?: number
           organization_id?: string
-          updated_at?: string
           year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "document_sequences_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       equipment_capacity: {
         Row: {
@@ -222,7 +258,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           organization_id: string
-          total_quantity?: number
+          total_quantity: number
           updated_at?: string
         }
         Update: {
@@ -236,16 +272,16 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "equipment_capacity_org_catalog_fk"
+            foreignKeyName: "equipment_capacity_organization_id_catalog_item_id_fkey"
             columns: ["organization_id", "catalog_item_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "catalog_items"
             referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "equipment_capacity_org_catalog_fk"
+            foreignKeyName: "equipment_capacity_organization_id_catalog_item_id_fkey"
             columns: ["organization_id", "catalog_item_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "catalog_items_operational"
             referencedColumns: ["organization_id", "id"]
           },
@@ -277,21 +313,21 @@ export type Database = {
           created_at?: string
           description: string
           event_id: string
-          expected_unit_cost?: number
+          expected_unit_cost: number
           id?: string
           is_custom?: boolean
           item_type: Database["public"]["Enums"]["catalog_item_type"]
           notes?: string | null
           organization_id: string
           pricing_method: Database["public"]["Enums"]["pricing_method"]
-          quantity?: number
+          quantity: number
           sort_order?: number
           source_catalog_item_id?: string | null
           source_package_id?: string | null
-          total_expected_cost?: number
-          total_selling?: number
+          total_expected_cost: number
+          total_selling: number
           unit: string
-          unit_selling_price?: number
+          unit_selling_price: number
           updated_at?: string
         }
         Update: {
@@ -317,28 +353,28 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "event_commercial_lines_org_catalog_fk"
-            columns: ["organization_id", "source_catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_commercial_lines_org_catalog_fk"
-            columns: ["organization_id", "source_catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_commercial_lines_org_event_fk"
+            foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "event_commercial_lines_org_package_fk"
+            foreignKeyName: "event_commercial_lines_organization_id_source_catalog_item_fkey"
+            columns: ["organization_id", "source_catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_commercial_lines_organization_id_source_catalog_item_fkey"
+            columns: ["organization_id", "source_catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_commercial_lines_organization_id_source_package_id_fkey"
             columns: ["organization_id", "source_package_id"]
             isOneToOne: false
             referencedRelation: "packages"
@@ -356,7 +392,6 @@ export type Database = {
           idempotency_key: string
           organization_id: string
           quantity: number
-          released_at: string | null
           reserved_from: string
           reserved_until: string
           status: Database["public"]["Enums"]["reservation_status"]
@@ -370,7 +405,6 @@ export type Database = {
           idempotency_key: string
           organization_id: string
           quantity: number
-          released_at?: string | null
           reserved_from: string
           reserved_until: string
           status?: Database["public"]["Enums"]["reservation_status"]
@@ -384,21 +418,20 @@ export type Database = {
           idempotency_key?: string
           organization_id?: string
           quantity?: number
-          released_at?: string | null
           reserved_from?: string
           reserved_until?: string
           status?: Database["public"]["Enums"]["reservation_status"]
         }
         Relationships: [
           {
-            foreignKeyName: "event_equipment_reservations_org_capacity_fk"
+            foreignKeyName: "event_equipment_reservations_organization_id_equipment_cap_fkey"
             columns: ["organization_id", "equipment_capacity_id"]
             isOneToOne: false
             referencedRelation: "equipment_capacity"
             referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "event_equipment_reservations_org_event_fk"
+            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
             referencedRelation: "events"
@@ -460,17 +493,24 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "event_staff_assignments_org_event_fk"
+            foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "event_staff_assignments_org_staff_fk"
+            foreignKeyName: "event_staff_assignments_organization_id_staff_member_id_fkey"
             columns: ["organization_id", "staff_member_id"]
             isOneToOne: false
             referencedRelation: "staff_members"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_staff_assignments_organization_id_staff_member_id_fkey"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members_operational"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -508,7 +548,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "event_status_history_org_event_fk"
+            foreignKeyName: "event_status_history_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
             referencedRelation: "events"
@@ -591,25 +631,32 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "events_accepted_quotation_id_fkey"
-            columns: ["accepted_quotation_id"]
+            foreignKeyName: "events_accepted_quote_fk"
+            columns: ["organization_id", "accepted_quotation_id"]
             isOneToOne: false
             referencedRelation: "quotations"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "events_accepted_quotation_id_fkey"
-            columns: ["accepted_quotation_id"]
+            foreignKeyName: "events_accepted_quote_fk"
+            columns: ["organization_id", "accepted_quotation_id"]
             isOneToOne: false
             referencedRelation: "quotations_customer"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "events_org_customer_fk"
+            foreignKeyName: "events_customer_org_fk"
             columns: ["organization_id", "customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -641,7 +688,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "organization_memberships_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organizations: {
         Row: {
@@ -709,53 +764,25 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "package_items_catalog_item_id_fkey"
-            columns: ["catalog_item_id"]
+            foreignKeyName: "package_items_catalog_org_fk"
+            columns: ["catalog_item_id", "organization_id"]
             isOneToOne: false
             referencedRelation: "catalog_items"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "organization_id"]
           },
           {
-            foreignKeyName: "package_items_catalog_item_id_fkey"
-            columns: ["catalog_item_id"]
+            foreignKeyName: "package_items_catalog_org_fk"
+            columns: ["catalog_item_id", "organization_id"]
             isOneToOne: false
             referencedRelation: "catalog_items_operational"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "organization_id"]
           },
           {
-            foreignKeyName: "package_items_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "package_items_org_catalog_fk"
-            columns: ["organization_id", "catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "package_items_org_catalog_fk"
-            columns: ["organization_id", "catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "package_items_org_package_fk"
-            columns: ["organization_id", "package_id"]
+            foreignKeyName: "package_items_package_org_fk"
+            columns: ["package_id", "organization_id"]
             isOneToOne: false
             referencedRelation: "packages"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "package_items_package_id_fkey"
-            columns: ["package_id"]
-            isOneToOne: false
-            referencedRelation: "packages"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "organization_id"]
           },
         ]
       }
@@ -793,7 +820,15 @@ export type Database = {
           status?: Database["public"]["Enums"]["package_status"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "packages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -816,9 +851,194 @@ export type Database = {
         }
         Relationships: []
       }
-      quotation_lines: {
+      quick_quote_applied_packages: {
+        Row: {
+          applied_at: string
+          organization_id: string
+          package_id: string
+          quick_quote_id: string
+        }
+        Insert: {
+          applied_at?: string
+          organization_id: string
+          package_id: string
+          quick_quote_id: string
+        }
+        Update: {
+          applied_at?: string
+          organization_id?: string
+          package_id?: string
+          quick_quote_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_quote_applied_packages_organization_id_package_id_fkey"
+            columns: ["organization_id", "package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "quick_quote_applied_packages_organization_id_quick_quote_i_fkey"
+            columns: ["organization_id", "quick_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quick_quotes"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      quick_quote_lines: {
         Row: {
           created_at: string
+          description: string
+          id: string
+          is_custom: boolean
+          item_type: Database["public"]["Enums"]["catalog_item_type"]
+          organization_id: string
+          pricing_method: Database["public"]["Enums"]["pricing_method"]
+          quantity: number
+          quick_quote_id: string
+          sort_order: number
+          total_selling: number
+          unit: string
+          unit_selling_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          is_custom?: boolean
+          item_type: Database["public"]["Enums"]["catalog_item_type"]
+          organization_id: string
+          pricing_method: Database["public"]["Enums"]["pricing_method"]
+          quantity: number
+          quick_quote_id: string
+          sort_order?: number
+          total_selling: number
+          unit: string
+          unit_selling_price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_custom?: boolean
+          item_type?: Database["public"]["Enums"]["catalog_item_type"]
+          organization_id?: string
+          pricing_method?: Database["public"]["Enums"]["pricing_method"]
+          quantity?: number
+          quick_quote_id?: string
+          sort_order?: number
+          total_selling?: number
+          unit?: string
+          unit_selling_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_quote_lines_organization_id_quick_quote_id_fkey"
+            columns: ["organization_id", "quick_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quick_quotes"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      quick_quotes: {
+        Row: {
+          created_at: string
+          created_by: string
+          end_at: string | null
+          event_title: string | null
+          event_type: string | null
+          guest_count: number | null
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          prospect_company: string | null
+          prospect_name: string
+          prospect_phone: string | null
+          prospect_whatsapp: string | null
+          quotation_id: string | null
+          quotation_number: string | null
+          start_at: string | null
+          status: Database["public"]["Enums"]["quick_quote_status"]
+          updated_at: string
+          venue_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          end_at?: string | null
+          event_title?: string | null
+          event_type?: string | null
+          guest_count?: number | null
+          id?: string
+          idempotency_key: string
+          notes?: string | null
+          organization_id: string
+          prospect_company?: string | null
+          prospect_name: string
+          prospect_phone?: string | null
+          prospect_whatsapp?: string | null
+          quotation_id?: string | null
+          quotation_number?: string | null
+          start_at?: string | null
+          status?: Database["public"]["Enums"]["quick_quote_status"]
+          updated_at?: string
+          venue_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          end_at?: string | null
+          event_title?: string | null
+          event_type?: string | null
+          guest_count?: number | null
+          id?: string
+          idempotency_key?: string
+          notes?: string | null
+          organization_id?: string
+          prospect_company?: string | null
+          prospect_name?: string
+          prospect_phone?: string | null
+          prospect_whatsapp?: string | null
+          quotation_id?: string | null
+          quotation_number?: string | null
+          start_at?: string | null
+          status?: Database["public"]["Enums"]["quick_quote_status"]
+          updated_at?: string
+          venue_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_quotes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_quotes_quotation_fk"
+            columns: ["quotation_id"]
+            isOneToOne: true
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_quotes_quotation_fk"
+            columns: ["quotation_id"]
+            isOneToOne: true
+            referencedRelation: "quotations_customer"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotation_lines: {
+        Row: {
           description: string
           expected_unit_cost: number
           id: string
@@ -835,24 +1055,22 @@ export type Database = {
           unit_selling_price: number
         }
         Insert: {
-          created_at?: string
           description: string
-          expected_unit_cost?: number
+          expected_unit_cost: number
           id?: string
-          is_custom?: boolean
+          is_custom: boolean
           item_type: Database["public"]["Enums"]["catalog_item_type"]
           organization_id: string
           pricing_method: Database["public"]["Enums"]["pricing_method"]
           quantity: number
           quotation_id: string
-          sort_order?: number
+          sort_order: number
           total_expected_cost: number
           total_selling: number
           unit: string
           unit_selling_price: number
         }
         Update: {
-          created_at?: string
           description?: string
           expected_unit_cost?: number
           id?: string
@@ -870,14 +1088,14 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "quotation_lines_org_quote_fk"
+            foreignKeyName: "quotation_lines_organization_id_quotation_id_fkey"
             columns: ["organization_id", "quotation_id"]
             isOneToOne: false
             referencedRelation: "quotations"
             referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "quotation_lines_org_quote_fk"
+            foreignKeyName: "quotation_lines_organization_id_quotation_id_fkey"
             columns: ["organization_id", "quotation_id"]
             isOneToOne: false
             referencedRelation: "quotations_customer"
@@ -891,14 +1109,13 @@ export type Database = {
           accepted_by: string | null
           converted_at: string | null
           converted_event_id: string | null
-          created_at: string
           customer_id: string | null
           customer_name_snapshot: string
           customer_phone_snapshot: string | null
           end_at_snapshot: string | null
           event_id: string | null
           event_number_snapshot: string | null
-          event_title_snapshot: string | null
+          event_title_snapshot: string
           guest_count_snapshot: number | null
           id: string
           idempotency_key: string
@@ -922,14 +1139,13 @@ export type Database = {
           accepted_by?: string | null
           converted_at?: string | null
           converted_event_id?: string | null
-          created_at?: string
           customer_id?: string | null
           customer_name_snapshot: string
           customer_phone_snapshot?: string | null
           end_at_snapshot?: string | null
           event_id?: string | null
           event_number_snapshot?: string | null
-          event_title_snapshot?: string | null
+          event_title_snapshot: string
           guest_count_snapshot?: number | null
           id?: string
           idempotency_key: string
@@ -953,14 +1169,13 @@ export type Database = {
           accepted_by?: string | null
           converted_at?: string | null
           converted_event_id?: string | null
-          created_at?: string
           customer_id?: string | null
           customer_name_snapshot?: string
           customer_phone_snapshot?: string | null
           end_at_snapshot?: string | null
           event_id?: string | null
           event_number_snapshot?: string | null
-          event_title_snapshot?: string | null
+          event_title_snapshot?: string
           guest_count_snapshot?: number | null
           id?: string
           idempotency_key?: string
@@ -981,229 +1196,25 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "quotations_customer_id_fkey"
-            columns: ["customer_id"]
+            foreignKeyName: "quotations_converted_event_org_fk"
+            columns: ["organization_id", "converted_event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "quotations_customer_org_fk"
+            columns: ["organization_id", "customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
-            referencedColumns: ["id"]
+            referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "quotations_event_id_fkey"
-            columns: ["event_id"]
+            foreignKeyName: "quotations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
             isOneToOne: false
             referencedRelation: "events"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      quick_quote_applied_packages: {
-        Row: {
-          applied_at: string
-          organization_id: string
-          package_id: string
-          quick_quote_id: string
-        }
-        Insert: {
-          applied_at?: string
-          organization_id: string
-          package_id: string
-          quick_quote_id: string
-        }
-        Update: {
-          applied_at?: string
-          organization_id?: string
-          package_id?: string
-          quick_quote_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quick_quote_applied_packages_org_package_fk"
-            columns: ["organization_id", "package_id"]
-            isOneToOne: false
-            referencedRelation: "packages"
             referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "quick_quote_applied_packages_quick_quote_id_fkey"
-            columns: ["quick_quote_id"]
-            isOneToOne: false
-            referencedRelation: "quick_quotes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      quick_quote_lines: {
-        Row: {
-          created_at: string
-          description: string
-          id: string
-          is_custom: boolean
-          item_type: Database["public"]["Enums"]["catalog_item_type"]
-          organization_id: string
-          pricing_method: Database["public"]["Enums"]["pricing_method"]
-          quantity: number
-          quick_quote_id: string
-          sort_order: number
-          source_catalog_item_id: string | null
-          source_package_id: string | null
-          total_selling: number
-          unit: string
-          unit_selling_price: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description: string
-          id?: string
-          is_custom?: boolean
-          item_type: Database["public"]["Enums"]["catalog_item_type"]
-          organization_id: string
-          pricing_method: Database["public"]["Enums"]["pricing_method"]
-          quantity?: number
-          quick_quote_id: string
-          sort_order?: number
-          source_catalog_item_id?: string | null
-          source_package_id?: string | null
-          total_selling?: number
-          unit: string
-          unit_selling_price?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string
-          id?: string
-          is_custom?: boolean
-          item_type?: Database["public"]["Enums"]["catalog_item_type"]
-          organization_id?: string
-          pricing_method?: Database["public"]["Enums"]["pricing_method"]
-          quantity?: number
-          quick_quote_id?: string
-          sort_order?: number
-          source_catalog_item_id?: string | null
-          source_package_id?: string | null
-          total_selling?: number
-          unit?: string
-          unit_selling_price?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quick_quote_lines_org_catalog_fk"
-            columns: ["organization_id", "source_catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "quick_quote_lines_org_catalog_fk"
-            columns: ["organization_id", "source_catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "quick_quote_lines_org_package_fk"
-            columns: ["organization_id", "source_package_id"]
-            isOneToOne: false
-            referencedRelation: "packages"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "quick_quote_lines_org_quote_fk"
-            columns: ["organization_id", "quick_quote_id"]
-            isOneToOne: false
-            referencedRelation: "quick_quotes"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
-      }
-      quick_quotes: {
-        Row: {
-          company_name: string | null
-          converted_event_id: string | null
-          created_at: string
-          created_by: string
-          discarded_reason: string | null
-          end_at: string | null
-          event_title: string | null
-          event_type: string | null
-          guest_count: number | null
-          id: string
-          idempotency_key: string
-          location_details: string | null
-          notes: string | null
-          organization_id: string
-          prospect_name: string
-          prospect_phone: string | null
-          prospect_whatsapp: string | null
-          quotation_number: string | null
-          quotation_revision: number | null
-          start_at: string | null
-          status: Database["public"]["Enums"]["quick_quote_status"]
-          updated_at: string
-          updated_by: string
-          venue_name: string | null
-        }
-        Insert: {
-          company_name?: string | null
-          converted_event_id?: string | null
-          created_at?: string
-          created_by: string
-          discarded_reason?: string | null
-          end_at?: string | null
-          event_title?: string | null
-          event_type?: string | null
-          guest_count?: number | null
-          id?: string
-          idempotency_key: string
-          location_details?: string | null
-          notes?: string | null
-          organization_id: string
-          prospect_name: string
-          prospect_phone?: string | null
-          prospect_whatsapp?: string | null
-          quotation_number?: string | null
-          quotation_revision?: number | null
-          start_at?: string | null
-          status?: Database["public"]["Enums"]["quick_quote_status"]
-          updated_at?: string
-          updated_by: string
-          venue_name?: string | null
-        }
-        Update: {
-          company_name?: string | null
-          converted_event_id?: string | null
-          created_at?: string
-          created_by?: string
-          discarded_reason?: string | null
-          end_at?: string | null
-          event_title?: string | null
-          event_type?: string | null
-          guest_count?: number | null
-          id?: string
-          idempotency_key?: string
-          location_details?: string | null
-          notes?: string | null
-          organization_id?: string
-          prospect_name?: string
-          prospect_phone?: string | null
-          prospect_whatsapp?: string | null
-          quotation_number?: string | null
-          quotation_revision?: number | null
-          start_at?: string | null
-          status?: Database["public"]["Enums"]["quick_quote_status"]
-          updated_at?: string
-          updated_by?: string
-          venue_name?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quick_quotes_converted_event_id_fkey"
-            columns: ["converted_event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["id"]
           },
         ]
       }
@@ -1220,19 +1231,21 @@ export type Database = {
           phone: string | null
           staff_type: Database["public"]["Enums"]["staff_type"]
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           created_at?: string
-          default_compensation_method?: Database["public"]["Enums"]["compensation_method"]
-          default_rate?: number
+          default_compensation_method: Database["public"]["Enums"]["compensation_method"]
+          default_rate: number
           id?: string
           is_active?: boolean
           name: string
           notes?: string | null
           organization_id: string
           phone?: string | null
-          staff_type?: Database["public"]["Enums"]["staff_type"]
+          staff_type: Database["public"]["Enums"]["staff_type"]
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           created_at?: string
@@ -1246,8 +1259,17 @@ export type Database = {
           phone?: string | null
           staff_type?: Database["public"]["Enums"]["staff_type"]
           updated_at?: string
+          whatsapp?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "staff_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -1269,10 +1291,60 @@ export type Database = {
           unit: string | null
           updated_at: string | null
         }
-        Relationships: []
+        Insert: {
+          category_id?: string | null
+          code?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          item_type?: Database["public"]["Enums"]["catalog_item_type"] | null
+          name?: string | null
+          name_en?: string | null
+          organization_id?: string | null
+          pricing_method?: Database["public"]["Enums"]["pricing_method"] | null
+          selling_price?: number | null
+          sort_order?: number | null
+          status?: Database["public"]["Enums"]["catalog_item_status"] | null
+          unit?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          code?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          item_type?: Database["public"]["Enums"]["catalog_item_type"] | null
+          name?: string | null
+          name_en?: string | null
+          organization_id?: string | null
+          pricing_method?: Database["public"]["Enums"]["pricing_method"] | null
+          selling_price?: number | null
+          sort_order?: number | null
+          status?: Database["public"]["Enums"]["catalog_item_status"] | null
+          unit?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_items_org_category_fk"
+            columns: ["category_id", "organization_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_categories"
+            referencedColumns: ["id", "organization_id"]
+          },
+          {
+            foreignKeyName: "catalog_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       event_commercial_lines_operational: {
         Row: {
+          created_at: string | null
           description: string | null
           event_id: string | null
           id: string | null
@@ -1288,34 +1360,134 @@ export type Database = {
           total_selling: number | null
           unit: string | null
           unit_selling_price: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          event_id?: string | null
+          id?: string | null
+          is_custom?: boolean | null
+          item_type?: Database["public"]["Enums"]["catalog_item_type"] | null
+          notes?: string | null
+          organization_id?: string | null
+          pricing_method?: Database["public"]["Enums"]["pricing_method"] | null
+          quantity?: number | null
+          sort_order?: number | null
+          source_catalog_item_id?: string | null
+          source_package_id?: string | null
+          total_selling?: number | null
+          unit?: string | null
+          unit_selling_price?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          event_id?: string | null
+          id?: string | null
+          is_custom?: boolean | null
+          item_type?: Database["public"]["Enums"]["catalog_item_type"] | null
+          notes?: string | null
+          organization_id?: string | null
+          pricing_method?: Database["public"]["Enums"]["pricing_method"] | null
+          quantity?: number | null
+          sort_order?: number | null
+          source_catalog_item_id?: string | null
+          source_package_id?: string | null
+          total_selling?: number | null
+          unit?: string | null
+          unit_selling_price?: number | null
+          updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "event_commercial_lines_org_catalog_fk"
-            columns: ["organization_id", "source_catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_commercial_lines_org_catalog_fk"
-            columns: ["organization_id", "source_catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_commercial_lines_org_event_fk"
+            foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "event_commercial_lines_org_package_fk"
+            foreignKeyName: "event_commercial_lines_organization_id_source_catalog_item_fkey"
+            columns: ["organization_id", "source_catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_commercial_lines_organization_id_source_catalog_item_fkey"
+            columns: ["organization_id", "source_catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_commercial_lines_organization_id_source_package_id_fkey"
             columns: ["organization_id", "source_package_id"]
             isOneToOne: false
             referencedRelation: "packages"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      event_staff_assignments_operational: {
+        Row: {
+          assignment_role: Database["public"]["Enums"]["staff_type"] | null
+          created_at: string | null
+          event_id: string | null
+          id: string | null
+          notes: string | null
+          organization_id: string | null
+          scheduled_end: string | null
+          scheduled_start: string | null
+          staff_member_id: string | null
+          status: Database["public"]["Enums"]["assignment_status"] | null
+        }
+        Insert: {
+          assignment_role?: Database["public"]["Enums"]["staff_type"] | null
+          created_at?: string | null
+          event_id?: string | null
+          id?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          scheduled_end?: string | null
+          scheduled_start?: string | null
+          staff_member_id?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"] | null
+        }
+        Update: {
+          assignment_role?: Database["public"]["Enums"]["staff_type"] | null
+          created_at?: string | null
+          event_id?: string | null
+          id?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          scheduled_end?: string | null
+          scheduled_start?: string | null
+          staff_member_id?: string | null
+          status?: Database["public"]["Enums"]["assignment_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_staff_assignments_organization_id_staff_member_id_fkey"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_staff_assignments_organization_id_staff_member_id_fkey"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members_operational"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -1335,16 +1507,44 @@ export type Database = {
           unit: string | null
           unit_selling_price: number | null
         }
+        Insert: {
+          description?: string | null
+          id?: string | null
+          is_custom?: boolean | null
+          item_type?: Database["public"]["Enums"]["catalog_item_type"] | null
+          organization_id?: string | null
+          pricing_method?: Database["public"]["Enums"]["pricing_method"] | null
+          quantity?: number | null
+          quotation_id?: string | null
+          sort_order?: number | null
+          total_selling?: number | null
+          unit?: string | null
+          unit_selling_price?: number | null
+        }
+        Update: {
+          description?: string | null
+          id?: string | null
+          is_custom?: boolean | null
+          item_type?: Database["public"]["Enums"]["catalog_item_type"] | null
+          organization_id?: string | null
+          pricing_method?: Database["public"]["Enums"]["pricing_method"] | null
+          quantity?: number | null
+          quotation_id?: string | null
+          sort_order?: number | null
+          total_selling?: number | null
+          unit?: string | null
+          unit_selling_price?: number | null
+        }
         Relationships: [
           {
-            foreignKeyName: "quotation_lines_org_quote_fk"
+            foreignKeyName: "quotation_lines_organization_id_quotation_id_fkey"
             columns: ["organization_id", "quotation_id"]
             isOneToOne: false
             referencedRelation: "quotations"
             referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "quotation_lines_org_quote_fk"
+            foreignKeyName: "quotation_lines_organization_id_quotation_id_fkey"
             columns: ["organization_id", "quotation_id"]
             isOneToOne: false
             referencedRelation: "quotations_customer"
@@ -1355,9 +1555,6 @@ export type Database = {
       quotations_customer: {
         Row: {
           accepted_at: string | null
-          converted_at: string | null
-          converted_event_id: string | null
-          customer_id: string | null
           customer_name_snapshot: string | null
           customer_phone_snapshot: string | null
           end_at_snapshot: string | null
@@ -1380,9 +1577,6 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
-          converted_at?: string | null
-          converted_event_id?: string | null
-          customer_id?: string | null
           customer_name_snapshot?: string | null
           customer_phone_snapshot?: string | null
           end_at_snapshot?: string | null
@@ -1405,9 +1599,6 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
-          converted_at?: string | null
-          converted_event_id?: string | null
-          customer_id?: string | null
           customer_name_snapshot?: string | null
           customer_phone_snapshot?: string | null
           end_at_snapshot?: string | null
@@ -1430,17 +1621,57 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "quotations_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quotations_event_id_fkey"
-            columns: ["event_id"]
+            foreignKeyName: "quotations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      staff_members_operational: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          notes: string | null
+          organization_id: string | null
+          phone: string | null
+          staff_type: Database["public"]["Enums"]["staff_type"] | null
+          updated_at: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          phone?: string | null
+          staff_type?: Database["public"]["Enums"]["staff_type"] | null
+          updated_at?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          phone?: string | null
+          staff_type?: Database["public"]["Enums"]["staff_type"] | null
+          updated_at?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1453,22 +1684,96 @@ export type Database = {
           p_org_id: string
           p_quotation_id: string
         }
-        Returns: Database["public"]["Tables"]["events"]["Row"]
+        Returns: {
+          accepted_at: string | null
+          accepted_by: string | null
+          converted_at: string | null
+          converted_event_id: string | null
+          customer_id: string | null
+          customer_name_snapshot: string
+          customer_phone_snapshot: string | null
+          end_at_snapshot: string | null
+          event_id: string | null
+          event_number_snapshot: string | null
+          event_title_snapshot: string
+          guest_count_snapshot: number | null
+          id: string
+          idempotency_key: string
+          issued_at: string
+          issued_by: string
+          location_snapshot: string | null
+          notes: string | null
+          organization_id: string
+          quotation_number: string
+          revision: number
+          start_at_snapshot: string | null
+          status: Database["public"]["Enums"]["quotation_status"]
+          terms: string | null
+          total_expected_cost: number
+          total_expected_profit: number
+          total_selling: number
+          venue_snapshot: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       accept_quick_quote: {
         Args: {
-          p_idempotency_key: string
+          p_idempotency_key?: string
           p_org_id: string
           p_quotation_id: string
         }
-        Returns: Database["public"]["Tables"]["quotations"]["Row"]
+        Returns: {
+          accepted_at: string | null
+          accepted_by: string | null
+          converted_at: string | null
+          converted_event_id: string | null
+          customer_id: string | null
+          customer_name_snapshot: string
+          customer_phone_snapshot: string | null
+          end_at_snapshot: string | null
+          event_id: string | null
+          event_number_snapshot: string | null
+          event_title_snapshot: string
+          guest_count_snapshot: number | null
+          id: string
+          idempotency_key: string
+          issued_at: string
+          issued_by: string
+          location_snapshot: string | null
+          notes: string | null
+          organization_id: string
+          quotation_number: string
+          revision: number
+          start_at_snapshot: string | null
+          status: Database["public"]["Enums"]["quotation_status"]
+          terms: string | null
+          total_expected_cost: number
+          total_expected_profit: number
+          total_selling: number
+          venue_snapshot: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       apply_package_to_event: {
         Args: { p_event_id: string; p_org_id: string; p_package_id: string }
         Returns: number
       }
       apply_package_to_quick_quote: {
-        Args: { p_org_id: string; p_package_id: string; p_quick_quote_id: string }
+        Args: {
+          p_org_id: string
+          p_package_id: string
+          p_quick_quote_id: string
+        }
         Returns: number
       }
       assign_event_staff: {
@@ -1483,7 +1788,29 @@ export type Database = {
           p_rate: number
           p_staff_member_id: string
         }
-        Returns: Database["public"]["Tables"]["event_staff_assignments"]["Row"]
+        Returns: {
+          assignment_role: Database["public"]["Enums"]["staff_type"]
+          compensation_method: Database["public"]["Enums"]["compensation_method"]
+          created_at: string
+          created_by: string
+          event_id: string
+          expected_compensation: number
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          rate: number
+          scheduled_end: string
+          scheduled_start: string
+          staff_member_id: string
+          status: Database["public"]["Enums"]["assignment_status"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_staff_assignments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       can_manage_commercial: { Args: { p_org_id: string }; Returns: boolean }
       can_read_cost: { Args: { p_org_id: string }; Returns: boolean }
@@ -1494,7 +1821,36 @@ export type Database = {
           p_org_id: string
           p_reason: string
         }
-        Returns: Database["public"]["Tables"]["events"]["Row"]
+        Returns: {
+          accepted_quotation_id: string | null
+          cancellation_reason: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string
+          customer_id: string
+          end_at: string
+          event_number: string
+          event_type: string
+          guest_count: number
+          id: string
+          idempotency_key: string
+          location_details: string | null
+          notes: string | null
+          organization_id: string
+          start_at: string
+          status: Database["public"]["Enums"]["event_status"]
+          title: string
+          updated_at: string
+          updated_by: string
+          venue_name: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       commercial_total: {
         Args: {
@@ -1508,6 +1864,7 @@ export type Database = {
       convert_quick_quote: {
         Args: {
           p_end_at?: string
+          p_event_title?: string
           p_guest_count?: number
           p_idempotency_key: string
           p_org_id: string
@@ -1515,7 +1872,36 @@ export type Database = {
           p_start_at?: string
           p_venue_name?: string
         }
-        Returns: Json
+        Returns: {
+          accepted_quotation_id: string | null
+          cancellation_reason: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string
+          customer_id: string
+          end_at: string
+          event_number: string
+          event_type: string
+          guest_count: number
+          id: string
+          idempotency_key: string
+          location_details: string | null
+          notes: string | null
+          organization_id: string
+          start_at: string
+          status: Database["public"]["Enums"]["event_status"]
+          title: string
+          updated_at: string
+          updated_by: string
+          venue_name: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       create_event: {
         Args: {
@@ -1533,7 +1919,36 @@ export type Database = {
           p_title: string
           p_venue_name: string
         }
-        Returns: Database["public"]["Tables"]["events"]["Row"]
+        Returns: {
+          accepted_quotation_id: string | null
+          cancellation_reason: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string
+          customer_id: string
+          end_at: string
+          event_number: string
+          event_type: string
+          guest_count: number
+          id: string
+          idempotency_key: string
+          location_details: string | null
+          notes: string | null
+          organization_id: string
+          start_at: string
+          status: Database["public"]["Enums"]["event_status"]
+          title: string
+          updated_at: string
+          updated_by: string
+          venue_name: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       create_organization: {
         Args: { p_display_name?: string; p_name: string }
@@ -1541,22 +1956,48 @@ export type Database = {
       }
       create_quick_quote: {
         Args: {
-          p_company_name?: string
           p_end_at?: string
           p_event_title?: string
           p_event_type?: string
           p_guest_count?: number
           p_idempotency_key?: string
-          p_location_details?: string
           p_notes?: string
           p_org_id: string
+          p_prospect_company?: string
           p_prospect_name: string
           p_prospect_phone?: string
           p_prospect_whatsapp?: string
           p_start_at?: string
           p_venue_name?: string
         }
-        Returns: Database["public"]["Tables"]["quick_quotes"]["Row"]
+        Returns: {
+          created_at: string
+          created_by: string
+          end_at: string | null
+          event_title: string | null
+          event_type: string | null
+          guest_count: number | null
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          prospect_company: string | null
+          prospect_name: string
+          prospect_phone: string | null
+          prospect_whatsapp: string | null
+          quotation_id: string | null
+          quotation_number: string | null
+          start_at: string | null
+          status: Database["public"]["Enums"]["quick_quote_status"]
+          updated_at: string
+          venue_name: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quick_quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       delete_quick_quote_line: {
         Args: { p_line_id: string; p_org_id: string; p_quick_quote_id: string }
@@ -1564,7 +2005,7 @@ export type Database = {
       }
       discard_quick_quote: {
         Args: { p_org_id: string; p_quick_quote_id: string; p_reason?: string }
-        Returns: Database["public"]["Tables"]["quick_quotes"]["Row"]
+        Returns: undefined
       }
       equipment_availability: {
         Args: {
@@ -1601,17 +2042,87 @@ export type Database = {
           p_org_id: string
           p_terms: string
         }
-        Returns: Database["public"]["Tables"]["quotations"]["Row"]
+        Returns: {
+          accepted_at: string | null
+          accepted_by: string | null
+          converted_at: string | null
+          converted_event_id: string | null
+          customer_id: string | null
+          customer_name_snapshot: string
+          customer_phone_snapshot: string | null
+          end_at_snapshot: string | null
+          event_id: string | null
+          event_number_snapshot: string | null
+          event_title_snapshot: string
+          guest_count_snapshot: number | null
+          id: string
+          idempotency_key: string
+          issued_at: string
+          issued_by: string
+          location_snapshot: string | null
+          notes: string | null
+          organization_id: string
+          quotation_number: string
+          revision: number
+          start_at_snapshot: string | null
+          status: Database["public"]["Enums"]["quotation_status"]
+          terms: string | null
+          total_expected_cost: number
+          total_expected_profit: number
+          total_selling: number
+          venue_snapshot: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       issue_quick_quote: {
         Args: {
-          p_idempotency_key: string
+          p_idempotency_key?: string
           p_notes?: string
           p_org_id: string
           p_quick_quote_id: string
           p_terms?: string
         }
-        Returns: Database["public"]["Tables"]["quotations"]["Row"]
+        Returns: {
+          accepted_at: string | null
+          accepted_by: string | null
+          converted_at: string | null
+          converted_event_id: string | null
+          customer_id: string | null
+          customer_name_snapshot: string
+          customer_phone_snapshot: string | null
+          end_at_snapshot: string | null
+          event_id: string | null
+          event_number_snapshot: string | null
+          event_title_snapshot: string
+          guest_count_snapshot: number | null
+          id: string
+          idempotency_key: string
+          issued_at: string
+          issued_by: string
+          location_snapshot: string | null
+          notes: string | null
+          organization_id: string
+          quotation_number: string
+          revision: number
+          start_at_snapshot: string | null
+          status: Database["public"]["Enums"]["quotation_status"]
+          terms: string | null
+          total_expected_cost: number
+          total_expected_profit: number
+          total_selling: number
+          venue_snapshot: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       next_document_number: {
         Args: { p_kind: string; p_org: string; p_prefix: string }
@@ -1645,8 +2156,8 @@ export type Database = {
         }
         Returns: Json
       }
-      reset_quick_quote_package: {
-        Args: { p_org_id: string; p_package_id: string; p_quick_quote_id: string }
+      reset_quick_quote_lines: {
+        Args: { p_org_id: string; p_quick_quote_id: string }
         Returns: undefined
       }
       save_event_commercial_line: {
@@ -1663,7 +2174,33 @@ export type Database = {
           p_unit: string
           p_unit_selling_price: number
         }
-        Returns: Database["public"]["Tables"]["event_commercial_lines"]["Row"]
+        Returns: {
+          created_at: string
+          description: string
+          event_id: string
+          expected_unit_cost: number
+          id: string
+          is_custom: boolean
+          item_type: Database["public"]["Enums"]["catalog_item_type"]
+          notes: string | null
+          organization_id: string
+          pricing_method: Database["public"]["Enums"]["pricing_method"]
+          quantity: number
+          sort_order: number
+          source_catalog_item_id: string | null
+          source_package_id: string | null
+          total_expected_cost: number
+          total_selling: number
+          unit: string
+          unit_selling_price: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_commercial_lines"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       save_package: {
         Args: {
@@ -1691,7 +2228,28 @@ export type Database = {
           p_unit: string
           p_unit_selling_price: number
         }
-        Returns: Database["public"]["Tables"]["quick_quote_lines"]["Row"]
+        Returns: {
+          created_at: string
+          description: string
+          id: string
+          is_custom: boolean
+          item_type: Database["public"]["Enums"]["catalog_item_type"]
+          organization_id: string
+          pricing_method: Database["public"]["Enums"]["pricing_method"]
+          quantity: number
+          quick_quote_id: string
+          sort_order: number
+          total_selling: number
+          unit: string
+          unit_selling_price: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quick_quote_lines"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       transition_event_status: {
         Args: {
@@ -1700,26 +2258,36 @@ export type Database = {
           p_reason?: string
           p_to: Database["public"]["Enums"]["event_status"]
         }
-        Returns: Database["public"]["Tables"]["events"]["Row"]
-      }
-      update_quick_quote: {
-        Args: {
-          p_company_name?: string
-          p_end_at?: string
-          p_event_title?: string
-          p_event_type?: string
-          p_guest_count?: number
-          p_location_details?: string
-          p_notes?: string
-          p_org_id: string
-          p_prospect_name?: string
-          p_prospect_phone?: string
-          p_prospect_whatsapp?: string
-          p_quick_quote_id: string
-          p_start_at?: string
-          p_venue_name?: string
+        Returns: {
+          accepted_quotation_id: string | null
+          cancellation_reason: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string
+          customer_id: string
+          end_at: string
+          event_number: string
+          event_type: string
+          guest_count: number
+          id: string
+          idempotency_key: string
+          location_details: string | null
+          notes: string | null
+          organization_id: string
+          start_at: string
+          status: Database["public"]["Enums"]["event_status"]
+          title: string
+          updated_at: string
+          updated_by: string
+          venue_name: string
         }
-        Returns: Database["public"]["Tables"]["quick_quotes"]["Row"]
+        SetofOptions: {
+          from: "*"
+          to: "events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {
@@ -1757,10 +2325,12 @@ export type Database = {
         | "PER_HOUR"
         | "PER_DAY"
         | "MANUAL"
-      quick_quote_status: "DRAFT" | "ISSUED" | "ACCEPTED" | "CONVERTED" | "DISCARDED"
-      quotation_status: "ISSUED" | "ACCEPTED" | "SUPERSEDED" | "CANCELLED"
+      quick_quote_status:
+        "DRAFT" | "ISSUED" | "ACCEPTED" | "CONVERTED" | "DISCARDED"
+      quotation_status: "ISSUED" | "ACCEPTED" | "SUPERSEDED"
       reservation_status: "ACTIVE" | "RELEASED" | "CANCELLED"
-      staff_type: "HOST" | "HOSTESS" | "SUPERVISOR" | "DRIVER" | "WAREHOUSE" | "OTHER"
+      staff_type:
+        "HOST" | "HOSTESS" | "SUPERVISOR" | "DRIVER" | "WAREHOUSE" | "OTHER"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1776,12 +2346,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1791,8 +2361,10 @@ export type Tables<
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R
       }
       ? R
@@ -1800,52 +2372,81 @@ export type Tables<
     : never
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  DefaultSchemaTableNameOrOptions extends
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends { Insert: infer I }
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends { Insert: infer I }
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
       ? I
       : never
     : never
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  DefaultSchemaTableNameOrOptions extends
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends { Update: infer U }
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends { Update: infer U }
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
       ? U
       : never
     : never
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  DefaultSchemaEnumNameOrOptions extends
+    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
@@ -1857,17 +2458,57 @@ export const Constants = {
       app_role: ["OWNER", "MANAGER", "SUPERVISOR", "WAREHOUSE", "ACCOUNTANT"],
       assignment_status: ["ACTIVE", "RELEASED", "CANCELLED"],
       catalog_item_status: ["ACTIVE", "INACTIVE"],
-      catalog_item_type: ["SERVICE", "REUSABLE_EQUIPMENT", "CONSUMABLE", "STAFF", "CATERING", "TRANSPORT", "ADDON", "OTHER"],
+      catalog_item_type: [
+        "SERVICE",
+        "REUSABLE_EQUIPMENT",
+        "CONSUMABLE",
+        "STAFF",
+        "CATERING",
+        "TRANSPORT",
+        "ADDON",
+        "OTHER",
+      ],
       compensation_method: ["PER_EVENT", "PER_HOUR", "PER_DAY", "MANUAL"],
       customer_type: ["INDIVIDUAL", "COMPANY", "GOVERNMENT"],
-      event_status: ["DRAFT", "QUOTED", "CONFIRMED", "PREPARING", "DISPATCHED", "IN_PROGRESS", "RETURNING", "CLOSED", "CANCELLED"],
+      event_status: [
+        "DRAFT",
+        "QUOTED",
+        "CONFIRMED",
+        "PREPARING",
+        "DISPATCHED",
+        "IN_PROGRESS",
+        "RETURNING",
+        "CLOSED",
+        "CANCELLED",
+      ],
       membership_status: ["ACTIVE", "INACTIVE", "INVITED"],
       package_status: ["ACTIVE", "INACTIVE"],
-      pricing_method: ["FIXED", "PER_EVENT", "PER_GUEST", "PER_UNIT", "PER_HOUR", "PER_DAY", "MANUAL"],
-      quick_quote_status: ["DRAFT", "ISSUED", "ACCEPTED", "CONVERTED", "DISCARDED"],
-      quotation_status: ["ISSUED", "ACCEPTED", "SUPERSEDED", "CANCELLED"],
+      pricing_method: [
+        "FIXED",
+        "PER_EVENT",
+        "PER_GUEST",
+        "PER_UNIT",
+        "PER_HOUR",
+        "PER_DAY",
+        "MANUAL",
+      ],
+      quick_quote_status: [
+        "DRAFT",
+        "ISSUED",
+        "ACCEPTED",
+        "CONVERTED",
+        "DISCARDED",
+      ],
+      quotation_status: ["ISSUED", "ACCEPTED", "SUPERSEDED"],
       reservation_status: ["ACTIVE", "RELEASED", "CANCELLED"],
-      staff_type: ["HOST", "HOSTESS", "SUPERVISOR", "DRIVER", "WAREHOUSE", "OTHER"],
+      staff_type: [
+        "HOST",
+        "HOSTESS",
+        "SUPERVISOR",
+        "DRIVER",
+        "WAREHOUSE",
+        "OTHER",
+      ],
     },
   },
 } as const
