@@ -1,13 +1,12 @@
 /**
  * Supabase database types.
  *
- * NOTE: The authoritative source is the database schema (supabase/migrations).
- * Regenerate with `npm run db:types` when the schema changes:
+ * The AUTHORITATIVE source is the database schema (supabase/migrations).
+ * CI regenerates this file with:
  *
- *   supabase gen types typescript --local > src/lib/database.types.ts
+ *   supabase gen types typescript --local --schema public
  *
- * This checked-in copy is hand-maintained to match supabase/migrations so the
- * project typechecks without a running Supabase CLI. Keep it in sync.
+ * and fails if it drifts from this committed copy (see .github/workflows/ci.yml).
  *
  * Monetary columns (cost_price, selling_price, quantity) are `string` because
  * PostgREST serializes PostgreSQL `numeric` as a string to preserve precision.
@@ -24,378 +23,375 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      organizations: {
+      audit_events: {
         Row: {
-          id: string;
-          name: string;
-          display_name: string | null;
-          default_currency: string;
-          timezone: string;
-          is_active: boolean;
+          action: string;
           created_at: string;
-          updated_at: string;
+          entity: string;
+          entity_id: string | null;
+          id: number;
+          metadata: Json | null;
+          organization_id: string;
+          user_id: string | null;
         };
         Insert: {
-          id?: string;
-          name: string;
-          display_name?: string | null;
-          default_currency?: string;
-          timezone?: string;
-          is_active?: boolean;
+          action: string;
           created_at?: string;
-          updated_at?: string;
+          entity: string;
+          entity_id?: string | null;
+          id?: never;
+          metadata?: Json | null;
+          organization_id: string;
+          user_id?: string | null;
         };
         Update: {
-          id?: string;
-          name?: string;
-          display_name?: string | null;
-          default_currency?: string;
-          timezone?: string;
-          is_active?: boolean;
+          action?: string;
           created_at?: string;
-          updated_at?: string;
+          entity?: string;
+          entity_id?: string | null;
+          id?: never;
+          metadata?: Json | null;
+          organization_id?: string;
+          user_id?: string | null;
         };
         Relationships: [];
-      };
-      profiles: {
-        Row: {
-          id: string;
-          full_name: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id: string;
-          full_name?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          full_name?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      organization_memberships: {
-        Row: {
-          id: string;
-          organization_id: string;
-          user_id: string;
-          role: AppRole;
-          status: MembershipStatus;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          user_id: string;
-          role?: AppRole;
-          status?: MembershipStatus;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          user_id?: string;
-          role?: AppRole;
-          status?: MembershipStatus;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "organization_memberships_organization_id_fkey";
-            columns: ["organization_id"];
-            referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      customers: {
-        Row: {
-          id: string;
-          organization_id: string;
-          name: string;
-          phone: string | null;
-          whatsapp: string | null;
-          customer_type: CustomerType;
-          notes: string | null;
-          is_active: boolean;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          name: string;
-          phone?: string | null;
-          whatsapp?: string | null;
-          customer_type?: CustomerType;
-          notes?: string | null;
-          is_active?: boolean;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          name?: string;
-          phone?: string | null;
-          whatsapp?: string | null;
-          customer_type?: CustomerType;
-          notes?: string | null;
-          is_active?: boolean;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "customers_organization_id_fkey";
-            columns: ["organization_id"];
-            referencedRelation: "organizations";
-            referencedColumns: ["id"];
-          },
-        ];
       };
       catalog_categories: {
         Row: {
+          created_at: string;
           id: string;
-          organization_id: string;
+          is_active: boolean;
           name: string;
           name_en: string | null;
+          organization_id: string;
           sort_order: number;
-          is_active: boolean;
-          created_at: string;
           updated_at: string;
         };
         Insert: {
+          created_at?: string;
           id?: string;
-          organization_id: string;
+          is_active?: boolean;
           name: string;
           name_en?: string | null;
+          organization_id: string;
           sort_order?: number;
-          is_active?: boolean;
-          created_at?: string;
           updated_at?: string;
         };
         Update: {
+          created_at?: string;
           id?: string;
-          organization_id?: string;
+          is_active?: boolean;
           name?: string;
           name_en?: string | null;
+          organization_id?: string;
           sort_order?: number;
-          is_active?: boolean;
-          created_at?: string;
           updated_at?: string;
         };
         Relationships: [];
       };
       catalog_items: {
         Row: {
-          id: string;
-          organization_id: string;
           category_id: string | null;
           code: string | null;
+          cost_price: string;
+          created_at: string;
+          description: string | null;
+          id: string;
+          internal_notes: string | null;
+          item_type: CatalogItemType;
           name: string;
           name_en: string | null;
-          description: string | null;
-          item_type: CatalogItemType;
-          unit: string;
+          organization_id: string;
           pricing_method: PricingMethod;
-          cost_price: string;
           selling_price: string;
-          status: CatalogItemStatus;
           sort_order: number;
-          internal_notes: string | null;
-          created_at: string;
+          status: CatalogItemStatus;
+          unit: string;
           updated_at: string;
         };
         Insert: {
-          id?: string;
-          organization_id: string;
           category_id?: string | null;
           code?: string | null;
+          cost_price?: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          internal_notes?: string | null;
+          item_type?: CatalogItemType;
           name: string;
           name_en?: string | null;
-          description?: string | null;
-          item_type?: CatalogItemType;
-          unit?: string;
+          organization_id: string;
           pricing_method?: PricingMethod;
-          cost_price?: string;
           selling_price?: string;
-          status?: CatalogItemStatus;
           sort_order?: number;
-          internal_notes?: string | null;
-          created_at?: string;
+          status?: CatalogItemStatus;
+          unit?: string;
           updated_at?: string;
         };
         Update: {
-          id?: string;
-          organization_id?: string;
           category_id?: string | null;
           code?: string | null;
+          cost_price?: string;
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          internal_notes?: string | null;
+          item_type?: CatalogItemType;
           name?: string;
           name_en?: string | null;
-          description?: string | null;
-          item_type?: CatalogItemType;
-          unit?: string;
+          organization_id?: string;
           pricing_method?: PricingMethod;
-          cost_price?: string;
           selling_price?: string;
-          status?: CatalogItemStatus;
           sort_order?: number;
-          internal_notes?: string | null;
-          created_at?: string;
+          status?: CatalogItemStatus;
+          unit?: string;
           updated_at?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "catalog_items_category_id_fkey";
-            columns: ["category_id"];
+            foreignKeyName: "catalog_items_org_category_fk";
+            columns: ["organization_id", "category_id"];
+            isOneToOne: false;
             referencedRelation: "catalog_categories";
-            referencedColumns: ["id"];
+            referencedColumns: ["organization_id", "id"];
           },
         ];
       };
-      packages: {
+      customers: {
         Row: {
+          created_at: string;
+          customer_type: CustomerType;
+          id: string;
+          is_active: boolean;
+          name: string;
+          notes: string | null;
+          organization_id: string;
+          phone: string | null;
+          updated_at: string;
+          whatsapp: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          customer_type?: CustomerType;
+          id?: string;
+          is_active?: boolean;
+          name: string;
+          notes?: string | null;
+          organization_id: string;
+          phone?: string | null;
+          updated_at?: string;
+          whatsapp?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          customer_type?: CustomerType;
+          id?: string;
+          is_active?: boolean;
+          name?: string;
+          notes?: string | null;
+          organization_id?: string;
+          phone?: string | null;
+          updated_at?: string;
+          whatsapp?: string | null;
+        };
+        Relationships: [];
+      };
+      organization_memberships: {
+        Row: {
+          created_at: string;
           id: string;
           organization_id: string;
-          name: string;
-          name_en: string | null;
-          description: string | null;
-          status: PackageStatus;
-          base_guest_count: number | null;
+          role: AppRole;
+          status: MembershipStatus;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          organization_id: string;
+          role?: AppRole;
+          status?: MembershipStatus;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          organization_id?: string;
+          role?: AppRole;
+          status?: MembershipStatus;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      organizations: {
+        Row: {
           created_at: string;
+          default_currency: string;
+          display_name: string | null;
+          id: string;
+          is_active: boolean;
+          name: string;
+          timezone: string;
           updated_at: string;
         };
         Insert: {
-          id?: string;
-          organization_id: string;
-          name: string;
-          name_en?: string | null;
-          description?: string | null;
-          status?: PackageStatus;
-          base_guest_count?: number | null;
           created_at?: string;
+          default_currency?: string;
+          display_name?: string | null;
+          id?: string;
+          is_active?: boolean;
+          name: string;
+          timezone?: string;
           updated_at?: string;
         };
         Update: {
-          id?: string;
-          organization_id?: string;
-          name?: string;
-          name_en?: string | null;
-          description?: string | null;
-          status?: PackageStatus;
-          base_guest_count?: number | null;
           created_at?: string;
+          default_currency?: string;
+          display_name?: string | null;
+          id?: string;
+          is_active?: boolean;
+          name?: string;
+          timezone?: string;
           updated_at?: string;
         };
         Relationships: [];
       };
       package_items: {
         Row: {
+          catalog_item_id: string;
+          created_at: string;
           id: string;
           organization_id: string;
           package_id: string;
-          catalog_item_id: string;
           quantity: string;
           sort_order: number;
-          created_at: string;
           updated_at: string;
         };
         Insert: {
+          catalog_item_id: string;
+          created_at?: string;
           id?: string;
           organization_id: string;
           package_id: string;
-          catalog_item_id: string;
           quantity?: string;
           sort_order?: number;
-          created_at?: string;
           updated_at?: string;
         };
         Update: {
+          catalog_item_id?: string;
+          created_at?: string;
           id?: string;
           organization_id?: string;
           package_id?: string;
-          catalog_item_id?: string;
           quantity?: string;
           sort_order?: number;
-          created_at?: string;
           updated_at?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: "package_items_package_id_fkey";
-            columns: ["package_id"];
-            referencedRelation: "packages";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "package_items_catalog_item_id_fkey";
-            columns: ["catalog_item_id"];
-            referencedRelation: "catalog_items";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
-      audit_events: {
+      packages: {
         Row: {
-          id: number;
-          organization_id: string;
-          user_id: string | null;
-          action: string;
-          entity: string;
-          entity_id: string | null;
-          metadata: Json | null;
+          base_guest_count: number | null;
           created_at: string;
+          description: string | null;
+          id: string;
+          name: string;
+          name_en: string | null;
+          organization_id: string;
+          status: PackageStatus;
+          updated_at: string;
         };
         Insert: {
-          id?: never;
-          organization_id: string;
-          user_id?: string | null;
-          action: string;
-          entity: string;
-          entity_id?: string | null;
-          metadata?: Json | null;
+          base_guest_count?: number | null;
           created_at?: string;
+          description?: string | null;
+          id?: string;
+          name: string;
+          name_en?: string | null;
+          organization_id: string;
+          status?: PackageStatus;
+          updated_at?: string;
         };
         Update: {
-          id?: never;
-          organization_id?: string;
-          user_id?: string | null;
-          action?: string;
-          entity?: string;
-          entity_id?: string | null;
-          metadata?: Json | null;
+          base_guest_count?: number | null;
           created_at?: string;
+          description?: string | null;
+          id?: string;
+          name?: string;
+          name_en?: string | null;
+          organization_id?: string;
+          status?: PackageStatus;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      profiles: {
+        Row: {
+          created_at: string;
+          full_name: string | null;
+          id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          full_name?: string | null;
+          id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          full_name?: string | null;
+          id?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
     };
     Views: {
-      [_ in never]: never;
+      catalog_items_operational: {
+        Row: {
+          category_id: string | null;
+          code: string | null;
+          created_at: string;
+          description: string | null;
+          id: string;
+          item_type: CatalogItemType;
+          name: string;
+          name_en: string | null;
+          organization_id: string;
+          pricing_method: PricingMethod;
+          selling_price: string;
+          sort_order: number;
+          status: CatalogItemStatus;
+          unit: string;
+          updated_at: string;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
-      is_org_member: {
+      can_manage_commercial: {
         Args: { p_org_id: string };
         Returns: boolean;
       };
-      has_org_role: {
-        Args: { p_org_id: string; p_roles: AppRole[] };
-        Returns: boolean;
-      };
-      can_manage_commercial: {
+      can_read_cost: {
         Args: { p_org_id: string };
         Returns: boolean;
       };
       create_organization: {
         Args: { p_name: string; p_display_name?: string };
         Returns: string;
+      };
+      has_org_role: {
+        Args: { p_org_id: string; p_roles: AppRole[] };
+        Returns: boolean;
+      };
+      is_org_member: {
+        Args: { p_org_id: string };
+        Returns: boolean;
       };
       record_audit: {
         Args: {
@@ -423,12 +419,12 @@ export type Database = {
     };
     Enums: {
       app_role: AppRole;
-      membership_status: MembershipStatus;
-      catalog_item_type: CatalogItemType;
-      pricing_method: PricingMethod;
       catalog_item_status: CatalogItemStatus;
-      package_status: PackageStatus;
+      catalog_item_type: CatalogItemType;
       customer_type: CustomerType;
+      membership_status: MembershipStatus;
+      package_status: PackageStatus;
+      pricing_method: PricingMethod;
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -443,7 +439,7 @@ export type AppRole =
   | "WAREHOUSE"
   | "ACCOUNTANT";
 
-export type MembershipStatus = "ACTIVE" | "INACTIVE" | "INVITED";
+export type CatalogItemStatus = "ACTIVE" | "INACTIVE";
 
 export type CatalogItemType =
   | "SERVICE"
@@ -455,6 +451,12 @@ export type CatalogItemType =
   | "ADDON"
   | "OTHER";
 
+export type CustomerType = "INDIVIDUAL" | "COMPANY" | "GOVERNMENT";
+
+export type MembershipStatus = "ACTIVE" | "INACTIVE" | "INVITED";
+
+export type PackageStatus = "ACTIVE" | "INACTIVE";
+
 export type PricingMethod =
   | "FIXED"
   | "PER_EVENT"
@@ -463,12 +465,6 @@ export type PricingMethod =
   | "PER_HOUR"
   | "PER_DAY"
   | "MANUAL";
-
-export type CatalogItemStatus = "ACTIVE" | "INACTIVE";
-
-export type PackageStatus = "ACTIVE" | "INACTIVE";
-
-export type CustomerType = "INDIVIDUAL" | "COMPANY" | "GOVERNMENT";
 
 export type OrganizationRow = Database["public"]["Tables"]["organizations"]["Row"];
 export type MembershipRow =

@@ -94,6 +94,15 @@ npm run db:reset    # إعادة تشغيل سلسلة الترحيلات من �
 
 اختبارات قاعدة البيانات (pgTAP) في `supabase/tests/` وتُشغَّل عبر `supabase test db`.
 
+**بوابة CI:** سير العمل في `.github/workflows/ci.yml` يشغّل الفحص الكامل ثم بيئة
+Supabase الرسمية (Docker): `supabase db reset` (إعادة تشغيل الترحيلات من قاعدة فارغة)،
+`supabase test db` (اختبارات الأمان pgTAP)، وتوليد الأنواع مع فشل CI إذا انحرفت
+`src/lib/database.types.ts` عن المخطط المُعاد تشغيله.
+
+**تحقق أصلي تكميلي (اختياري):** `node scripts/native-db/run.mjs` (مع `DB_URL` يشير إلى
+PostgreSQL أصلي) يعيد تشغيل الترحيلات واختبارات pgTAP ضد خادم محلي للكشف المبكر —
+وهو مكمّل فقط، والبيئة المرجعية للقبول هي Supabase الرسمية في CI.
+
 ## الاختبارات
 
 ```bash

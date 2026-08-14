@@ -1,8 +1,13 @@
 -- ============================================================================
 -- 0005 — Commercial Catalog
--- Organization-scoped catalog categories and items. Every item keeps a
--- distinct COST price (business cost) and SELLING price (customer price).
+-- Organization-scoped catalog categories and items.
+--
 -- Monetary values are numeric(12,3) — 3 decimal places, OMR-safe.
+--
+-- cost_price / internal_notes are SENSITIVE commercial fields. They live on the
+-- base table but its SELECT policy is restricted to can_read_cost() roles
+-- (OWNER/MANAGER/ACCOUNTANT). Operational members read the non-sensitive
+-- projection through the catalog_items_operational view (created in 0008).
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -35,7 +40,7 @@ create trigger catalog_categories_set_updated_at
 create table public.catalog_items (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
-  category_id uuid references public.catalog_categories(id) on delete set null,
+  category_id uuid,
   code text,
   name text not null,
   name_en text,
@@ -52,10 +57,10 @@ create table public.catalog_items (
   internal_notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  -- A catalog item must reference a category in the SAME organization.
-  -- RESTRICT (not SET NULL) because the composite FK also carries the org.
-  -- Category deletion is handled with soft-deactivate (is_active), matching
-  -- the "prefer inactive over destructive delete" rule.
+  -- Single, coherent same-organization FK strategy: a catalog item may
+  -- reference a category, but only in the SAME organization (structurally
+  -- enforced via the composite FK). Category deletion is prevented (no client
+  -- DELETE policy) and categories use soft-deactivation (is_active).
   constraint catalog_items_org_category_fk
     foreign key (category_id, organization_id)
     references public.catalog_categories (id, organization_id)

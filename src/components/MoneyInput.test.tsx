@@ -38,4 +38,18 @@ describe("MoneyInput", () => {
     await user.type(input, "abc");
     expect(input.value).toBe("abc");
   });
+
+  it("re-syncs the visible value when remounted with a new key", () => {
+    const { rerender } = render(
+      <MoneyInput key="A" id="price" label="سعر البيع" value={1000} onChange={() => {}} />,
+    );
+    const input = screen.getByLabelText(/سعر البيع/) as HTMLInputElement;
+    expect(input.value).toBe("1.000");
+
+    // Switching the target item remounts the input (new key) with a new value.
+    rerender(
+      <MoneyInput key="B" id="price" label="سعر البيع" value={2500} onChange={() => {}} />,
+    );
+    expect((screen.getByLabelText(/سعر البيع/) as HTMLInputElement).value).toBe("2.500");
+  });
 });

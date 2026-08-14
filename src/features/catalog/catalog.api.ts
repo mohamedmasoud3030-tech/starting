@@ -23,6 +23,20 @@ export interface CatalogItemFormValues {
   status: "ACTIVE" | "INACTIVE";
 }
 
+/**
+ * A catalog item as read by the UI. Sensitive commercial fields
+ * (cost_price / internal_notes) are present only when the caller is a
+ * cost-reading role (OWNER/MANAGER/ACCOUNTANT); otherwise they are null and
+ * the row was fetched from the operational projection (catalog_items_operational).
+ */
+export type CatalogListItem = Omit<
+  CatalogItemRow,
+  "cost_price" | "internal_notes"
+> & {
+  cost_price: string | null;
+  internal_notes: string | null;
+};
+
 function toInsert(
   orgId: string,
   values: CatalogItemFormValues,
@@ -61,19 +75,34 @@ export function useCatalogCategories(orgId: string | null) {
   });
 }
 
-export function useCatalogItems(orgId: string | null) {
+export function useCatalogItems(orgId: string | null, includeCost = false) {
   return useQuery({
-    queryKey: ["catalog-items", orgId],
+    queryKey: ["catalog-items", orgId, includeCost],
     enabled: !!orgId,
-    queryFn: async () => {
-      if (!orgId) return [] as CatalogItemRow[];
+    queryFn: async (): Promise<CatalogListItem[]> => {
+      if (!orgId) return [];
+      if (includeCost) {
+        // Cost-reading roles read the base table (includes cost_price/internal_notes).
+        const { data, error } = await supabase
+          .from("catalog_items")
+          .select("*")
+          .eq("organization_id", orgId)
+          .order("name", { ascending: true });
+        if (error) throw error;
+        return (data ?? []) as CatalogListItem[];
+      }
+      // Operational roles read the non-sensitive projection only.
       const { data, error } = await supabase
-        .from("catalog_items")
+        .from("catalog_items_operational")
         .select("*")
         .eq("organization_id", orgId)
         .order("name", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as CatalogItemRow[];
+      return (data ?? []).map((row) => ({
+        ...row,
+        cost_price: null,
+        internal_notes: null,
+      })) as CatalogListItem[];
     },
   });
 }

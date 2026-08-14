@@ -10,26 +10,27 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { ITEM_TYPE_LABELS, PRICING_METHOD_LABELS } from "@/lib/domain";
 import { formatOMR, fromDbAmount } from "@/lib/money";
-import type { CatalogItemRow, CatalogItemType } from "@/lib/database.types";
+import type { CatalogItemType } from "@/lib/database.types";
 import { CatalogItemDialog } from "./CatalogItemDialog";
 import {
+  type CatalogListItem,
   useCatalogCategories,
   useCatalogItems,
   useToggleCatalogItem,
 } from "./catalog.api";
 
 export function CatalogPage() {
-  const { currentOrganization, canManageCommercial } = useAuth();
+  const { currentOrganization, canManageCommercial, canReadCost } = useAuth();
   const orgId = currentOrganization?.id ?? null;
 
   const categoriesQuery = useCatalogCategories(orgId);
-  const itemsQuery = useCatalogItems(orgId);
+  const itemsQuery = useCatalogItems(orgId, canReadCost);
   const toggleMutation = useToggleCatalogItem(orgId);
 
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<CatalogItemRow | null>(null);
+  const [editing, setEditing] = useState<CatalogListItem | null>(null);
 
   const items = itemsQuery.data ?? [];
 
@@ -127,6 +128,7 @@ export function CatalogPage() {
               <ItemCard
                 item={item}
                 editable={canManageCommercial}
+                showCost={canReadCost}
                 toggling={toggleMutation.isPending}
                 onEdit={() => {
                   setEditing(item);
@@ -158,12 +160,14 @@ export function CatalogPage() {
 function ItemCard({
   item,
   editable,
+  showCost,
   toggling,
   onEdit,
   onToggle,
 }: {
-  item: CatalogItemRow;
+  item: CatalogListItem;
   editable: boolean;
+  showCost: boolean;
   toggling: boolean;
   onEdit: () => void;
   onToggle: () => void;
@@ -184,19 +188,25 @@ function ItemCard({
         </Badge>
       </div>
 
-      <div className="mb-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3">
+      <div
+        className={`mb-3 grid gap-2 rounded-xl bg-slate-50 p-3 ${
+          showCost ? "grid-cols-2" : "grid-cols-1"
+        }`}
+      >
         <div>
           <p className="text-sm text-slate-500">سعر البيع</p>
           <p className="text-lg font-bold text-brand-700">
             {formatOMR(fromDbAmount(item.selling_price))}
           </p>
         </div>
-        <div>
-          <p className="text-sm text-slate-500">التكلفة</p>
-          <p className="text-lg font-bold text-slate-700">
-            {formatOMR(fromDbAmount(item.cost_price))}
-          </p>
-        </div>
+        {showCost && (
+          <div>
+            <p className="text-sm text-slate-500">التكلفة</p>
+            <p className="text-lg font-bold text-slate-700">
+              {formatOMR(fromDbAmount(item.cost_price))}
+            </p>
+          </div>
+        )}
       </div>
 
       {editable && (

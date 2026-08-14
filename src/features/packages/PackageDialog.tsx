@@ -7,9 +7,9 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { Field } from "@/components/ui/Field";
 import { parseOMR, toOMRString } from "@/lib/money";
-import type { CatalogItemRow } from "@/lib/database.types";
 import type { PackageStatus } from "@/lib/database.types";
-import { validatePackage } from "./packageForm";
+import type { CatalogListItem } from "@/features/catalog/catalog.api";
+import { parseBaseGuestCount, validatePackage } from "./packageForm";
 import {
   type PackageFormValues,
   type PackageWithLines,
@@ -35,7 +35,7 @@ export function PackageDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orgId: string | null;
-  catalogItems: CatalogItemRow[];
+  catalogItems: CatalogListItem[];
   target: PackageWithLines | null; // null → create
 }) {
   const isEditing = target !== null;
@@ -100,13 +100,14 @@ export function PackageDialog({
     e.preventDefault();
     setSubmitError(null);
 
+    const guest = parseBaseGuestCount(baseGuestCount);
+
     const values: PackageFormValues = {
       name,
       nameEn,
       description,
       status,
-      baseGuestCount:
-        baseGuestCount.trim() === "" ? null : Number.parseInt(baseGuestCount, 10),
+      baseGuestCount: guest.value,
       lines: lines.map((l) => ({
         catalogItemId: l.catalogItemId,
         quantity: parseQuantitySafe(l.quantityText),
@@ -114,6 +115,9 @@ export function PackageDialog({
     };
 
     const nextErrors = validatePackage(values);
+    if (guest.error) {
+      nextErrors.baseGuestCount = guest.error;
+    }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
@@ -159,7 +163,11 @@ export function PackageDialog({
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="عدد الضيوف المرجعي (اختياري)" htmlFor="pkg-guests">
+          <Field
+            label="عدد الضيوف المرجعي (اختياري)"
+            htmlFor="pkg-guests"
+            error={errors.baseGuestCount}
+          >
             <Input
               id="pkg-guests"
               inputMode="numeric"

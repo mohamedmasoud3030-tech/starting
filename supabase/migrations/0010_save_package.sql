@@ -1,7 +1,9 @@
 -- ============================================================================
 -- 0010 — save_package(): transactional command for package templates
 -- Create or fully replace a package and its template lines in ONE transaction.
--- Authorization and organization scoping are enforced server-side.
+-- Authorization and organization scoping are enforced server-side. The
+-- function audits its own invocation internally (record_audit is not client
+-- callable). Sensitive catalog cost data is NOT read by this function.
 -- ============================================================================
 
 create or replace function public.save_package(
@@ -24,13 +26,22 @@ declare
   v_item jsonb;
   v_catalog_item_id uuid;
   v_quantity numeric(12,3);
+  v_seen uuid[];
 begin
+  if auth.uid() is null then
+    raise exception 'NOT_AUTHENTICATED' using errcode = '42501';
+  end if;
+
   if not public.can_manage_commercial(p_org_id) then
     raise exception 'NOT_AUTHORIZED' using errcode = '42501';
   end if;
 
   if p_name is null or length(trim(p_name)) = 0 then
     raise exception 'PACKAGE_NAME_REQUIRED';
+  end if;
+
+  if p_base_guest_count is not null and p_base_guest_count <= 0 then
+    raise exception 'INVALID_BASE_GUEST_COUNT';
   end if;
 
   if p_package_id is null then
@@ -57,12 +68,20 @@ begin
 
   for v_item in select * from jsonb_array_elements(coalesce(p_items, '[]'::jsonb))
   loop
+    if v_item ->> 'catalog_item_id' is null then
+      raise exception 'INVALID_ITEM';
+    end if;
     v_catalog_item_id := (v_item ->> 'catalog_item_id')::uuid;
     v_quantity := coalesce((v_item ->> 'quantity')::numeric, 0);
 
-    if v_quantity < 0 then
+    if v_quantity <= 0 then
       raise exception 'INVALID_QUANTITY';
     end if;
+
+    if v_catalog_item_id = any (v_seen) then
+      raise exception 'DUPLICATE_CATALOG_ITEM';
+    end if;
+    v_seen := array_append(v_seen, v_catalog_item_id);
 
     if not exists (
       select 1 from public.catalog_items c
@@ -75,9 +94,18 @@ begin
     values (p_org_id, v_package_id, v_catalog_item_id, v_quantity);
   end loop;
 
+  perform public.record_audit(
+    p_org_id,
+    case when p_package_id is null then 'package.created' else 'package.updated' end,
+    'package',
+    v_package_id::text,
+    jsonb_build_object('name', trim(p_name))
+  );
+
   return v_package_id;
 end;
 $$;
 
 revoke all on function public.save_package(uuid, uuid, text, text, text, package_status, int, jsonb) from public;
+revoke all on function public.save_package(uuid, uuid, text, text, text, package_status, int, jsonb) from anon, authenticated;
 grant execute on function public.save_package(uuid, uuid, text, text, text, package_status, int, jsonb) to authenticated;

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Boxes, Package, Plus, Users } from "lucide-react";
+import { Boxes, Package, Users } from "lucide-react";
 import { useAuth } from "@/app/AuthContext";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
@@ -8,7 +8,7 @@ import { usePackages } from "@/features/packages/packages.api";
 import { useCustomers } from "@/features/customers/customers.api";
 
 export function HomePage() {
-  const { profile, currentOrganization, canManageCommercial } = useAuth();
+  const { profile, currentOrganization } = useAuth();
   const orgId = currentOrganization?.id ?? null;
 
   const catalog = useCatalogItems(orgId);
@@ -44,29 +44,6 @@ export function HomePage() {
         title={`${name}، ${currentOrganization?.name ?? ""}`}
         description="مرحباً بك في نظام إدارة عمليات الضيافة"
       />
-
-      {canManageCommercial && (
-        <div className="mb-6 rounded-2xl border border-brand-200 bg-brand-50 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-brand-900">ابدأ مناسبة جديدة</h2>
-              <p className="text-base text-brand-800">
-                سجّل طلب العميل وحدّد الموعد والخدمات والأسعار
-              </p>
-            </div>
-            <button
-              disabled
-              className="inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-brand-300 px-5 py-3 text-base font-bold text-white opacity-70"
-            >
-              <Plus className="h-5 w-5" />
-              مناسبة جديدة
-            </button>
-          </div>
-          <p className="mt-3 text-sm text-brand-700">
-            سيتوفر إنشاء المناسبات في المرحلة القادمة من التطوير.
-          </p>
-        </div>
-      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {counts.map((c) => (

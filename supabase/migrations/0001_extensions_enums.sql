@@ -1,9 +1,10 @@
 -- ============================================================================
--- 0001 — Extensions & Enums
+-- 0001 — Enums
 -- Hospitality Operations Platform — Oman
+--
+-- Note: gen_random_uuid() is a core function since PostgreSQL 13, so no
+-- extension is required here.
 -- ============================================================================
-
-create extension if not exists pgcrypto;
 
 -- ---------------------------------------------------------------------------
 -- Roles

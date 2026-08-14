@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { useCatalogItems } from "@/features/catalog/catalog.api";
-import type { CatalogItemRow } from "@/lib/database.types";
+import type { CatalogListItem } from "@/features/catalog/catalog.api";
 import { formatQuantity } from "@/lib/utils";
 import { PackageDialog } from "./PackageDialog";
 import { type PackageWithLines, usePackages } from "./packages.api";
@@ -106,7 +106,7 @@ function PackageCard({
   onEdit,
 }: {
   pkg: PackageWithLines;
-  catalogItems: CatalogItemRow[];
+  catalogItems: CatalogListItem[];
   editable: boolean;
   onEdit: () => void;
 }) {

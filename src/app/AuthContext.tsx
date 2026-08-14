@@ -15,7 +15,11 @@ import type {
   OrganizationRow,
   ProfileRow,
 } from "@/lib/database.types";
-import { COMMERCIAL_ROLES } from "@/lib/domain";
+import {
+  canManageCommercialFor,
+  canReadCostFor,
+  selectCurrentMembership,
+} from "./authRoles";
 
 export interface ActiveMembership {
   membership: MembershipRow;
@@ -27,10 +31,19 @@ interface AuthContextValue {
   session: Session | null;
   profile: ProfileRow | null;
   memberships: ActiveMembership[];
-  /** The organization the user is currently operating within. */
+  /**
+   * The organization the user is currently operating within. Deterministically
+   * selected as the first ACTIVE membership (sorted by organization name).
+   * A multi-org switcher is deferred; authorization is already org-scoped.
+   */
   currentOrganization: OrganizationRow | null;
-  roles: AppRole[];
+  currentMembership: MembershipRow | null;
+  /** The single role the user holds INSIDE the current organization. */
+  currentRole: AppRole | null;
+  /** OWNER or MANAGER within the CURRENT organization only. */
   canManageCommercial: boolean;
+  /** OWNER, MANAGER, or ACCOUNTANT within the CURRENT organization only. */
+  canReadCost: boolean;
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
@@ -194,20 +207,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMemberships([]);
   }, []);
 
-  const currentOrganization = useMemo(
-    () => memberships[0]?.organization ?? null,
-    [memberships],
+  // Deterministic current organization = first active membership (by name).
+  const current = useMemo(() => selectCurrentMembership(memberships), [memberships]);
+  const currentMembership = current?.membership ?? null;
+  const currentOrganization = current?.organization ?? null;
+  const currentRole = useMemo<AppRole | null>(
+    () => currentMembership?.role ?? null,
+    [currentMembership],
   );
 
-  const roles = useMemo<AppRole[]>(
-    () => memberships.map((m) => m.membership.role),
-    [memberships],
-  );
-
-  const canManageCommercial = useMemo(
-    () => roles.some((r) => COMMERCIAL_ROLES.includes(r)),
-    [roles],
-  );
+  // Authorization derives ONLY from the role inside the CURRENT organization.
+  const canManageCommercial = canManageCommercialFor(currentRole);
+  const canReadCost = canReadCostFor(currentRole);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -216,8 +227,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       memberships,
       currentOrganization,
-      roles,
+      currentMembership,
+      currentRole,
       canManageCommercial,
+      canReadCost,
       loading,
       error,
       login,
@@ -229,8 +242,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       memberships,
       currentOrganization,
-      roles,
+      currentMembership,
+      currentRole,
       canManageCommercial,
+      canReadCost,
       loading,
       error,
       login,

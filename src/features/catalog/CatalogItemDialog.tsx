@@ -12,7 +12,6 @@ import {
   UNIT_OPTIONS,
 } from "@/lib/domain";
 import type {
-  CatalogItemRow,
   CatalogItemType,
   PricingMethod,
 } from "@/lib/database.types";
@@ -21,6 +20,7 @@ import { fromDbAmount } from "@/lib/money";
 import { validateCatalogItem } from "./catalogForm";
 import {
   type CatalogItemFormValues,
+  type CatalogListItem,
   useCreateCatalogItem,
   useUpdateCatalogItem,
 } from "./catalog.api";
@@ -39,7 +39,7 @@ export function CatalogItemDialog({
   onOpenChange: (open: boolean) => void;
   orgId: string | null;
   categories: CatalogCategoryRow[];
-  item: CatalogItemRow | null; // null → create mode
+  item: CatalogListItem | null; // null → create mode
 }) {
   const isEditing = item !== null;
   const createMutation = useCreateCatalogItem(orgId);
@@ -181,6 +181,7 @@ export function CatalogItemDialog({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <MoneyInput
+            key={`cost-${item?.id ?? "new"}`}
             id="ci-cost"
             label="سعر التكلفة (لك)"
             value={values.costPrice}
@@ -189,6 +190,7 @@ export function CatalogItemDialog({
             hint="ما تدفعه أنت مقابل هذا الصنف"
           />
           <MoneyInput
+            key={`selling-${item?.id ?? "new"}`}
             id="ci-selling"
             label="سعر البيع (للعميل)"
             value={values.sellingPrice}
@@ -253,7 +255,7 @@ export function CatalogItemDialog({
   );
 }
 
-function initialValues(item: CatalogItemRow | null): CatalogItemFormValues {
+function initialValues(item: CatalogListItem | null): CatalogItemFormValues {
   if (!item) {
     return {
       name: "",

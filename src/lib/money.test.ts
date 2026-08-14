@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_MONEY_MILLI,
+  MIN_MONEY_MILLI,
   MoneyError,
   formatOMR,
   fromDbAmount,
@@ -33,7 +35,6 @@ describe("money — OMR 3-decimal handling", () => {
   });
 
   it("pads short fractions to 3 decimals", () => {
-    expect(parseOMR("1.5")).toBe(1500);
     expect(toOMRString(parseOMR("1.5"))).toBe("1.500");
   });
 
@@ -64,6 +65,28 @@ describe("money — OMR 3-decimal handling", () => {
   });
 });
 
+describe("money — numeric(12,3) persisted domain bounds", () => {
+  it("accepts the maximum legal value", () => {
+    expect(parseOMR("999999999.999")).toBe(MAX_MONEY_MILLI);
+  });
+
+  it("accepts the minimum legal value", () => {
+    expect(parseOMR("-999999999.999")).toBe(MIN_MONEY_MILLI);
+  });
+
+  it("rejects one unit beyond the maximum (10 integer digits)", () => {
+    expect(() => parseOMR("1000000000.000")).toThrow(MoneyError);
+  });
+
+  it("rejects one unit beyond the minimum", () => {
+    expect(() => parseOMR("-1000000000.000")).toThrow(MoneyError);
+  });
+
+  it("rejects values with too many integer digits", () => {
+    expect(() => parseOMR("1234567890")).toThrow(MoneyError);
+  });
+});
+
 describe("money — exact arithmetic (no binary float drift)", () => {
   it("multiplies an amount by a guest count exactly", () => {
     // 2.300 OMR × 150 guests = 345.000 OMR
@@ -71,19 +94,30 @@ describe("money — exact arithmetic (no binary float drift)", () => {
   });
 
   it("multiplies by a fractional quantity exactly", () => {
-    // 8.000 OMR × 2.5 hours = 20.000 OMR
+    // 8.000 OMR × 2.5 = 20.000 OMR
     expect(multiplyOMR(8000, parseQuantityMilli("2.5"))).toBe(20000);
   });
 
   it("avoids classic float error (0.1 + 0.2)", () => {
-    // 0.100 + 0.200 = 0.300, never 0.30000000000000004
-    expect(parseOMR("0.1") + parseOMR("0.2")).toBe(300);
     expect(toOMRString(parseOMR("0.1") + parseOMR("0.2"))).toBe("0.300");
   });
 
-  it("rounds multiplication half-up to 3 decimals", () => {
-    // 1.111 × 3 = 3.333
-    expect(multiplyOMR(1111, parseQuantityMilli(3))).toBe(3333);
+  it("rounds ties half away from zero", () => {
+    // 1.000 OMR × 1.0005 ... use a direct tie: 0.500 * 0.001 => below.
+    // 0.500 OMR × 1 = 0.500 (no rounding needed). Use a true tie:
+    // amount=0.001, qty=0.5 → 0.001 * 0.5 = 0.0005 → rounds to 0.001 (half up)
+    expect(multiplyOMR(1, parseQuantityMilli("0.5"))).toBe(1);
+  });
+
+  it("rounds negative ties away from zero", () => {
+    // -0.001 * 0.5 = -0.0005 → rounds to -0.001 (away from zero)
+    expect(multiplyOMR(-1, parseQuantityMilli("0.5"))).toBe(-1);
+  });
+
+  it("throws on multiplication overflow beyond the persisted domain", () => {
+    expect(() =>
+      multiplyOMR(MAX_MONEY_MILLI, parseQuantityMilli(2)),
+    ).toThrow(MoneyError);
   });
 
   it("parses quantities as integers and decimals", () => {

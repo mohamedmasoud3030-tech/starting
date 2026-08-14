@@ -13,6 +13,10 @@ as $$
 declare
   v_org_id uuid;
 begin
+  if auth.uid() is null then
+    raise exception 'NOT_AUTHENTICATED' using errcode = '42501';
+  end if;
+
   if p_name is null or length(trim(p_name)) = 0 then
     raise exception 'ORGANIZATION_NAME_REQUIRED';
   end if;
@@ -29,4 +33,5 @@ end;
 $$;
 
 revoke all on function public.create_organization(text, text) from public;
+revoke all on function public.create_organization(text, text) from anon, authenticated;
 grant execute on function public.create_organization(text, text) to authenticated;

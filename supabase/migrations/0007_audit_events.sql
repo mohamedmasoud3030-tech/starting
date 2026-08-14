@@ -1,7 +1,15 @@
 -- ============================================================================
 -- 0007 — Audit events
--- Minimal, append-only audit foundation for sensitive operations. Only safe,
--- bounded keys are expected in metadata; no unrestricted sensitive dumps.
+-- Minimal, append-only audit foundation for sensitive operations.
+--
+-- SECURITY: record_audit() is INTERNAL ONLY. EXECUTE is revoked from both
+-- public and authenticated; it can only be invoked by SECURITY DEFINER
+-- commands (which run as the function owner) or triggers. There is no client
+-- callable audit path, so a caller cannot forge organization_id or metadata.
+-- Audit READ is restricted to OWNER/MANAGER (see 0008).
+--
+-- Only safe, bounded keys are expected in metadata; no unrestricted sensitive
+-- dumps.
 -- ============================================================================
 
 create table public.audit_events (
@@ -19,8 +27,9 @@ create index audit_events_organization_id_idx on public.audit_events (organizati
 create index audit_events_entity_idx on public.audit_events (entity, entity_id);
 
 -- ---------------------------------------------------------------------------
--- record_audit — the sanctioned way to append an audit event. The caller's
--- identity is derived server-side (never trusted from client input).
+-- record_audit — internal-only audit append. The caller's identity is derived
+-- from auth.uid() server-side; the organization is passed by an already
+-- authorized SECURITY DEFINER caller (never trusted from the client).
 -- ---------------------------------------------------------------------------
 create or replace function public.record_audit(
   p_org_id uuid,
@@ -40,5 +49,6 @@ begin
 end;
 $$;
 
+-- Internal only: no client EXECUTE.
 revoke all on function public.record_audit(uuid, text, text, text, jsonb) from public;
-grant execute on function public.record_audit(uuid, text, text, text, jsonb) to authenticated;
+revoke all on function public.record_audit(uuid, text, text, text, jsonb) from anon, authenticated;

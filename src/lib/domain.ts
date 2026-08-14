@@ -60,3 +60,9 @@ export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
 
 /** Roles permitted to manage commercial configuration (catalog & packages). */
 export const COMMERCIAL_ROLES: AppRole[] = ["OWNER", "MANAGER"];
+
+/** Roles permitted to READ sensitive commercial cost data (cost/internal notes). */
+export const COST_READER_ROLES: AppRole[] = ["OWNER", "MANAGER", "ACCOUNTANT"];
+
+/** Roles permitted to write customers (create/update/delete). */
+export const CUSTOMER_WRITE_ROLES: AppRole[] = ["OWNER", "MANAGER", "SUPERVISOR"];

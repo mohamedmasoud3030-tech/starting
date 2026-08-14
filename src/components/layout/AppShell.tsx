@@ -1,11 +1,10 @@
 import { useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LogOut, Menu, Plus, X } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "@/app/AuthContext";
 import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/domain";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 
 const NAV_ITEMS = [
   { to: "/home", label: "الرئيسية" },
@@ -15,13 +14,12 @@ const NAV_ITEMS = [
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, profile, roles, currentOrganization, logout } = useAuth();
+  const { user, profile, currentOrganization, currentRole, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   const fullName =
     profile?.full_name || user?.email?.split("@")[0] || "مستخدم";
-  const primaryRole = roles[0];
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -61,25 +59,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="flex items-center gap-2">
-            <Button
-              size="md"
-              className="hidden h-12 sm:inline-flex"
-              disabled
-              title="سيتوفر إنشاء المناسبات في المرحلة القادمة"
-            >
-              <Plus className="h-5 w-5" />
-              مناسبة جديدة
-              <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
-                قريباً
-              </span>
-            </Button>
-
             <div className="hidden items-center gap-2 rounded-xl border border-slate-200 py-1 pr-3 pl-1 md:flex">
               <div className="leading-tight">
                 <p className="text-sm font-bold text-slate-800">{fullName}</p>
-                {primaryRole && (
+                {currentRole && (
                   <Badge tone="brand" className="text-xs">
-                    {ROLE_LABELS[primaryRole]}
+                    {ROLE_LABELS[currentRole]}
                   </Badge>
                 )}
               </div>
