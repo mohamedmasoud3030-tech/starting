@@ -157,6 +157,14 @@ contact_name, phone, whatsapp, status, created_at, updated_at
 
 No commercial registration, email, notes or costs.
 
+#### `supplier_details` — OWNER/MANAGER/ACCOUNTANT
+
+```text
+supplier_id, organization_id, name, category,
+commercial_registration_number, contact_name, phone,
+whatsapp, email, notes, status, created_at, updated_at
+```
+
 #### `procurement_order_summaries` — OWNER/MANAGER/ACCOUNTANT
 
 ```text
@@ -193,6 +201,13 @@ agreed_unit_cost, agreed_total_cost, sort_order, created_at
 receipt_id, organization_id, order_id, order_number, order_status,
 event_id, supplier_name, received_at, reference, notes, received_by,
 line_count, has_stock_movements, created_at
+```
+
+#### `procurement_receipt_line_summaries` — every active org member
+
+```text
+receipt_line_id, organization_id, order_id, receipt_id,
+order_line_id, quantity, consumable_movement_id, created_at
 ```
 
 #### `procurement_receiving_order_summaries` — every active org member

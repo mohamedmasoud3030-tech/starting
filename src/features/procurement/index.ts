@@ -4,6 +4,7 @@ export type {
   EventProcurementSummary,
   OrderCapabilities,
   ProcurementAccess,
+  ProcurementConsumableOption,
   ProcurementDataSource,
   ProcurementDomainErrorCode,
   ProcurementEventOption,
@@ -24,3 +25,5 @@ export type {
 export { ProcurementDomainError, procurementErrorMessage } from "./errors";
 export { EventProcurementPanel } from "./EventProcurementPanel";
 export { ProcurementWorkspace } from "./ProcurementWorkspace";
+export { ProcurementPage } from "./ProcurementPage";
+export { createSupabaseProcurementDataSource } from "./supabaseDataSource";

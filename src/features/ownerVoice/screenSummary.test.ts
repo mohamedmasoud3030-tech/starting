@@ -4,6 +4,7 @@ import {
   buildEventVoiceSummary,
   buildEventsListVoiceSummary,
   buildHomeVoiceSummary,
+  buildProcurementVoiceSummary,
   buildQuickQuoteVoiceSummary,
   buildQuoteVoiceSummary,
   isSameLocalDay,
@@ -453,5 +454,58 @@ describe("buildQuoteVoiceSummary", () => {
     expect(
       buildQuoteVoiceSummary({ totalSellingOmr: null, canReadCost: false }),
     ).toBe("لا توجد بيانات تسعير بعد.");
+  });
+});
+
+describe("buildProcurementVoiceSummary", () => {
+  it("summarizes suppliers, orders, open orders and committed cost when authorized", () => {
+    expect(
+      buildProcurementVoiceSummary({
+        supplierCount: 3,
+        orderCount: 5,
+        openOrderCount: 2,
+        totalCommittedOmr: "850.000",
+        canReadCost: true,
+      }),
+    ).toBe(
+      "عندك ٣ موردين. إجمالي الطلبات ٥ طلبات منها طلبان مفتوحان. إجمالي الالتزامات ٨٥٠ ريال.",
+    );
+  });
+
+  it("never speaks committed cost when canReadCost is false", () => {
+    const summary = buildProcurementVoiceSummary({
+      supplierCount: 2,
+      orderCount: 4,
+      openOrderCount: 1,
+      totalCommittedOmr: "850.000",
+      canReadCost: false,
+    });
+    expect(summary).toBe(
+      "عندك موردان. إجمالي الطلبات ٤ طلبات منها طلب واحد مفتوح.",
+    );
+    expect(summary).not.toContain("٨٥٠");
+    expect(summary).not.toContain("إجمالي الالتزامات");
+  });
+
+  it("handles when all orders are completed", () => {
+    expect(
+      buildProcurementVoiceSummary({
+        supplierCount: 1,
+        orderCount: 2,
+        openOrderCount: 0,
+        canReadCost: false,
+      }),
+    ).toBe("عندك مورد واحد. إجمالي الطلبات طلبان وكل الطلبات مكتملة.");
+  });
+
+  it("handles empty procurement data", () => {
+    expect(
+      buildProcurementVoiceSummary({
+        supplierCount: 0,
+        orderCount: 0,
+        openOrderCount: 0,
+        canReadCost: true,
+      }),
+    ).toBe("لا توجد طلبات توريد أو موردون بعد.");
   });
 });
