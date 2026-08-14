@@ -4,7 +4,7 @@ import { orderFixture } from "./__tests__/testDoubles";
 import {
   formatQuantity,
   linePreviewTotal,
-  parseOptionalNonNegativeOMR,
+  parseRequiredNonNegativeOMR,
   parsePositiveQuantity,
   validateOrderDraft,
   validateReceiptDraft,
@@ -26,20 +26,26 @@ describe("procurement exact frontend validation", () => {
   });
 
   it("keeps OMR at exact 3 decimals without float multiplication", () => {
-    expect(parseOptionalNonNegativeOMR("2.435")).toEqual({ ok: true, milli: 2_435 });
+    expect(parseRequiredNonNegativeOMR("2.435")).toEqual({ ok: true, milli: 2_435 });
     expect(linePreviewTotal("2.435", "3.333")).toBe(8_116);
     expect(formatOMR(linePreviewTotal("2.435", "3.333")!)).toBe("8.116 ر.ع.");
-    expect(parseOptionalNonNegativeOMR("1.2345")).toMatchObject({ ok: false });
+    expect(parseRequiredNonNegativeOMR("1.2345")).toMatchObject({ ok: false });
+    expect(parseRequiredNonNegativeOMR("")).toEqual({
+      ok: false,
+      message: "أدخل سعر الوحدة المتفق عليه.",
+    });
   });
 
-  it("validates required supplier, delivery time, description, unit, quantity, and amount", () => {
+  it("requires supplier, order date, tracked catalog identity, quantity, and negotiated amount", () => {
     const errors = validateOrderDraft({
       supplierId: "",
       eventId: "",
+      orderDate: "",
       deliveryDueLocal: "",
       notes: "",
       lines: [{
         key: 7,
+        catalogItemId: "",
         description: " ",
         kind: "CONSUMABLE",
         unit: "",
@@ -48,12 +54,35 @@ describe("procurement exact frontend validation", () => {
       }],
     });
     expect(errors.supplierId).toBe("اختر المورد.");
-    expect(errors.deliveryDueLocal).toBe("حدد تاريخ ووقت التوريد.");
+    expect(errors.orderDate).toBe("حدد تاريخ الطلب.");
+    expect(errors.deliveryDueLocal).toBeUndefined();
     expect(errors.lineErrors[7]).toEqual({
-      description: "وصف البند مطلوب.",
-      unit: "الوحدة مطلوبة.",
+      catalogItemId: "اختر صنف مخزون معتمداً.",
       quantity: "الكمية يجب أن تكون أكبر من صفر.",
       unitCost: "أدخل مبلغاً صحيحاً بدقة 3 خانات عشرية.",
+    });
+  });
+
+  it("requires description and unit for non-catalog service lines", () => {
+    const errors = validateOrderDraft({
+      supplierId: "supplier",
+      eventId: "",
+      orderDate: "2026-08-14",
+      deliveryDueLocal: "2026-08-15T10:30",
+      notes: "",
+      lines: [{
+        key: 9,
+        catalogItemId: "",
+        description: "",
+        kind: "CATERING_SERVICE",
+        unit: "",
+        quantityText: "1",
+        unitCostText: "0",
+      }],
+    });
+    expect(errors.lineErrors[9]).toEqual({
+      description: "وصف البند مطلوب.",
+      unit: "الوحدة مطلوبة.",
     });
   });
 
