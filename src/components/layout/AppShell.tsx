@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 
 const NAV_ITEMS = [
   { to: "/home", label: "الرئيسية" },
+  { to: "/events", label: "المناسبات" },
   { to: "/catalog", label: "الكتالوج" },
   { to: "/packages", label: "الباقات" },
   { to: "/customers", label: "العملاء" },
