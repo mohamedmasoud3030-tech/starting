@@ -46,6 +46,10 @@ export function ReceivingDialog({
     receivableLines.map((line) => ({ orderLineId: line.id, quantityText: "" })),
   );
   const [notes, setNotes] = useState("");
+  const [reference, setReference] = useState("");
+  // receivedAt is part of the authoritative command fingerprint. Capture it
+  // once per operator intent so an ambiguous network retry remains identical.
+  const [receivedAt] = useState(() => new Date().toISOString());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [stage, setStage] = useState<"edit" | "confirm" | "success">("edit");
   const [busy, setBusy] = useState(false);
@@ -117,6 +121,8 @@ export function ReceivingDialog({
     try {
       const created = await dataSource.recordReceipt({
         orderId: order.id,
+        receivedAt,
+        reference: reference.trim() || null,
         lines: selected.map(({ line, quantityMilli }) => ({
           orderLineId: line.id,
           quantityMilli,
@@ -147,6 +153,11 @@ export function ReceivingDialog({
   function updateNotes(value: string) {
     if (value !== notes) rotateKeyForPayloadChange();
     setNotes(value);
+  }
+
+  function updateReference(value: string) {
+    if (value !== reference) rotateKeyForPayloadChange();
+    setReference(value);
   }
 
   return (
@@ -227,9 +238,14 @@ export function ReceivingDialog({
             })}
           </div>
           {errors._form && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{errors._form}</p>}
-          <Field label="ملاحظة الاستلام (اختياري)" htmlFor="receipt-notes">
-            <Textarea id="receipt-notes" rows={2} value={notes} onChange={(event) => updateNotes(event.target.value)} placeholder="مثال: تم فحص العبوات وحالتها سليمة" />
-          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="مرجع الاستلام (اختياري)" htmlFor="receipt-reference">
+              <Input id="receipt-reference" value={reference} onChange={(event) => updateReference(event.target.value)} placeholder="مثال: DN-102" />
+            </Field>
+            <Field label="ملاحظة الاستلام (اختياري)" htmlFor="receipt-notes">
+              <Textarea id="receipt-notes" rows={2} value={notes} onChange={(event) => updateNotes(event.target.value)} placeholder="مثال: تم فحص العبوات وحالتها سليمة" />
+            </Field>
+          </div>
           <p className="rounded-xl bg-slate-50 p-3 text-sm font-semibold text-slate-600">
             استلام المواد الاستهلاكية يحدّث المخزون من خلال إجراء الخادم المعتمد؛ هذه الشاشة لا تعدّل الرصيد مباشرة.
           </p>
@@ -251,6 +267,7 @@ export function ReceivingDialog({
             ))}
           </div>
           <p className="font-bold">هل تؤكد أن هذه الكميات وصلت فعلياً؟</p>
+          {reference.trim() && <p className="text-sm text-slate-600">المرجع: <strong>{reference.trim()}</strong></p>}
           {requestError && (
             <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-red-800">
               <p className="font-bold">{requestError}</p>
