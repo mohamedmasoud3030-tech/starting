@@ -1,26 +1,55 @@
-# CI workflow (prepared)
+# CI
 
-`ci.yml` here is a byte-identical copy of the workflow that must live at
-`.github/workflows/ci.yml` to enable the authoritative Supabase acceptance gate
-(`supabase db reset` + `supabase test db` + `supabase gen types` drift check).
+The authoritative acceptance gate is installed and running at
+`.github/workflows/ci.yml`. There is no longer any mirrored copy under
+`docs/ci/`: the workflow file itself is the single source of truth.
 
-It is kept under `docs/ci/` because the automated push token used for this PR
-lacks the GitHub App `workflows` permission, so `.github/workflows/ci.yml`
-could not be committed directly:
+## Jobs
 
-```
-! [remote rejected] ... (refusing to allow a GitHub App to create or update
-workflow `.github/workflows/ci.yml` without `workflows` permission)
-```
+**Frontend (typecheck, lint, test, build)**
 
-**To enable the gate**, a repository owner with `workflows` write access should:
+- `npm run typecheck`
+- `npm run lint`
+- `npm test`
+- `npm run build`
+- `git diff --check` (whitespace)
+
+**Database (Supabase replay, pgTAP, types drift)**
+
+- `supabase start`
+- `supabase db reset` — replays every migration from a clean database
+- `supabase test db` — the authoritative pgTAP suite
+- `supabase gen types typescript --local --schema public`
+- fails if the committed `src/lib/database.types.ts` differs from that output
+
+## Generated types
+
+`src/lib/database.types.ts` is **generator-owned**. Never hand-edit it: the
+drift gate compares it byte-for-byte against the generator output, and any
+manual edit will fail CI.
+
+Application-facing aliases (`AppRole`, `CatalogItemRow`, `PricingMethod`, …)
+live in the hand-written `src/lib/dbTypes.ts`, which derives them from the
+generated `Database` type. Import application types from `@/lib/dbTypes`.
+
+To refresh the types locally (requires Docker):
 
 ```bash
-cp docs/ci/ci.yml .github/workflows/ci.yml
-git add .github/workflows/ci.yml
-git commit -m "ci: enable Supabase acceptance gate"
-git push
+supabase start
+supabase db reset
+supabase gen types typescript --local --schema public > src/lib/database.types.ts
 ```
 
-The database foundation is not considered accepted until that workflow runs
-successfully against the official Supabase local stack (Docker).
+Formatting note: the generator formats its output with the prettier version
+bundled in the `supabase/postgres-meta` image. A different local prettier can
+reformat unions and conditional types and cause spurious drift, so always take
+the file from the command above rather than reformatting it.
+
+## Historical note
+
+An earlier session could not install this workflow because the automated push
+token lacked the GitHub App `workflows` permission, and documented that as a
+permanent blocker. That blocker was resolved at repository level: the workflow
+now exists and the full Supabase stack (migration replay, pgTAP, type
+generation) runs successfully in GitHub Actions. Any older document claiming
+"CI cannot be installed" or "Supabase cannot run in CI" is obsolete.
