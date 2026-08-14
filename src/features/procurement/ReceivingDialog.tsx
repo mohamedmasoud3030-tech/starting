@@ -53,7 +53,15 @@ export function ReceivingDialog({
   const [receipt, setReceipt] = useState<ProcurementReceipt | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
 
+  function rotateKeyForPayloadChange() {
+    setIdempotencyKey(newIdempotencyKey());
+  }
+
   function setQuantity(orderLineId: string, quantityText: string) {
+    const currentText = draft.find(
+      (item) => item.orderLineId === orderLineId,
+    )?.quantityText ?? "";
+    if (currentText !== quantityText) rotateKeyForPayloadChange();
     setDraft((current) =>
       current.map((item) =>
         item.orderLineId === orderLineId ? { ...item, quantityText } : item,
@@ -68,14 +76,21 @@ export function ReceivingDialog({
   }
 
   function fillRemaining() {
-    setDraft(
-      receivableLines.map((line) => ({
-        orderLineId: line.id,
-        quantityText: line.receive.allowed
-          ? formatQuantity(line.remainingQuantityMilli)
-          : "",
-      })),
-    );
+    const nextDraft = receivableLines.map((line) => ({
+      orderLineId: line.id,
+      quantityText: line.receive.allowed
+        ? formatQuantity(line.remainingQuantityMilli)
+        : "",
+    }));
+    const changed =
+      nextDraft.length !== draft.length ||
+      nextDraft.some(
+        (item, index) =>
+          item.orderLineId !== draft[index]?.orderLineId ||
+          item.quantityText !== draft[index]?.quantityText,
+      );
+    if (changed) rotateKeyForPayloadChange();
+    setDraft(nextDraft);
     setErrors({});
   }
 
@@ -113,7 +128,8 @@ export function ReceivingDialog({
       setStage("success");
       onReceived();
     } catch (cause) {
-      // The same key and payload are retained so retry is safe.
+      // The same key and payload are retained so retry is safe even if the
+      // request may have committed server-side before the response was lost.
       setRequestError(procurementErrorMessage(cause));
     } finally {
       setBusy(false);
@@ -123,8 +139,14 @@ export function ReceivingDialog({
   function backToEdit() {
     setStage("edit");
     setRequestError("");
-    // The operator may change the payload, so it gets a fresh request key.
-    setIdempotencyKey(newIdempotencyKey());
+    // Do not rotate the request key merely because the operator returns to the
+    // edit screen. An ambiguous failed response must be retried with the same
+    // key unless the payload actually changes.
+  }
+
+  function updateNotes(value: string) {
+    if (value !== notes) rotateKeyForPayloadChange();
+    setNotes(value);
   }
 
   return (
@@ -206,7 +228,7 @@ export function ReceivingDialog({
           </div>
           {errors._form && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{errors._form}</p>}
           <Field label="ملاحظة الاستلام (اختياري)" htmlFor="receipt-notes">
-            <Textarea id="receipt-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="مثال: تم فحص العبوات وحالتها سليمة" />
+            <Textarea id="receipt-notes" rows={2} value={notes} onChange={(event) => updateNotes(event.target.value)} placeholder="مثال: تم فحص العبوات وحالتها سليمة" />
           </Field>
           <p className="rounded-xl bg-slate-50 p-3 text-sm font-semibold text-slate-600">
             استلام المواد الاستهلاكية يحدّث المخزون من خلال إجراء الخادم المعتمد؛ هذه الشاشة لا تعدّل الرصيد مباشرة.
