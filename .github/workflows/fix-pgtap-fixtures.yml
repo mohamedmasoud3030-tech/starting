@@ -1,0 +1,66 @@
+name: One-shot pgTAP fixture repair
+
+on:
+  push:
+    branches: ["arena/019ffefc-starting"]
+    paths: [".github/workflows/fix-pgtap-fixtures.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: arena/019ffefc-starting
+          fetch-depth: 0
+
+      - name: Remove writes to generated auth.users.confirmed_at
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          paths = [
+              Path("supabase/tests/commercial_invariants.test.sql"),
+              Path("supabase/tests/events_commercial_resources.test.sql"),
+              Path("supabase/tests/quick_quote.test.sql"),
+              Path("supabase/tests/quick_quote_hardening.test.sql"),
+              Path("supabase/tests/rls_isolation.test.sql"),
+          ]
+
+          for path in paths:
+              text = path.read_text()
+              marker = "insert into auth.users"
+              start = text.lower().find(marker)
+              if start < 0:
+                  raise SystemExit(f"{path}: auth.users fixture not found")
+              end = text.find(";", start)
+              if end < 0:
+                  raise SystemExit(f"{path}: auth.users fixture terminator not found")
+              block = text[start:end + 1]
+              original = block
+              block = re.sub(r",\s*confirmed_at\s*\)", ")", block, count=1, flags=re.I)
+              block = re.sub(r"false\s*,\s*now\(\)\s*\)", "false)", block, flags=re.I)
+              if block == original:
+                  raise SystemExit(f"{path}: no fixture compatibility change made")
+              if re.search(r"is_super_admin\s*,\s*confirmed_at", block, flags=re.I):
+                  raise SystemExit(f"{path}: confirmed_at remained in column list")
+              text = text[:start] + block + text[end + 1:]
+              path.write_text(text)
+          PY
+
+      - name: Verify focused diff
+        run: |
+          git diff --check
+          git diff -- supabase/tests
+
+      - name: Commit fixture repair
+        run: |
+          git config user.name "M7mdlab"
+          git config user.email "250202280+mohamedmasoud3030-tech@users.noreply.github.com"
+          git add supabase/tests
+          git commit -m "fix: adapt pgTAP auth fixtures to generated confirmed_at"
+          git push origin HEAD:arena/019ffefc-starting
