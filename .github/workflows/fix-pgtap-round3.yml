@@ -45,12 +45,12 @@ jobs:
 
           qq = Path("supabase/tests/quick_quote.test.sql")
           text = qq.read_text()
-          # Three customer fixture IDs accidentally used a six-group UUID.
+          # Customer fixture IDs accidentally used a six-group UUID.
           bad_prefix = "00000000-0000-0000-0000-0000-0000000000d"
           good_prefix = "00000000-0000-0000-0000-0000000000d"
           count = text.count(bad_prefix)
-          if count < 3:
-              raise SystemExit(f"expected malformed customer UUIDs, found {count}")
+          if count < 1:
+              raise SystemExit("no malformed customer UUIDs found")
           text = text.replace(bad_prefix, good_prefix)
           if bad_prefix in text:
               raise SystemExit("malformed customer UUID remains")
