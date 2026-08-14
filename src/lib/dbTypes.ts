@@ -70,6 +70,10 @@ export type CompensationMethod = DbEnum<"compensation_method">;
 export type ConsumableMovementKind = DbEnum<"consumable_movement_kind">;
 export type CustomerType = DbEnum<"customer_type">;
 export type EventStatus = DbEnum<"event_status">;
+export type ProcurementLineKind = DbEnum<"procurement_line_kind">;
+export type ProcurementOrderStatus = DbEnum<"procurement_order_status">;
+export type SupplierCategory = DbEnum<"supplier_category">;
+export type SupplierStatus = DbEnum<"supplier_status">;
 export type MembershipStatus = DbEnum<"membership_status">;
 export type PackageStatus = DbEnum<"package_status">;
 export type PricingMethod = DbEnum<"pricing_method">;
@@ -99,6 +103,12 @@ export type PackageRow = TableRow<"packages">;
 export type PackageInsert = TableInsert<"packages">;
 export type PackageItemRow = TableRow<"package_items">;
 
+export type SupplierRow = TableRow<"suppliers">;
+export type ProcurementOrderRow = TableRow<"procurement_orders">;
+export type ProcurementOrderLineRow = TableRow<"procurement_order_lines">;
+export type ProcurementReceiptRow = TableRow<"procurement_receipts">;
+export type ProcurementReceiptLineRow = TableRow<"procurement_receipt_lines">;
+
 // ---------------------------------------------------------------------------
 // View row aliases (operational / customer-facing projections)
 // ---------------------------------------------------------------------------
@@ -109,3 +119,17 @@ export type PackageItemRow = TableRow<"package_items">;
  * prove view-column nullability.
  */
 export type CatalogItemOperationalRow = ViewRow<"catalog_items_operational">;
+
+export type SupplierSummaryRow = ViewRow<"supplier_summaries">;
+export type ProcurementOrderSummaryRow = ViewRow<"procurement_order_summaries">;
+export type ProcurementOrderDetailRow = ViewRow<"procurement_order_details">;
+export type ProcurementOrderLineSummaryRow =
+  ViewRow<"procurement_order_line_summaries">;
+export type ProcurementReceiptSummaryRow =
+  ViewRow<"procurement_receipt_summaries">;
+export type ProcurementReceivingOrderSummaryRow =
+  ViewRow<"procurement_receiving_order_summaries">;
+export type ProcurementReceivingLineSummaryRow =
+  ViewRow<"procurement_receiving_line_summaries">;
+export type EventProcurementCostSummaryRow =
+  ViewRow<"event_procurement_cost_summaries">;
