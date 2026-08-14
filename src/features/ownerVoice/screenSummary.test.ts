@@ -4,6 +4,7 @@ import {
   buildEventVoiceSummary,
   buildEventsListVoiceSummary,
   buildHomeVoiceSummary,
+  buildQuickQuoteVoiceSummary,
   buildQuoteVoiceSummary,
   isSameLocalDay,
   omrToSpoken,
@@ -368,6 +369,43 @@ describe("buildEventVoiceSummary", () => {
     ).toBe(
       "مناسبة رقم ١٢٥ اليوم الساعة ٧ مساءً. العميل محمد. الموقع قاعة الريان. عدد الضيوف ١٢٠. المناسبة ملغاة.",
     );
+  });
+});
+
+describe("buildQuickQuoteVoiceSummary", () => {
+  it("speaks total, guests and unaccepted status (mission example)", () => {
+    expect(
+      buildQuickQuoteVoiceSummary({
+        totalSellingOmr: "850.000",
+        guestCount: 120,
+        status: "ISSUED",
+      }),
+    ).toBe("عرض السعر الإجمالي ٨٥٠ ريال. عدد الضيوف ١٢٠. العرض لم يتم اعتماده بعد.");
+  });
+
+  it("omits the guest sentence when the guest count is unknown", () => {
+    expect(
+      buildQuickQuoteVoiceSummary({
+        totalSellingOmr: "850.000",
+        guestCount: null,
+        status: "ISSUED",
+      }),
+    ).toBe("عرض السعر الإجمالي ٨٥٠ ريال. العرض لم يتم اعتماده بعد.");
+  });
+
+  it("reflects accepted and converted status", () => {
+    expect(
+      buildQuickQuoteVoiceSummary({ totalSellingOmr: "850.000", guestCount: null, status: "ACCEPTED" }),
+    ).toBe("عرض السعر الإجمالي ٨٥٠ ريال. العرض معتمد.");
+    expect(
+      buildQuickQuoteVoiceSummary({ totalSellingOmr: "850.000", guestCount: null, status: "CONVERTED" }),
+    ).toBe("عرض السعر الإجمالي ٨٥٠ ريال. تم تحويل العرض إلى مناسبة.");
+  });
+
+  it("returns null (button hidden) when there is no total to speak", () => {
+    expect(
+      buildQuickQuoteVoiceSummary({ totalSellingOmr: null, guestCount: null, status: "ISSUED" }),
+    ).toBeNull();
   });
 });
 

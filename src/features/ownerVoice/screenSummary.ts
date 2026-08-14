@@ -70,6 +70,13 @@ export interface QuoteSummaryInput {
   remainingOmr?: string | number | null;
 }
 
+/** Quick Quote review: total, guests (when known), and accept status. */
+export interface QuickQuoteVoiceSummaryInput {
+  totalSellingOmr: string | number | null;
+  guestCount: number | null;
+  status: string;
+}
+
 export const EVENT_STATUS_ARABIC: Record<string, string> = {
   DRAFT: "مسودة",
   QUOTED: "مسعّرة",
@@ -551,4 +558,30 @@ export function buildQuoteVoiceSummary(input: QuoteSummaryInput): string {
   }
 
   return parts.join(" ");
+}
+
+/**
+ * Quick Quote review summary. No cost/profit ever (quick quotes carry no
+ * internal cost model). Returns null when there is no total to speak, so the
+ * OwnerVoiceButton renders nothing.
+ *
+ * Example: "عرض السعر الإجمالي ٨٥٠ ريال. عدد الضيوف ١٢٠. العرض لم يتم اعتماده بعد."
+ */
+export function buildQuickQuoteVoiceSummary(
+  input: QuickQuoteVoiceSummaryInput,
+): string | null {
+  const total = omrToSpoken(input.totalSellingOmr);
+  if (total === null) return null;
+
+  const parts: string[] = [`عرض السعر الإجمالي ${total}.`];
+  if (input.guestCount !== null && input.guestCount > 0) {
+    parts.push(`عدد الضيوف ${toArabicDigits(input.guestCount)}.`);
+  }
+  const statusPhrase: Record<string, string> = {
+    ISSUED: "العرض لم يتم اعتماده بعد.",
+    ACCEPTED: "العرض معتمد.",
+    CONVERTED: "تم تحويل العرض إلى مناسبة.",
+  };
+  parts.push(statusPhrase[input.status] ?? "");
+  return parts.join(" ").trim();
 }
