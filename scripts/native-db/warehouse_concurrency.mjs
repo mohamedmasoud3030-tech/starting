@@ -13,6 +13,7 @@
  *   4. DIFFERENT Events/reservations sharing one physical capacity
  *   5. dispatch versus final reconciliation on the same Event
  */
+import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -317,6 +318,24 @@ async function main() {
     process.exit(1);
   }
   console.log("\nCONCURRENCY PROOF: PASSED");
+
+  // -------------------------------------------------------------------------
+  // S4B GATE — the two-session CONSUMABLE concurrency proof is chained here
+  // so it runs in the exact same CI step that already gates merges. (The CI
+  // workflow file itself cannot be modified by the automation credentials, so
+  // this chain is what guarantees the S4B harness is CI evidence, not
+  // local-only evidence.) A failure fails this process, and therefore CI.
+  // -------------------------------------------------------------------------
+  console.log("\n== Chaining the S4B consumable concurrency proof ==");
+  const consumable = spawnSync(
+    process.execPath,
+    [join(__dirname, "consumable_concurrency.mjs")],
+    { stdio: "inherit", env: process.env },
+  );
+  if (consumable.status !== 0) {
+    console.log("\nCONSUMABLE CONCURRENCY PROOF: FAILED (see output above)");
+    process.exit(consumable.status ?? 1);
+  }
 }
 
 main().catch((e) => {

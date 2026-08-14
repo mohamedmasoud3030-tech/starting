@@ -67,6 +67,7 @@ export type AssignmentStatus = DbEnum<"assignment_status">;
 export type CatalogItemStatus = DbEnum<"catalog_item_status">;
 export type CatalogItemType = DbEnum<"catalog_item_type">;
 export type CompensationMethod = DbEnum<"compensation_method">;
+export type ConsumableMovementKind = DbEnum<"consumable_movement_kind">;
 export type CustomerType = DbEnum<"customer_type">;
 export type EventStatus = DbEnum<"event_status">;
 export type MembershipStatus = DbEnum<"membership_status">;

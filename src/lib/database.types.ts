@@ -166,6 +166,127 @@ export type Database = {
           },
         ]
       }
+      consumable_movements: {
+        Row: {
+          actor_id: string
+          created_at: string
+          event_delta: number
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          movement_kind: Database["public"]["Enums"]["consumable_movement_kind"]
+          organization_id: string
+          quantity: number
+          reason: string | null
+          reference: string | null
+          request_fingerprint: string
+          stock_item_id: string
+          warehouse_delta: number
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          event_delta?: number
+          event_id?: string | null
+          id?: string
+          idempotency_key: string
+          movement_kind: Database["public"]["Enums"]["consumable_movement_kind"]
+          organization_id: string
+          quantity: number
+          reason?: string | null
+          reference?: string | null
+          request_fingerprint: string
+          stock_item_id: string
+          warehouse_delta?: number
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          event_delta?: number
+          event_id?: string | null
+          id?: string
+          idempotency_key?: string
+          movement_kind?: Database["public"]["Enums"]["consumable_movement_kind"]
+          organization_id?: string
+          quantity?: number
+          reason?: string | null
+          reference?: string | null
+          request_fingerprint?: string
+          stock_item_id?: string
+          warehouse_delta?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumable_movements_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "consumable_movements_stock_item_fk"
+            columns: ["organization_id", "stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_stock_items"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "consumable_movements_stock_item_fk"
+            columns: ["organization_id", "stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_stock_summary"
+            referencedColumns: ["organization_id", "stock_item_id"]
+          },
+        ]
+      }
+      consumable_stock_items: {
+        Row: {
+          catalog_item_id: string
+          created_at: string
+          created_by: string
+          id: string
+          is_tracking_active: boolean
+          minimum_stock_quantity: number
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          catalog_item_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_tracking_active?: boolean
+          minimum_stock_quantity?: number
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          catalog_item_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_tracking_active?: boolean
+          minimum_stock_quantity?: number
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumable_stock_items_catalog_fk"
+            columns: ["organization_id", "catalog_item_id"]
+            isOneToOne: true
+            referencedRelation: "catalog_items"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "consumable_stock_items_catalog_fk"
+            columns: ["organization_id", "catalog_item_id"]
+            isOneToOne: true
+            referencedRelation: "catalog_items_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           created_at: string
@@ -378,6 +499,59 @@ export type Database = {
             columns: ["organization_id", "source_package_id"]
             isOneToOne: false
             referencedRelation: "packages"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      event_consumable_reconciliations: {
+        Row: {
+          actor_id: string
+          event_id: string
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          reconciled_at: string
+          request_fingerprint: string
+          total_consumed_quantity: number
+          total_issued_quantity: number
+          total_returned_quantity: number
+          total_wasted_quantity: number
+        }
+        Insert: {
+          actor_id: string
+          event_id: string
+          id?: string
+          idempotency_key: string
+          notes?: string | null
+          organization_id: string
+          reconciled_at?: string
+          request_fingerprint: string
+          total_consumed_quantity: number
+          total_issued_quantity: number
+          total_returned_quantity: number
+          total_wasted_quantity: number
+        }
+        Update: {
+          actor_id?: string
+          event_id?: string
+          id?: string
+          idempotency_key?: string
+          notes?: string | null
+          organization_id?: string
+          reconciled_at?: string
+          request_fingerprint?: string
+          total_consumed_quantity?: number
+          total_issued_quantity?: number
+          total_returned_quantity?: number
+          total_wasted_quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumable_reconciliations_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: true
+            referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -1509,6 +1683,40 @@ export type Database = {
           },
         ]
       }
+      consumable_stock_summary: {
+        Row: {
+          catalog_item_id: string | null
+          catalog_status:
+            | Database["public"]["Enums"]["catalog_item_status"]
+            | null
+          created_at: string | null
+          is_low_stock: boolean | null
+          is_tracking_active: boolean | null
+          item_name: string | null
+          item_unit: string | null
+          minimum_stock_quantity: number | null
+          on_hand_quantity: number | null
+          organization_id: string | null
+          stock_item_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumable_stock_items_catalog_fk"
+            columns: ["organization_id", "catalog_item_id"]
+            isOneToOne: true
+            referencedRelation: "catalog_items"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "consumable_stock_items_catalog_fk"
+            columns: ["organization_id", "catalog_item_id"]
+            isOneToOne: true
+            referencedRelation: "catalog_items_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       event_commercial_lines_operational: {
         Row: {
           created_at: string | null
@@ -1595,6 +1803,46 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "packages"
             referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      event_consumable_lines: {
+        Row: {
+          catalog_item_id: string | null
+          consumed_quantity: number | null
+          event_id: string | null
+          is_reconciled: boolean | null
+          issued_quantity: number | null
+          item_name: string | null
+          item_unit: string | null
+          organization_id: string | null
+          outstanding_quantity: number | null
+          reconciled_at: string | null
+          returned_quantity: number | null
+          stock_item_id: string | null
+          wasted_quantity: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumable_movements_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "consumable_movements_stock_item_fk"
+            columns: ["organization_id", "stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_stock_items"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "consumable_movements_stock_item_fk"
+            columns: ["organization_id", "stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_stock_summary"
+            referencedColumns: ["organization_id", "stock_item_id"]
           },
         ]
       }
@@ -2005,6 +2253,37 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      adjust_consumable_stock: {
+        Args: {
+          p_idempotency_key: string
+          p_org_id: string
+          p_quantity: number
+          p_reason: string
+          p_stock_item_id: string
+        }
+        Returns: {
+          actor_id: string
+          created_at: string
+          event_delta: number
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          movement_kind: Database["public"]["Enums"]["consumable_movement_kind"]
+          organization_id: string
+          quantity: number
+          reason: string | null
+          reference: string | null
+          request_fingerprint: string
+          stock_item_id: string
+          warehouse_delta: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "consumable_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       apply_package_to_event: {
         Args: { p_event_id: string; p_org_id: string; p_package_id: string }
         Returns: number
@@ -2016,6 +2295,10 @@ export type Database = {
           p_quick_quote_id: string
         }
         Returns: number
+      }
+      assert_consumable_quantity: {
+        Args: { p_allow_negative?: boolean; p_quantity: number }
+        Returns: undefined
       }
       assign_event_staff: {
         Args: {
@@ -2101,6 +2384,42 @@ export type Database = {
           p_unit: number
         }
         Returns: number
+      }
+      consumable_stock_on_hand: {
+        Args: { p_org_id: string; p_stock_item_id: string }
+        Returns: number
+      }
+      consume_consumable_at_event: {
+        Args: {
+          p_event_id: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_quantity: number
+          p_reference: string
+          p_stock_item_id: string
+        }
+        Returns: {
+          actor_id: string
+          created_at: string
+          event_delta: number
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          movement_kind: Database["public"]["Enums"]["consumable_movement_kind"]
+          organization_id: string
+          quantity: number
+          reason: string | null
+          reference: string | null
+          request_fingerprint: string
+          stock_item_id: string
+          warehouse_delta: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "consumable_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       convert_quick_quote: {
         Args: {
@@ -2303,6 +2622,20 @@ export type Database = {
           total: number
         }[]
       }
+      event_consumable_state: {
+        Args: { p_event_id: string; p_org_id: string; p_stock_item_id: string }
+        Returns: {
+          consumed_quantity: number
+          issued_quantity: number
+          outstanding_quantity: number
+          returned_quantity: number
+          wasted_quantity: number
+        }[]
+      }
+      event_consumable_summary: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: Json
+      }
       event_readiness: {
         Args: { p_event_id: string; p_org_id: string }
         Returns: Json
@@ -2319,6 +2652,38 @@ export type Database = {
         Returns: boolean
       }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
+      issue_consumable_to_event: {
+        Args: {
+          p_event_id: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_quantity: number
+          p_reference: string
+          p_stock_item_id: string
+        }
+        Returns: {
+          actor_id: string
+          created_at: string
+          event_delta: number
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          movement_kind: Database["public"]["Enums"]["consumable_movement_kind"]
+          organization_id: string
+          quantity: number
+          reason: string | null
+          reference: string | null
+          request_fingerprint: string
+          stock_item_id: string
+          warehouse_delta: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "consumable_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       issue_event_quotation: {
         Args: {
           p_event_id: string
@@ -2413,6 +2778,65 @@ export type Database = {
         Args: { p_kind: string; p_org: string; p_prefix: string }
         Returns: string
       }
+      receive_consumable_stock: {
+        Args: {
+          p_idempotency_key: string
+          p_org_id: string
+          p_quantity: number
+          p_reference: string
+          p_stock_item_id: string
+        }
+        Returns: {
+          actor_id: string
+          created_at: string
+          event_delta: number
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          movement_kind: Database["public"]["Enums"]["consumable_movement_kind"]
+          organization_id: string
+          quantity: number
+          reason: string | null
+          reference: string | null
+          request_fingerprint: string
+          stock_item_id: string
+          warehouse_delta: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "consumable_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      reconcile_event_consumables: {
+        Args: {
+          p_event_id: string
+          p_idempotency_key: string
+          p_notes: string
+          p_org_id: string
+        }
+        Returns: {
+          actor_id: string
+          event_id: string
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          reconciled_at: string
+          request_fingerprint: string
+          total_consumed_quantity: number
+          total_issued_quantity: number
+          total_returned_quantity: number
+          total_wasted_quantity: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_consumable_reconciliations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       reconcile_event_warehouse: {
         Args: {
           p_event_id: string
@@ -2453,6 +2877,42 @@ export type Database = {
         }
         Returns: undefined
       }
+      record_consumable_movement: {
+        Args: {
+          p_audit_action: string
+          p_event_id: string
+          p_fingerprint: string
+          p_idempotency_key: string
+          p_kind: Database["public"]["Enums"]["consumable_movement_kind"]
+          p_org_id: string
+          p_quantity: number
+          p_reason: string
+          p_reference: string
+          p_stock_item_id: string
+        }
+        Returns: {
+          actor_id: string
+          created_at: string
+          event_delta: number
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          movement_kind: Database["public"]["Enums"]["consumable_movement_kind"]
+          organization_id: string
+          quantity: number
+          reason: string | null
+          reference: string | null
+          request_fingerprint: string
+          stock_item_id: string
+          warehouse_delta: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "consumable_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       release_equipment_reservation: {
         Args: { p_org_id: string; p_reservation_id: string }
         Returns: undefined
@@ -2474,6 +2934,38 @@ export type Database = {
       reset_quick_quote_lines: {
         Args: { p_org_id: string; p_quick_quote_id: string }
         Returns: undefined
+      }
+      return_consumable_from_event: {
+        Args: {
+          p_event_id: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_quantity: number
+          p_reference: string
+          p_stock_item_id: string
+        }
+        Returns: {
+          actor_id: string
+          created_at: string
+          event_delta: number
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          movement_kind: Database["public"]["Enums"]["consumable_movement_kind"]
+          organization_id: string
+          quantity: number
+          reason: string | null
+          reference: string | null
+          request_fingerprint: string
+          stock_item_id: string
+          warehouse_delta: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "consumable_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       return_event_equipment: {
         Args: {
@@ -2513,6 +3005,30 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "event_equipment_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      save_consumable_stock_item: {
+        Args: {
+          p_catalog_item_id: string
+          p_is_tracking_active: boolean
+          p_minimum_stock_quantity: number
+          p_org_id: string
+        }
+        Returns: {
+          catalog_item_id: string
+          created_at: string
+          created_by: string
+          id: string
+          is_tracking_active: boolean
+          minimum_stock_quantity: number
+          organization_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "consumable_stock_items"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -2658,6 +3174,69 @@ export type Database = {
           returned_good_quantity: number
         }[]
       }
+      waste_consumable_at_event: {
+        Args: {
+          p_event_id: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_quantity: number
+          p_reason: string
+          p_stock_item_id: string
+        }
+        Returns: {
+          actor_id: string
+          created_at: string
+          event_delta: number
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          movement_kind: Database["public"]["Enums"]["consumable_movement_kind"]
+          organization_id: string
+          quantity: number
+          reason: string | null
+          reference: string | null
+          request_fingerprint: string
+          stock_item_id: string
+          warehouse_delta: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "consumable_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      waste_consumable_stock: {
+        Args: {
+          p_idempotency_key: string
+          p_org_id: string
+          p_quantity: number
+          p_reason: string
+          p_stock_item_id: string
+        }
+        Returns: {
+          actor_id: string
+          created_at: string
+          event_delta: number
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          movement_kind: Database["public"]["Enums"]["consumable_movement_kind"]
+          organization_id: string
+          quantity: number
+          reason: string | null
+          reference: string | null
+          request_fingerprint: string
+          stock_item_id: string
+          warehouse_delta: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "consumable_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role: "OWNER" | "MANAGER" | "SUPERVISOR" | "WAREHOUSE" | "ACCOUNTANT"
@@ -2673,6 +3252,14 @@ export type Database = {
         | "ADDON"
         | "OTHER"
       compensation_method: "PER_EVENT" | "PER_HOUR" | "PER_DAY" | "MANUAL"
+      consumable_movement_kind:
+        | "RECEIVE"
+        | "ISSUE_TO_EVENT"
+        | "RETURN_FROM_EVENT"
+        | "CONSUME_AT_EVENT"
+        | "WASTE_AT_EVENT"
+        | "WAREHOUSE_WASTE"
+        | "ADJUSTMENT"
       customer_type: "INDIVIDUAL" | "COMPANY" | "GOVERNMENT"
       event_status:
         | "DRAFT"
@@ -2852,6 +3439,15 @@ export const Constants = {
         "OTHER",
       ],
       compensation_method: ["PER_EVENT", "PER_HOUR", "PER_DAY", "MANUAL"],
+      consumable_movement_kind: [
+        "RECEIVE",
+        "ISSUE_TO_EVENT",
+        "RETURN_FROM_EVENT",
+        "CONSUME_AT_EVENT",
+        "WASTE_AT_EVENT",
+        "WAREHOUSE_WASTE",
+        "ADJUSTMENT",
+      ],
       customer_type: ["INDIVIDUAL", "COMPANY", "GOVERNMENT"],
       event_status: [
         "DRAFT",

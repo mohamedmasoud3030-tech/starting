@@ -183,7 +183,8 @@ reconciliation.
 
 ## Explicitly deferred
 
-- **S4B consumable stock** — required before S5;
+- **S4B consumable stock** — ✅ delivered; see
+  [11-consumable-inventory.md](11-consumable-inventory.md);
 - accounting postings for damage/loss;
 - warehouse/location dimension;
 - audited repair/replacement capacity restoration;
