@@ -1,0 +1,450 @@
+    }
+  }
+  Object.assign(event, patch);
+  event.updatedAt = nowIso();
+
+  if (patch.guestCount && !event.acceptedQuotationId) {
+    s.pricingLines = s.pricingLines.map((l) =>
+      l.eventId === event.id ? recostLine(l, event.guestCount) : l,
+    );
+  }
+  audit(s, actor, "event.updated", "event", event.id, {});
+  state = s;
+  emit();
+  return event;
+}
+
+export function transitionEventStatus(
+  session: Session | null,
+  eventId: string,
+  toStatus: EventStatus,
+  reason = "",
+): EventRecord {
+  const actor = requireActor(session);
+  if (!canWriteEventsFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  assertMembership(s, actor);
+  const event = requireEvent(s, actor, eventId);
+  if (event.status === toStatus) return event;
+  if (toStatus === "CANCELLED") {
+    throw new DomainError(
+      "INVALID_EVENT_TRANSITION",
+      "استخدم أمر الإلغاء لإلغاء المناسبة",
+    );
+  }
+  const allowed = ALLOWED_TRANSITIONS[event.status];
+  if (!allowed.includes(toStatus)) {
+    throw new DomainError("INVALID_EVENT_TRANSITION");
+  }
+  if (toStatus === "QUOTED") {
+    const issued = s.quotations.some(
+      (q) => q.eventId === event.id && q.status === "ISSUED",
+    );
+    if (!issued) {
+      throw new DomainError(
+        "INVALID_EVENT_TRANSITION",
+        "يجب إصدار عرض سعر أولاً",
+      );
+    }
+  }
+  if (toStatus === "CONFIRMED") {
+    if (!event.acceptedQuotationId) {
+      throw new DomainError(
+        "INVALID_EVENT_TRANSITION",
+        "يجب قبول عرض السعر قبل التأكيد",
+      );
+    }
+  }
+  const from = event.status;
+  event.status = toStatus;
+  event.updatedAt = nowIso();
+  s.eventHistory.push({
+    id: uid("eh"),
+    organizationId: actor.organizationId,
+    eventId: event.id,
+    fromStatus: from,
+    toStatus,
+    actorId: actor.profileId,
+    reason,
+    createdAt: nowIso(),
+  });
+  audit(s, actor, "event.status", "event", event.id, { from, to: toStatus });
+  state = s;
+  emit();
+  return event;
+}
+
+export function cancelEvent(
+  session: Session | null,
+  eventId: string,
+  reason: string,
+): EventRecord {
+  const actor = requireActor(session);
+  if (!canCancelEventsFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  assertMembership(s, actor);
+  const event = requireEvent(s, actor, eventId);
+  if (event.status === "CANCELLED") return event;
+  if (!CANCELLABLE_STATUSES.includes(event.status)) {
+    throw new DomainError("INVALID_EVENT_TRANSITION");
+  }
+  if (!reason.trim()) {
+    throw new DomainError("VALIDATION", "سبب الإلغاء مطلوب");
+  }
+  const from = event.status;
+  event.status = "CANCELLED";
+  event.cancellationReason = reason.trim();
+  event.updatedAt = nowIso();
+
+  for (const r of s.equipmentReservations) {
+    if (r.eventId === event.id && r.status === "ACTIVE") {
+      r.status = "RELEASED";
+    }
+  }
+  for (const a of s.staffAssignments) {
+    if (a.eventId === event.id && a.status === "ASSIGNED") {
+      a.status = "CANCELLED";
+    }
+  }
+  s.eventHistory.push({
+    id: uid("eh"),
+    organizationId: actor.organizationId,
+    eventId: event.id,
+    fromStatus: from,
+    toStatus: "CANCELLED",
+    actorId: actor.profileId,
+    reason: reason.trim(),
+    createdAt: nowIso(),
+  });
+  audit(s, actor, "event.cancelled", "event", event.id, { reason: reason.trim() });
+  state = s;
+  emit();
+  return event;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Pricing                                                                     */
+/* -------------------------------------------------------------------------- */
+
+function makeLine(
+  actor: Actor,
+  event: EventRecord,
+  input: {
+    sourceCatalogItemId?: string | null;
+    sourcePackageId?: string | null;
+    description: string;
+    itemType: CatalogItemType;
+    unit: string;
+    pricingMethod: PricingMethod;
+    quantityMilli: MilliOMR;
+    unitSellingPriceMilli: MilliOMR;
+    unitExpectedCostMilli: MilliOMR;
+    isCustom: boolean;
+    notes?: string;
+    sortOrder: number;
+  },
+): EventPricingLine {
+  const base: EventPricingLine = {
+    id: uid("line"),
+    organizationId: actor.organizationId,
+    eventId: event.id,
+    sourceCatalogItemId: input.sourceCatalogItemId ?? null,
+    sourcePackageId: input.sourcePackageId ?? null,
+    description: input.description,
+    itemType: input.itemType,
+    unit: input.unit,
+    pricingMethod: input.pricingMethod,
+    quantityMilli: input.quantityMilli,
+    unitSellingPriceMilli: input.unitSellingPriceMilli,
+    unitExpectedCostMilli: input.unitExpectedCostMilli,
+    sellingTotalMilli: 0,
+    expectedCostTotalMilli: 0,
+    isCustom: input.isCustom,
+    notes: input.notes ?? "",
+    sortOrder: input.sortOrder,
+  };
+  return recostLine(base, event.guestCount);
+}
+
+export function applyPackageToEvent(
+  session: Session | null,
+  eventId: string,
+  packageId: string,
+): EventPricingLine[] {
+  const actor = requireActor(session);
+  if (!canManageCommercialFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  assertMembership(s, actor);
+  const event = requireEvent(s, actor, eventId);
+  assertPricingEditable(event);
+  const pkg = scoped(s.packages, actor.organizationId).find((p) => p.id === packageId);
+  if (!pkg) throw new DomainError("CROSS_ORG", "الباقة لا تنتمي لهذه المنظمة");
+  const items = s.packageItems
+    .filter((pi) => pi.packageId === pkg.id)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  s.pricingLines = s.pricingLines.filter((l) => l.eventId !== event.id);
+  items.forEach((pi, index) => {
+    const cat = scoped(s.catalogItems, actor.organizationId).find(
+      (c) => c.id === pi.catalogItemId,
+    );
+    if (!cat) return;
+    s.pricingLines.push(
+      makeLine(actor, event, {
+        sourceCatalogItemId: cat.id,
+        sourcePackageId: pkg.id,
+        description: cat.nameAr,
+        itemType: cat.itemType,
+        unit: cat.unit,
+        pricingMethod: cat.pricingMethod,
+        quantityMilli: pi.quantityMilli,
+        unitSellingPriceMilli: cat.sellingPriceMilli,
+        unitExpectedCostMilli: cat.costPriceMilli,
+        isCustom: false,
+        sortOrder: index + 1,
+      }),
+    );
+  });
+  event.updatedAt = nowIso();
+  audit(s, actor, "package.applied", "event", event.id, { packageId, name: pkg.name });
+  state = s;
+  emit();
+  return s.pricingLines.filter((l) => l.eventId === event.id);
+}
+
+export function addCatalogLineToEvent(
+  session: Session | null,
+  eventId: string,
+  catalogItemId: string,
+  quantityMilli?: MilliOMR,
+): EventPricingLine {
+  const actor = requireActor(session);
+  if (!canManageCommercialFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  const event = requireEvent(s, actor, eventId);
+  assertPricingEditable(event);
+  const cat = scoped(s.catalogItems, actor.organizationId).find(
+    (c) => c.id === catalogItemId,
+  );
+  if (!cat) throw new DomainError("CROSS_ORG");
+  const maxSort = Math.max(
+    0,
+    ...s.pricingLines.filter((l) => l.eventId === event.id).map((l) => l.sortOrder),
+  );
+  const line = makeLine(actor, event, {
+    sourceCatalogItemId: cat.id,
+    description: cat.nameAr,
+    itemType: cat.itemType,
+    unit: cat.unit,
+    pricingMethod: cat.pricingMethod,
+    quantityMilli: quantityMilli ?? parseQuantityMilli(1),
+    unitSellingPriceMilli: cat.sellingPriceMilli,
+    unitExpectedCostMilli: cat.costPriceMilli,
+    isCustom: false,
+    sortOrder: maxSort + 1,
+  });
+  s.pricingLines.push(line);
+  audit(s, actor, "pricing.line_added", "event", event.id, { catalogItemId });
+  state = s;
+  emit();
+  return line;
+}
+
+export function addCustomLineToEvent(
+  session: Session | null,
+  eventId: string,
+  input: {
+    description: string;
+    itemType?: CatalogItemType;
+    unit?: string;
+    pricingMethod: PricingMethod;
+    quantityMilli: MilliOMR;
+    unitSellingPriceMilli: MilliOMR;
+    unitExpectedCostMilli: MilliOMR;
+    notes?: string;
+  },
+): EventPricingLine {
+  const actor = requireActor(session);
+  if (!canManageCommercialFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  const event = requireEvent(s, actor, eventId);
+  assertPricingEditable(event);
+  if (!input.description.trim()) {
+    throw new DomainError("VALIDATION", "وصف السطر مطلوب");
+  }
+  if (input.quantityMilli <= 0) throw new DomainError("INVALID_QUANTITY");
+  const maxSort = Math.max(
+    0,
+    ...s.pricingLines.filter((l) => l.eventId === event.id).map((l) => l.sortOrder),
+  );
+  const line = makeLine(actor, event, {
+    description: input.description.trim(),
+    itemType: input.itemType ?? "OTHER",
+    unit: input.unit ?? "قطعة",
+    pricingMethod: input.pricingMethod,
+    quantityMilli: input.quantityMilli,
+    unitSellingPriceMilli: input.unitSellingPriceMilli,
+    unitExpectedCostMilli: input.unitExpectedCostMilli,
+    isCustom: true,
+    notes: input.notes,
+    sortOrder: maxSort + 1,
+  });
+  s.pricingLines.push(line);
+  audit(s, actor, "pricing.custom_line", "event", event.id, {
+    description: line.description,
+  });
+  state = s;
+  emit();
+  return line;
+}
+
+export function updatePricingLine(
+  session: Session | null,
+  lineId: string,
+  patch: Partial<
+    Pick<
+      EventPricingLine,
+      | "description"
+      | "quantityMilli"
+      | "unitSellingPriceMilli"
+      | "unitExpectedCostMilli"
+      | "pricingMethod"
+      | "notes"
+    >
+  >,
+): EventPricingLine {
+  const actor = requireActor(session);
+  if (!canManageCommercialFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  const line = s.pricingLines.find((l) => l.id === lineId);
+  if (!line || line.organizationId !== actor.organizationId) {
+    throw new DomainError("NOT_FOUND");
+  }
+  const event = requireEvent(s, actor, line.eventId);
+  assertPricingEditable(event);
+  if (patch.quantityMilli !== undefined && patch.quantityMilli <= 0) {
+    throw new DomainError("INVALID_QUANTITY");
+  }
+  Object.assign(line, patch);
+  const next = recostLine(line, event.guestCount);
+  Object.assign(line, next);
+  audit(s, actor, "pricing.overridden", "event", event.id, { lineId });
+  state = s;
+  emit();
+  return line;
+}
+
+export function removePricingLine(session: Session | null, lineId: string) {
+  const actor = requireActor(session);
+  if (!canManageCommercialFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  const line = s.pricingLines.find((l) => l.id === lineId);
+  if (!line || line.organizationId !== actor.organizationId) {
+    throw new DomainError("NOT_FOUND");
+  }
+  const event = requireEvent(s, actor, line.eventId);
+  assertPricingEditable(event);
+  s.pricingLines = s.pricingLines.filter((l) => l.id !== lineId);
+  audit(s, actor, "pricing.line_removed", "event", event.id, { lineId });
+  state = s;
+  emit();
+}
+
+/* -------------------------------------------------------------------------- */
+/* Quotations                                                                  */
+/* -------------------------------------------------------------------------- */
+
+export function issueEventQuotation(
+  session: Session | null,
+  eventId: string,
+  input?: { notes?: string; terms?: string },
+): Quotation {
+  const actor = requireActor(session);
+  if (!canManageCommercialFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  assertMembership(s, actor);
+  const event = requireEvent(s, actor, eventId);
+  if (event.status === "CLOSED") throw new DomainError("EVENT_CLOSED");
+  if (event.status === "CANCELLED") throw new DomainError("EVENT_CANCELLED");
+  if (event.acceptedQuotationId) throw new DomainError("PRICING_LOCKED");
+  if (event.status !== "DRAFT" && event.status !== "QUOTED") {
+    throw new DomainError("EVENT_NOT_EDITABLE");
+  }
+  const lines = s.pricingLines
+    .filter((l) => l.eventId === event.id)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  if (lines.length === 0) {
+    throw new DomainError("VALIDATION", "لا يمكن إصدار عرض بدون أسطر تسعير");
+  }
+  const totals = workingTotals(lines);
+  const customer = s.customers.find((c) => c.id === event.customerId)!;
+
+  const existing = s.quotations
+    .filter((q) => q.eventId === event.id)
+    .sort((a, b) => b.version - a.version);
+  const last = existing[0];
+  const version = last ? last.version + 1 : 1;
+  const year = muscatYear(nowIso());
+  const quotationNumber = last
+    ? last.quotationNumber
+    : `Q-${year}-${pad(nextSequence(s, actor.organizationId, "quotation", year))}`;
+
+  for (const q of existing) {
+    if (q.status === "ISSUED") q.status = "SUPERSEDED";
+  }
+
+  const quote: Quotation = {
+    id: uid("q"),
+    organizationId: actor.organizationId,
+    eventId: event.id,
+    quotationNumber,
+    version,
+    status: "ISSUED",
+    issuedAt: nowIso(),
+    issuedBy: actor.profileId,
+    customerNameSnapshot: customer.name,
+    customerPhoneSnapshot: customer.phone,
+    eventNumberSnapshot: event.eventNumber,
+    eventTitleSnapshot: event.title,
+    guestCountSnapshot: event.guestCount,
+    startAtSnapshot: event.startAt,
+    endAtSnapshot: event.endAt,
+    venueSnapshot: event.venueName,
+    addressSnapshot: event.address,
+    notes: input?.notes?.trim() ?? event.notes,
+    terms:
+      input?.terms?.trim() ??
+      "الأسعار بالريال العماني وتشمل التجهيز الأساسي. العربون يؤكد الحجز.",
+    sellingTotalMilli: totals.selling,
+    expectedCostTotalMilli: totals.cost,
+    expectedProfitMilli: totals.profit,
+  };
+  s.quotations.unshift(quote);
+  lines.forEach((l) => {
+    s.quotationLines.push({
+      id: uid("ql"),
+      organizationId: actor.organizationId,
+      quotationId: quote.id,
+      description: l.description,
+      itemType: l.itemType,
+      unit: l.unit,
+      pricingMethod: l.pricingMethod,
+      quantityMilli: l.quantityMilli,
+      unitSellingPriceMilli: l.unitSellingPriceMilli,
+      unitExpectedCostMilli: l.unitExpectedCostMilli,
+      sellingTotalMilli: l.sellingTotalMilli,
+      expectedCostTotalMilli: l.expectedCostTotalMilli,
+      isCustom: l.isCustom,
+      sortOrder: l.sortOrder,
+    });
+  });
+
+  if (event.status === "DRAFT") {
+    event.status = "QUOTED";
+    s.eventHistory.push({
+      id: uid("eh"),
+      organizationId: actor.organizationId,
+      eventId: event.id,
+      fromStatus: "DRAFT",
+      toStatus: "QUOTED",
+      actorId: actor.profileId,

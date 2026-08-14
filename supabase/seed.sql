@@ -1,0 +1,4 @@
+-- Seed data (optional).
+-- Intentionally empty: the foundation is populated through the application
+-- after an OWNER signs up and creates their organization. No demo/production
+-- seed data is committed by policy (see AGENTS.md).

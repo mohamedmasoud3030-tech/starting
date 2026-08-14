@@ -1,0 +1,450 @@
+      issues.push({
+        code: "STAFF_CONFLICT",
+        message: `${staff?.name ?? "موظف"}: ${avail.reason}`,
+      });
+    }
+  }
+
+  const reservations = s.equipmentReservations.filter(
+    (r) => r.eventId === eventId && r.status === "ACTIVE",
+  );
+  for (const r of reservations) {
+    const avail = getEquipmentAvailability(
+      s,
+      actor,
+      r.catalogItemId,
+      r.reservedFrom,
+      r.reservedUntil,
+      r.quantity,
+      r.id,
+    );
+    if (avail.shortage > 0) {
+      issues.push({
+        code: "EQUIPMENT_SHORTAGE",
+        message: `ناقص ${avail.shortage} ${avail.nameAr}`,
+      });
+    }
+  }
+
+  if (
+    (event.status === "CONFIRMED" || event.status === "PREPARING") &&
+    reservations.length === 0
+  ) {
+    const reusableNeeded = s.pricingLines.filter(
+      (l) =>
+        l.eventId === eventId &&
+        l.itemType === "REUSABLE_EQUIPMENT" &&
+        l.quantityMilli > 0,
+    );
+    if (reusableNeeded.length > 0) {
+      issues.push({
+        code: "EQUIPMENT_SHORTAGE",
+        message: "لم تُحجز المعدات القابلة لإعادة الاستخدام بعد",
+      });
+    }
+  }
+
+  if (event.status === "DRAFT" || event.status === "QUOTED") {
+    if (issues.some((i) => i.code === "PRICING_MISSING") && issues.length === 1) {
+      return { state: "NOT_CONFIRMED", issues };
+    }
+    if (issues.length === 0) return { state: "NOT_CONFIRMED", issues };
+  }
+
+  if (issues.length === 0) return { state: "READY", issues };
+  if (issues.length > 1) return { state: "MULTIPLE_ISSUES", issues };
+  const only = issues[0];
+  if (only.code === "PRICING_MISSING") return { state: "PRICING_MISSING", issues };
+  if (only.code === "STAFF_MISSING" || only.code === "STAFF_CONFLICT") {
+    return { state: "STAFF_MISSING", issues };
+  }
+  return { state: "EQUIPMENT_SHORTAGE", issues };
+}
+
+export function toCustomerQuoteView(
+  s: AppState,
+  actor: Actor,
+  quotationId: string,
+): CustomerQuoteView {
+  const quote = scoped(s.quotations, actor.organizationId).find(
+    (q) => q.id === quotationId,
+  );
+  if (!quote) throw new DomainError("NOT_FOUND", "العرض غير موجود");
+  const org = s.organizations.find((o) => o.id === actor.organizationId)!;
+  const lines = s.quotationLines
+    .filter((l) => l.quotationId === quote.id)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  return {
+    officeName: org.name,
+    officePhone: org.phone,
+    officeCity: org.city,
+    quotationNumber: quote.quotationNumber,
+    version: quote.version,
+    issuedAt: quote.issuedAt,
+    customerName: quote.customerNameSnapshot,
+    eventNumber: quote.eventNumberSnapshot,
+    eventTitle: quote.eventTitleSnapshot,
+    guestCount: quote.guestCountSnapshot,
+    schedule: formatMuscatRange(quote.startAtSnapshot, quote.endAtSnapshot),
+    venue: quote.venueSnapshot,
+    address: quote.addressSnapshot,
+    notes: quote.notes,
+    terms: quote.terms,
+    lines: lines.map((l) => ({
+      description: l.description,
+      quantityLabel: `${l.quantityMilli / 1000} ${l.unit}`,
+      unitPriceMilli: l.unitSellingPriceMilli,
+      totalMilli: l.sellingTotalMilli,
+    })),
+    sellingTotalMilli: quote.sellingTotalMilli,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Customers                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export function createCustomer(
+  session: Session | null,
+  input: {
+    name: string;
+    phone: string;
+    whatsapp?: string;
+    customerType: CustomerType;
+    notes?: string;
+  },
+): Customer {
+  const actor = requireActor(session);
+  if (!canWriteCustomersFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  assertMembership(s, actor);
+  const name = input.name.trim();
+  if (!name) throw new DomainError("VALIDATION", "اسم العميل مطلوب");
+  const customer: Customer = {
+    id: uid("cust"),
+    organizationId: actor.organizationId,
+    name,
+    phone: input.phone.trim(),
+    whatsapp: (input.whatsapp ?? input.phone).trim(),
+    customerType: input.customerType,
+    notes: input.notes?.trim() ?? "",
+    status: "ACTIVE",
+    createdAt: nowIso(),
+  };
+  s.customers.unshift(customer);
+  audit(s, actor, "customer.created", "customer", customer.id, { name });
+  state = s;
+  emit();
+  return customer;
+}
+
+export function updateCustomer(
+  session: Session | null,
+  id: string,
+  patch: Partial<Pick<Customer, "name" | "phone" | "whatsapp" | "customerType" | "notes" | "status">>,
+): Customer {
+  const actor = requireActor(session);
+  if (!canWriteCustomersFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  assertMembership(s, actor);
+  const customer = scoped(s.customers, actor.organizationId).find((c) => c.id === id);
+  if (!customer) throw new DomainError("NOT_FOUND", "العميل غير موجود");
+  Object.assign(customer, patch);
+  if (patch.name) customer.name = patch.name.trim();
+  audit(s, actor, "customer.updated", "customer", id, {});
+  state = s;
+  emit();
+  return customer;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Catalog / packages                                                          */
+/* -------------------------------------------------------------------------- */
+
+export function upsertCatalogItem(
+  session: Session | null,
+  input: {
+    id?: string;
+    categoryId: string | null;
+    nameAr: string;
+    nameEn?: string;
+    itemType: CatalogItemType;
+    unit: string;
+    pricingMethod: PricingMethod;
+    costPriceMilli: MilliOMR;
+    sellingPriceMilli: MilliOMR;
+    internalNotes?: string;
+    status?: "ACTIVE" | "INACTIVE";
+  },
+): CatalogItem {
+  const actor = requireActor(session);
+  if (!canManageCommercialFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  assertMembership(s, actor);
+  if (!input.nameAr.trim()) throw new DomainError("VALIDATION", "اسم الصنف مطلوب");
+  if (input.costPriceMilli < 0 || input.sellingPriceMilli < 0) {
+    throw new DomainError("VALIDATION", "السعر لا يمكن أن يكون سالباً");
+  }
+  let item = input.id
+    ? scoped(s.catalogItems, actor.organizationId).find((i) => i.id === input.id)
+    : undefined;
+  if (input.id && !item) throw new DomainError("NOT_FOUND", "الصنف غير موجود");
+  if (!item) {
+    item = {
+      id: uid("item"),
+      organizationId: actor.organizationId,
+      categoryId: input.categoryId,
+      nameAr: input.nameAr.trim(),
+      nameEn: input.nameEn?.trim() ?? "",
+      itemType: input.itemType,
+      unit: input.unit,
+      pricingMethod: input.pricingMethod,
+      costPriceMilli: input.costPriceMilli,
+      sellingPriceMilli: input.sellingPriceMilli,
+      internalNotes: input.internalNotes ?? "",
+      status: input.status ?? "ACTIVE",
+    };
+    s.catalogItems.unshift(item);
+    audit(s, actor, "catalog.created", "catalog_item", item.id, { name: item.nameAr });
+  } else {
+    item.categoryId = input.categoryId;
+    item.nameAr = input.nameAr.trim();
+    item.nameEn = input.nameEn?.trim() ?? item.nameEn;
+    item.itemType = input.itemType;
+    item.unit = input.unit;
+    item.pricingMethod = input.pricingMethod;
+    item.costPriceMilli = input.costPriceMilli;
+    item.sellingPriceMilli = input.sellingPriceMilli;
+    item.internalNotes = input.internalNotes ?? item.internalNotes;
+    if (input.status) item.status = input.status;
+    audit(s, actor, "catalog.updated", "catalog_item", item.id, { name: item.nameAr });
+  }
+  state = s;
+  emit();
+  return item;
+}
+
+export function setCatalogItemStatus(
+  session: Session | null,
+  id: string,
+  status: "ACTIVE" | "INACTIVE",
+) {
+  const actor = requireActor(session);
+  if (!canManageCommercialFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  const item = scoped(s.catalogItems, actor.organizationId).find((i) => i.id === id);
+  if (!item) throw new DomainError("NOT_FOUND");
+  item.status = status;
+  audit(s, actor, "catalog.status", "catalog_item", id, { status });
+  state = s;
+  emit();
+}
+
+export function savePackage(
+  session: Session | null,
+  input: {
+    id?: string;
+    name: string;
+    description?: string;
+    defaultGuestCount: number;
+    items: Array<{ catalogItemId: string; quantityMilli: MilliOMR }>;
+    status?: "ACTIVE" | "INACTIVE";
+  },
+): PackageTemplate {
+  const actor = requireActor(session);
+  if (!canManageCommercialFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  assertMembership(s, actor);
+  if (!input.name.trim()) throw new DomainError("VALIDATION", "اسم الباقة مطلوب");
+  if (input.defaultGuestCount < 1) throw new DomainError("INVALID_GUESTS");
+  const ids = new Set<string>();
+  for (const row of input.items) {
+    if (row.quantityMilli <= 0) throw new DomainError("INVALID_QUANTITY");
+    if (ids.has(row.catalogItemId)) {
+      throw new DomainError("VALIDATION", "لا تكرر الصنف داخل الباقة");
+    }
+    ids.add(row.catalogItemId);
+    const cat = scoped(s.catalogItems, actor.organizationId).find(
+      (i) => i.id === row.catalogItemId,
+    );
+    if (!cat) throw new DomainError("CROSS_ORG", "صنف الباقة لا ينتمي لهذه المنظمة");
+  }
+  let pkg = input.id
+    ? scoped(s.packages, actor.organizationId).find((p) => p.id === input.id)
+    : undefined;
+  if (input.id && !pkg) throw new DomainError("NOT_FOUND", "الباقة غير موجودة");
+  if (!pkg) {
+    pkg = {
+      id: uid("pkg"),
+      organizationId: actor.organizationId,
+      name: input.name.trim(),
+      description: input.description?.trim() ?? "",
+      defaultGuestCount: input.defaultGuestCount,
+      status: input.status ?? "ACTIVE",
+    };
+    s.packages.unshift(pkg);
+  } else {
+    pkg.name = input.name.trim();
+    pkg.description = input.description?.trim() ?? "";
+    pkg.defaultGuestCount = input.defaultGuestCount;
+    if (input.status) pkg.status = input.status;
+    s.packageItems = s.packageItems.filter((pi) => pi.packageId !== pkg!.id);
+  }
+  input.items.forEach((row, index) => {
+    s.packageItems.push({
+      id: uid("pi"),
+      organizationId: actor.organizationId,
+      packageId: pkg!.id,
+      catalogItemId: row.catalogItemId,
+      quantityMilli: row.quantityMilli,
+      sortOrder: index + 1,
+    });
+  });
+  audit(s, actor, "package.saved", "package", pkg.id, { name: pkg.name });
+  state = s;
+  emit();
+  return pkg;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Events                                                                      */
+/* -------------------------------------------------------------------------- */
+
+export function createEvent(
+  session: Session | null,
+  input: {
+    customerId: string;
+    eventType: EventType;
+    title?: string;
+    startAt: string;
+    endAt: string;
+    teamArrivalAt?: string | null;
+    guestCount: number;
+    venueName: string;
+    address?: string;
+    mapUrl?: string;
+    contactName?: string;
+    contactPhone?: string;
+    notes?: string;
+    clientRequestId?: string;
+  },
+): EventRecord {
+  const actor = requireActor(session);
+  if (!canWriteEventsFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  assertMembership(s, actor);
+
+  if (input.clientRequestId) {
+    const existing = s.events.find(
+      (e) =>
+        e.organizationId === actor.organizationId &&
+        (e as EventRecord & { clientRequestId?: string }).id &&
+        s.auditEvents.some(
+          (a) =>
+            a.action === "event.created" &&
+            a.meta.clientRequestId === input.clientRequestId,
+        ),
+    );
+    if (existing) return existing;
+  }
+
+  const customer = scoped(s.customers, actor.organizationId).find(
+    (c) => c.id === input.customerId,
+  );
+  if (!customer) throw new DomainError("CROSS_ORG", "العميل لا ينتمي لهذه المنظمة");
+  if (customer.status !== "ACTIVE") throw new DomainError("INACTIVE_CUSTOMER");
+  if (new Date(input.endAt).getTime() <= new Date(input.startAt).getTime()) {
+    throw new DomainError("INVALID_TIME");
+  }
+  if (!Number.isInteger(input.guestCount) || input.guestCount < 1) {
+    throw new DomainError("INVALID_GUESTS");
+  }
+  if (!input.venueName.trim()) {
+    throw new DomainError("VALIDATION", "اسم الموقع مطلوب");
+  }
+
+  const year = muscatYear(input.startAt);
+  const seq = nextSequence(s, actor.organizationId, "event", year);
+  const eventNumber = `EV-${year}-${pad(seq)}`;
+  const now = nowIso();
+  const event: EventRecord = {
+    id: uid("ev"),
+    organizationId: actor.organizationId,
+    customerId: customer.id,
+    eventNumber,
+    eventType: input.eventType,
+    title: input.title?.trim() || `${customer.name} — مناسبة`,
+    status: "DRAFT",
+    startAt: input.startAt,
+    endAt: input.endAt,
+    teamArrivalAt: input.teamArrivalAt ?? null,
+    guestCount: input.guestCount,
+    venueName: input.venueName.trim(),
+    address: input.address?.trim() ?? "",
+    mapUrl: input.mapUrl?.trim() ?? "",
+    contactName: input.contactName?.trim() ?? customer.name,
+    contactPhone: input.contactPhone?.trim() ?? customer.phone,
+    notes: input.notes?.trim() ?? "",
+    cancellationReason: "",
+    acceptedQuotationId: null,
+    createdBy: actor.profileId,
+    createdAt: now,
+    updatedAt: now,
+  };
+  s.events.unshift(event);
+  s.eventHistory.push({
+    id: uid("eh"),
+    organizationId: actor.organizationId,
+    eventId: event.id,
+    fromStatus: null,
+    toStatus: "DRAFT",
+    actorId: actor.profileId,
+    reason: "إنشاء المناسبة",
+    createdAt: now,
+  });
+  audit(s, actor, "event.created", "event", event.id, {
+    eventNumber,
+    clientRequestId: input.clientRequestId ?? null,
+  });
+  state = s;
+  emit();
+  return event;
+}
+
+export function updateEvent(
+  session: Session | null,
+  eventId: string,
+  patch: Partial<
+    Pick<
+      EventRecord,
+      | "title"
+      | "eventType"
+      | "startAt"
+      | "endAt"
+      | "teamArrivalAt"
+      | "guestCount"
+      | "venueName"
+      | "address"
+      | "mapUrl"
+      | "contactName"
+      | "contactPhone"
+      | "notes"
+    >
+  >,
+): EventRecord {
+  const actor = requireActor(session);
+  if (!canWriteEventsFor(actor.role)) throw new DomainError("UNAUTHORIZED");
+  const s = cloneState(state);
+  assertMembership(s, actor);
+  const event = requireEvent(s, actor, eventId);
+  if (event.status === "CLOSED") throw new DomainError("EVENT_CLOSED");
+  if (event.status === "CANCELLED") throw new DomainError("EVENT_CANCELLED");
+
+  const nextStart = patch.startAt ?? event.startAt;
+  const nextEnd = patch.endAt ?? event.endAt;
+  if (new Date(nextEnd).getTime() <= new Date(nextStart).getTime()) {
+    throw new DomainError("INVALID_TIME");
+  }
+  if (patch.guestCount !== undefined) {
+    if (!Number.isInteger(patch.guestCount) || patch.guestCount < 1) {
+      throw new DomainError("INVALID_GUESTS");
