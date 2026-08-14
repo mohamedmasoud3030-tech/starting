@@ -1,7 +1,10 @@
-# 10 — عمليات المخزن (S4): الصرف، الإرجاع، التالف والمفقود، التسوية
+# 10 — عمليات المخزن S4A: المعدات القابلة لإعادة الاستخدام
 
 > Warehouse Dispatch, Return, Damage & Loss — the physical-equipment control
 > layer attached to Events and to the S3 equipment reservations.
+>
+> **Boundary:** this document is S4A. Consumable stock is S4B and must close
+> before the roadmap advances to S5.
 
 ## 1. Domain model: ledger + two different quantity meanings
 
@@ -95,8 +98,8 @@ Damage/loss snapshots catalog cost at disposition time:
 
 Later catalog-price changes cannot restate warehouse history.
 
-No GL/journal postings are created in S4 because the repository has no
-accounting posting contract yet. S4 persists the operational/valuation facts a
+No GL/journal postings are created in S4A because the repository has no
+accounting posting contract yet. S4A persists the operational/valuation facts a
 future accounting slice will need.
 
 ## 6. Final reconciliation
@@ -180,7 +183,7 @@ reconciliation.
 
 ## Explicitly deferred
 
-- consumable stock / purchasing / receiving;
+- **S4B consumable stock** — required before S5;
 - accounting postings for damage/loss;
 - warehouse/location dimension;
 - audited repair/replacement capacity restoration;
