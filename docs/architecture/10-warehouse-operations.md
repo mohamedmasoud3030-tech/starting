@@ -3,198 +3,185 @@
 > Warehouse Dispatch, Return, Damage & Loss — the physical-equipment control
 > layer attached to Events and to the S3 equipment reservations.
 
-## 1. Domain model: a ledger, not a status field
+## 1. Domain model: ledger + two different quantity meanings
 
-The physical state of an Event's equipment is **derived**, never stored as a
-mutable counter or status flag.
+`event_equipment_movements` is an append-only ledger. Event reconciliation is
+derived from it:
 
-`event_equipment_movements` is an **append-only ledger** of authoritative
-physical movements. Everything the operator and the invariants need is
-recomputed from it:
-
-```
-dispatched    = Σ dispatched_quantity        (DISPATCH rows)
-returned_good = Σ returned_good_quantity     (RETURN rows)
-damaged       = Σ damaged_quantity           (RETURN rows)
-lost          = Σ lost_quantity              (RETURN rows)
+```text
+dispatched    = Σ dispatched_quantity
+returned_good = Σ returned_good_quantity
+damaged       = Σ damaged_quantity
+lost          = Σ lost_quantity
 outstanding   = dispatched − returned_good − damaged − lost
 ```
 
-Why not a status column:
+`outstanding` answers: **has every unit dispatched for this Event been
+accounted for?** Damage/loss therefore legitimately reduces Event outstanding.
 
-- a flag cannot express partial dispatch, multiple truck loads, partial
-  returns, or a mixed good/damaged/lost disposition;
-- a stored counter can be silently corrected and is not auditable;
-- a ledger makes `outstanding` a provable invariant instead of a stored guess.
+Physical serviceability is intentionally different:
 
-`public.warehouse_reservation_state(org, reservation)` is the single derivation
-point. Every command and both read models call it, so there is exactly one
-definition of "outstanding" in the system.
-
-### Lifecycle
-
-```
-reservation (S3) → dispatch → [partial | full] return
-                            → damage / loss recording
-                            → final reconciliation (closure)
+```text
+physically_unavailable = dispatched − returned_good
+unserviceable          = damaged + lost
 ```
 
-## 2. Commands (server-authoritative)
+A damaged/lost unit is accounted for, but it does **not** reappear as physical
+stock. Future availability/reservations subtract unserviceable quantity until a
+future audited repair/replacement adjustment explicitly restores capacity.
+
+Reusable equipment and consumables remain separate domains.
+
+## 2. Server-authoritative commands
 
 | RPC | Purpose | Roles |
 | --- | --- | --- |
 | `dispatch_event_equipment` | Equipment physically leaves the warehouse | OWNER, MANAGER, SUPERVISOR, WAREHOUSE |
-| `return_event_equipment` | Account for stock coming back: good / damaged / lost | OWNER, MANAGER, SUPERVISOR, WAREHOUSE |
-| `reconcile_event_warehouse` | Final, irreversible warehouse closure | OWNER, MANAGER |
-| `event_warehouse_summary` | Event-level operator summary (no valuation) | any member |
-| `warehouse_reservation_state` | Derived per-line state | any member (self-scoped) |
+| `return_event_equipment` | Good / damaged / lost disposition | OWNER, MANAGER, SUPERVISOR, WAREHOUSE |
+| `reconcile_event_warehouse` | Final warehouse closure | OWNER, MANAGER |
+| `event_warehouse_summary` | Event operational summary | any member |
+| `warehouse_reservation_state` | Derived per-reservation state | any member, org scoped |
 
-`WAREHOUSE` owns every physical action it legitimately performs, and **no**
-commercial cost visibility. Final reconciliation freezes damage/loss valuation
-and is therefore a commercial act restricted to OWNER/MANAGER.
+Dispatch rejects invalid lifecycle/state, invalid quantities, reservation/Event
+mismatch, reservation over-dispatch, physical-capacity over-dispatch, finalised
+reconciliation, cross-org access and idempotency mismatch.
 
-### Rejections
+Return rejects cumulative good + damaged + lost above actual dispatched
+quantity. Returns remain possible for a cancelled Event while physical equipment
+is still outstanding.
 
-`dispatch_event_equipment` rejects: unauthenticated callers, unauthorized
-roles, cross-organization access, unknown/invalid reservation or Event,
-reservation belonging to a different Event, inactive reservation, zero or
-negative quantity, dispatch above the remaining reservation, dispatch above
-physical capacity (units still in the field elsewhere), a non-dispatchable
-Event lifecycle state, an already-reconciled Event, and an idempotency key
-replayed with a different payload.
+## 3. Locking and concurrency contract
 
-`return_event_equipment` additionally rejects any return whose cumulative
-good + damaged + lost would exceed what was actually dispatched.
+Warehouse commands use one stable lock order:
 
-## 3. Damage, loss, and the valuation boundary
+1. **Event row** — shared by dispatch, return, cancellation and final reconciliation.
+2. **Reservation row** — serializes per-reservation cumulative quantities.
+3. **Equipment-capacity row** — serializes different Events/reservations drawing from the same physical pool and damage/loss serviceability changes.
 
-Damage and loss are **first-class quantities**, not notes.
+This closes both stale-total races and lock-order deadlocks.
 
-When damage or loss is recorded, the command snapshots the catalog cost into
-the movement row as an **immutable valuation basis**:
+`event_equipment_movements` also has a `BEFORE INSERT` structural guard. It
+rechecks the Event reconciliation boundary and the shared physical-capacity
+boundary at the data-write edge. The trigger is defense in depth; the RPCs
+still acquire locks before making business decisions.
 
-- `valuation_basis` = `CATALOG_COST_SNAPSHOT`
-- `unit_valuation_omr` — the cost at the moment of the event
-- `damage_loss_valuation_omr` — `round(unit × (damaged + lost), 3)`
+Consequences:
 
-A later change to `catalog_items.cost_price` can never restate a historical
-damage/loss value. This is the same snapshot invariant S2 applies to pricing,
-and it is covered by an explicit regression test.
+- two sessions cannot over-dispatch one reservation;
+- two **different** Events/reservations cannot concurrently exceed the same
+  `equipment_capacity` pool;
+- dispatch/return cannot land after final reconciliation;
+- damage/loss cannot race a future reservation/dispatch and silently recreate
+  serviceable stock.
 
-All money is exact `numeric(*,3)` in the database and integer milli-OMR in the
-frontend through `src/lib/money.ts`. No binary float is ever a financial source
-of truth.
+## 4. Idempotency
 
-### Explicitly deferred: accounting recognition
+Dispatch, return and reconciliation store a SHA-256 fingerprint of the canonical
+payload under unique `(organization_id, idempotency_key)`.
 
-This slice creates **no accounting postings**. The current architecture defines
-no accounting posting contract — there is no journal, GL, or posting table, and
-inventing one here would be speculative. S4 therefore records exactly the
-operational and valuation facts a future accounting slice needs to post from
-(basis, unit valuation, extended valuation, quantities, Event, actor, time),
-and stops at that boundary.
+- same key + same payload → original result;
+- same key + different payload → `IDEMPOTENCY_KEY_PAYLOAD_MISMATCH`;
+- concurrent identical retries re-check idempotency **after waiting on the
+  shared Event lock**, so both callers can receive a successful replay while
+  only one physical movement and one audit event are created.
 
-## 4. Reconciliation
+## 5. Damage/loss valuation
 
-`event_warehouse_reconciliations` holds at most **one** row per Event and is
-append-only.
+Damage/loss snapshots catalog cost at disposition time:
 
-- Reconciliation is **impossible while any dispatched quantity is
-  outstanding** (`WAREHOUSE_OUTSTANDING_QUANTITY`), enforced by re-deriving
-  from the ledger under an Event row lock.
-- A `CHECK` constraint independently requires
-  `dispatched = returned_good + damaged + lost`, so even a privileged write
-  cannot persist an unbalanced closure.
-- Once reconciled, dispatch and return are both rejected
-  (`WAREHOUSE_ALREADY_RECONCILED`), so a finalized reconciliation cannot be
-  invalidated by later movement.
-- There is deliberately **no correction mechanism** in this slice: the
-  architecture has no audited correction/reversal contract yet, and adding an
-  unaudited escape hatch would defeat the guarantee. A correction slice must
-  introduce an explicit, audited reversal command.
+- `valuation_basis = CATALOG_COST_SNAPSHOT`
+- immutable unit valuation
+- immutable extended damage/loss valuation
 
-## 5. Cancellation interaction (S3 defect repaired)
+Later catalog-price changes cannot restate warehouse history.
 
-The S3 `cancel_event()` flipped **every** ACTIVE reservation to CANCELLED.
-Once physical dispatch exists, that is unsafe: it would "release" equipment
-sitting in a venue, erasing the obligation to bring it back.
+No GL/journal postings are created in S4 because the repository has no
+accounting posting contract yet. S4 persists the operational/valuation facts a
+future accounting slice will need.
 
-Repaired forward-only in `0022`:
+## 6. Final reconciliation
 
-- reservations with **no** dispatched quantity are released as before;
-- reservations with dispatched quantity stay **ACTIVE and outstanding**;
-- returns are still accepted for a CANCELLED Event, so the stock can be
-  brought back and the Event reconciled through authoritative commands.
+`event_warehouse_reconciliations` contains at most one append-only row per
+Event.
 
-The audit payload records both `equipment_released` and
-`equipment_retained_dispatched`.
+- reconciliation fails while `outstanding > 0`;
+- its CHECK constraint independently requires
+  `dispatched = returned_good + damaged + lost`;
+- movement commands and reconciliation share the Event lock, so a concurrent
+  dispatch/return cannot appear immediately after closure;
+- once reconciled, later movements are rejected.
 
-## 6. Security
+An audited correction/reversal mechanism is deliberately deferred rather than
+providing an unaudited escape hatch.
 
-- RLS is enabled on both new tables.
-- Neither table has an INSERT/UPDATE/DELETE policy, and clients are granted
-  `SELECT` only: the RPCs are the sole write path.
-- Append-only triggers reject UPDATE/DELETE on both tables, so even a
-  privileged path cannot rewrite physical history.
-- All composite FKs are `(organization_id, id)`, making a cross-organization
-  reference structurally impossible independent of RLS. S3's
-  `event_equipment_reservations` lacked the `(organization_id, id)` unique key
-  this requires; `0020` adds it (purely additive).
-- Every SECURITY DEFINER function pins `search_path = ''`.
-- `EXECUTE` is revoked from `public`/`anon` on every command.
-- The actor is always `auth.uid()`; no command accepts a client-supplied user id.
+## 7. Cancellation and manual release
 
-### Commercial separation at the data boundary
+Cancellation/release may never erase a physical recovery obligation.
 
-| Read model | Audience | Contains |
-| --- | --- | --- |
-| `event_warehouse_lines` | every member, incl. WAREHOUSE | quantities only |
-| `event_warehouse_lines_valued` | `can_read_cost()` only | + immutable valuation |
+- reservation with current `outstanding > 0` remains ACTIVE even if Event is cancelled;
+- reservation whose current `outstanding = 0` may be cancelled/released, even
+  if it was dispatched earlier;
+- manual `release_equipment_reservation` rejects with
+  `RESERVATION_HAS_OUTSTANDING_EQUIPMENT` while stock is still outstanding.
 
-The valuation-bearing base table is itself gated by `can_read_cost()`. Audit
-payloads carry operational quantities only — no valuation — so cost cannot leak
-through the audit channel either.
+This replaces the earlier “ever dispatched” rule with the authoritative **current
+outstanding** rule.
 
-## 7. Idempotency and concurrency
+## 8. Security
 
-Every command takes an `p_idempotency_key` and stores a
-`request_fingerprint` — a SHA-256 over the canonical business payload:
+- RLS on both warehouse business tables;
+- client roles have SELECT only; writes go through RPCs;
+- UPDATE/DELETE on the movement ledger are rejected by append-only trigger;
+- tenant-safe composite FKs prevent cross-org references structurally;
+- SECURITY DEFINER functions pin `search_path = ''`;
+- actor comes from `auth.uid()`, never client input;
+- WAREHOUSE can perform physical operations but cannot read cost/valuation;
+- final reconciliation is OWNER/MANAGER only.
 
-- same org + same key + **same** payload → the original row is returned, with
-  no second movement and no second audit event;
-- same org + same key + **different** payload → hard rejection
-  (`IDEMPOTENCY_KEY_PAYLOAD_MISMATCH`, SQLSTATE 22023).
+`event_warehouse_lines` contains operational quantities. The valued read model
+is cost-gated. Warehouse audit payloads deliberately omit valuation.
 
-A `UNIQUE (organization_id, idempotency_key)` constraint makes a duplicate row
-impossible even under a lost-update race.
+## 9. Verification strategy
 
-Concurrency safety is structural: each command takes
-`SELECT … FOR UPDATE` on the reservation (or Event) row **before** summing the
-ledger, so a competing transaction blocks rather than reading a stale total.
-Two concurrent dispatches therefore serialize and the loser correctly fails the
-reservation invariant.
+CI runs the database acceptance chain on the official Supabase local stack:
 
-## 8. Test strategy
+1. clean migration replay;
+2. full pgTAP suite;
+3. **real two-session warehouse concurrency harness**;
+4. generated Supabase TypeScript types;
+5. strict committed-vs-generated type drift comparison.
 
-| Layer | File | Coverage |
-| --- | --- | --- |
-| pgTAP | `supabase/tests/warehouse_dispatch.test.sql` | 97 assertions: isolation, role matrix, cross-org rejection, dispatch validation, partial/multiple returns, damage, loss, mixed, over-return, outstanding, reconciliation, idempotency, audit, valuation immutability, cancellation |
-| pgTAP | `supabase/tests/warehouse_concurrency.test.sql` | 9 assertions: lock ordering, unique-constraint protection, serialized outcome, physical capacity |
-| Node (2 sessions) | `scripts/native-db/warehouse_concurrency.mjs` | true interleaved races: over-dispatch, over-return, idempotent replay |
-| Vitest | `src/features/warehouse/warehouse.model.test.ts` | 32 tests: nullability policy, role matrix, blocked states, quantity guards, error translation |
-| Vitest | `src/features/warehouse/WarehousePanel.test.tsx` | 21 tests: operator states, blocked flows, confirmation, commercial separation, no UUID/no raw SQL leakage |
+The two-session harness is a required CI gate and genuinely interleaves:
 
-pgTAP runs inside a single transaction and cannot interleave sessions, so the
-two-session harness exists to prove empirically what pgTAP can only prove
-structurally. The authoritative gate remains `supabase test db` in CI.
+1. same-reservation over-dispatch;
+2. same-reservation over-return;
+3. concurrent identical idempotent replay;
+4. different Events/reservations sharing one physical-capacity row;
+5. dispatch racing final reconciliation on the same Event.
 
-## 9. Operator UX
+pgTAP additionally locks the structural invariants, role/RLS boundaries,
+damage/loss serviceability, cancellation/release behavior, valuation snapshots
+and idempotency semantics.
 
-The warehouse tab (`المخزن`) in the Event workspace shows, per line:
+Frontend tests cover operator states, blocked flows, Arabic error translation,
+commercial separation, reconciliation confirmation and prevention of raw
+UUID/SQL leakage.
+
+## 10. Operator UX
+
+The Event warehouse tab (`المخزن`) exposes per line:
+
 `المطلوب تجهيزه`, `المحجوز`, `تم صرفه`, `تم إرجاعه`, `تالف`, `مفقود`,
-`متبقي بالخارج`, plus the Event-level `حالة التسوية`.
+`متبقي بالخارج`, plus Event-level reconciliation state.
 
-Built for a phone or tablet on a warehouse floor: large tap targets, `+/−`
-steppers so the common case needs no typing, one-tap "صرف الكل" / "إرجاع الكل",
-every disabled control states its reason in Arabic, no raw UUIDs, no PostgreSQL
-error text, and an explicit confirmation before the irreversible reconciliation.
+The interaction is Arabic/RTL first, with large touch targets, quantity steppers,
+one-tap common actions, explicit blocked reasons and confirmation before final
+reconciliation.
+
+## Explicitly deferred
+
+- consumable stock / purchasing / receiving;
+- accounting postings for damage/loss;
+- warehouse/location dimension;
+- audited repair/replacement capacity restoration;
+- audited correction/reversal of a final reconciliation.
