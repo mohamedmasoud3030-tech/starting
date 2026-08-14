@@ -2823,6 +2823,26 @@ export type Database = {
           receipt_id: string | null
           receipt_line_id: string | null
         }
+        Insert: {
+          consumable_movement_id?: string | null
+          created_at?: string | null
+          order_id?: string | null
+          order_line_id?: string | null
+          organization_id?: string | null
+          quantity?: number | null
+          receipt_id?: string | null
+          receipt_line_id?: string | null
+        }
+        Update: {
+          consumable_movement_id?: string | null
+          created_at?: string | null
+          order_id?: string | null
+          order_line_id?: string | null
+          organization_id?: string | null
+          quantity?: number | null
+          receipt_id?: string | null
+          receipt_line_id?: string | null
+        }
         Relationships: [
           {
             foreignKeyName: "procurement_receipt_lines_movement_fk"
