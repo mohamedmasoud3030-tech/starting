@@ -1,0 +1,35 @@
+name: One-shot generated types sync
+
+on:
+  push:
+    branches: ["arena/019ffefc-starting"]
+    paths: [".github/workflows/sync-generated-types.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: arena/019ffefc-starting
+          fetch-depth: 0
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.114.0
+      - name: Generate authoritative types
+        run: |
+          supabase start
+          supabase db reset
+          supabase gen types typescript --local --schema public > src/lib/database.types.ts
+          supabase stop
+      - name: Verify and commit
+        run: |
+          git diff --check
+          git config user.name "M7mdlab"
+          git config user.email "250202280+mohamedmasoud3030-tech@users.noreply.github.com"
+          git add src/lib/database.types.ts
+          git commit -m "chore: sync exact generated Supabase types" || exit 0
+          git push origin HEAD:arena/019ffefc-starting
