@@ -11,6 +11,7 @@ import type {
   ProcurementAccess,
   ProcurementConsumableOption,
   ProcurementDataSource,
+  ProcurementLineKind,
   ProcurementOrderDetail,
   ProcurementOrderLine,
   ProcurementOrderListItem,
@@ -26,6 +27,19 @@ import type {
 } from "./contracts";
 import { ProcurementDomainError } from "./errors";
 import * as api from "@/lib/procurement.api";
+
+function toProcurementLineKind(
+  kind: string | null | undefined,
+): ProcurementLineKind {
+  if (
+    kind === "CONSUMABLE" ||
+    kind === "CATERING_SERVICE" ||
+    kind === "OTHER"
+  ) {
+    return kind;
+  }
+  return "OTHER";
+}
 
 function deriveOrderCapabilities(
   status: ProcurementOrderStatus,
@@ -180,6 +194,7 @@ export function createSupabaseProcurementDataSource(
           name: row.name ?? "",
           kind: (row.category ?? "GENERAL") as SupplierKind,
           phone: row.phone ?? null,
+          whatsapp: row.whatsapp ?? null,
           status: (row.status ?? "ACTIVE") as SupplierStatus,
           lastOrderAt,
           openOrderCount,
@@ -220,6 +235,9 @@ export function createSupabaseProcurementDataSource(
 
     async getSupplier(supplierId: string): Promise<SupplierDetail> {
       let contactName: string | null = null;
+      let commercialRegistrationNumber: string | null = null;
+      let email: string | null = null;
+      let whatsapp: string | null = null;
       let notes: string | null = null;
       let base: SupplierListItem | null = null;
 
@@ -233,12 +251,16 @@ export function createSupabaseProcurementDataSource(
         if (error) throw error;
         if (data) {
           contactName = data.contact_name;
+          commercialRegistrationNumber = data.commercial_registration_number;
+          email = data.email;
+          whatsapp = data.whatsapp;
           notes = data.notes;
           base = {
             id: data.supplier_id!,
             name: data.name ?? "",
             kind: (data.category ?? "GENERAL") as SupplierKind,
             phone: data.phone ?? null,
+            whatsapp: data.whatsapp ?? null,
             status: (data.status ?? "ACTIVE") as SupplierStatus,
             lastOrderAt: null,
             capabilities: {
@@ -270,11 +292,13 @@ export function createSupabaseProcurementDataSource(
         if (!data) throw new ProcurementDomainError("NOT_FOUND");
 
         contactName = data.contact_name;
+        whatsapp = data.whatsapp;
         base = {
           id: data.supplier_id!,
           name: data.name ?? "",
           kind: (data.category ?? "GENERAL") as SupplierKind,
           phone: data.phone ?? null,
+          whatsapp: data.whatsapp ?? null,
           status: (data.status ?? "ACTIVE") as SupplierStatus,
           lastOrderAt: null,
           capabilities: {
@@ -297,6 +321,9 @@ export function createSupabaseProcurementDataSource(
       return {
         ...base,
         contactName,
+        commercialRegistrationNumber,
+        email,
+        whatsapp,
         notes,
       };
     },
@@ -305,8 +332,11 @@ export function createSupabaseProcurementDataSource(
       const created = await api.createSupplier(organizationId, {
         name: input.name,
         category: input.kind,
+        commercialRegistrationNumber: input.commercialRegistrationNumber,
         contactName: input.contactName,
         phone: input.phone,
+        whatsapp: input.whatsapp,
+        email: input.email,
         notes: input.notes,
         idempotencyKey: input.idempotencyKey,
       });
@@ -320,8 +350,11 @@ export function createSupabaseProcurementDataSource(
       await api.updateSupplier(organizationId, supplierId, {
         name: input.name,
         category: input.kind,
+        commercialRegistrationNumber: input.commercialRegistrationNumber,
         contactName: input.contactName,
         phone: input.phone,
+        whatsapp: input.whatsapp,
+        email: input.email,
         notes: input.notes,
         idempotencyKey: input.idempotencyKey,
       });
@@ -537,7 +570,7 @@ export function createSupabaseProcurementDataSource(
           return {
             id: l.order_line_id!,
             description: l.description ?? "",
-            kind: l.line_kind as any,
+            kind: toProcurementLineKind(l.line_kind),
             catalogItemId: l.catalog_item_id,
             unit: l.unit ?? "",
             orderedQuantityMilli: orderedMilli,
@@ -671,7 +704,7 @@ export function createSupabaseProcurementDataSource(
           return {
             id: l.order_line_id!,
             description: l.description ?? "",
-            kind: l.line_kind as any,
+            kind: toProcurementLineKind(l.line_kind),
             catalogItemId: l.catalog_item_id,
             unit: l.unit ?? "",
             orderedQuantityMilli: orderedMilli,

@@ -78,6 +78,7 @@ export interface SupplierListItem {
   name: string;
   kind: SupplierKind;
   phone: string | null;
+  whatsapp?: string | null;
   status: SupplierStatus;
   lastOrderAt: string | null;
   openOrderCount?: number | null;
@@ -86,6 +87,8 @@ export interface SupplierListItem {
 
 export interface SupplierDetail extends SupplierListItem {
   contactName: string | null;
+  commercialRegistrationNumber: string | null;
+  email: string | null;
   notes: string | null;
 }
 
@@ -146,6 +149,9 @@ export interface SupplierInput {
   name: string;
   kind: SupplierKind;
   phone: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  commercialRegistrationNumber?: string | null;
   contactName: string | null;
   notes: string | null;
   idempotencyKey: string;

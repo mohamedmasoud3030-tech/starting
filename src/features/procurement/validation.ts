@@ -19,6 +19,9 @@ export interface SupplierFormDraft {
   name: string;
   kind: SupplierKind | "";
   phone: string;
+  whatsapp: string;
+  email: string;
+  commercialRegistrationNumber: string;
   contactName: string;
   notes: string;
 }
@@ -33,6 +36,14 @@ export function validateSupplierDraft(draft: SupplierFormDraft): SupplierFormErr
   if (phone && !/^\d{7,15}$/.test(phone)) {
     errors.phone = "أدخل رقم هاتف صحيحاً من 7 إلى 15 رقماً.";
   }
+  const whatsapp = draft.whatsapp.replace(/[\s()+-]/g, "");
+  if (whatsapp && !/^\d{7,15}$/.test(whatsapp)) {
+    errors.whatsapp = "أدخل رقم واتساب صحيحاً من 7 إلى 15 رقماً.";
+  }
+  const email = draft.email.trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errors.email = "أدخل بريداً إلكترونياً صحيحاً.";
+  }
   return errors;
 }
 
@@ -45,6 +56,9 @@ export function supplierDraftToInput(
     name: draft.name.trim(),
     kind: draft.kind,
     phone: draft.phone.trim() || null,
+    whatsapp: draft.whatsapp.trim() || null,
+    email: draft.email.trim() || null,
+    commercialRegistrationNumber: draft.commercialRegistrationNumber.trim() || null,
     contactName: draft.contactName.trim() || null,
     notes: draft.notes.trim() || null,
     idempotencyKey,

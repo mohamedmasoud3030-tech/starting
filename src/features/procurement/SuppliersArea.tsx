@@ -58,6 +58,9 @@ function SupplierForm({
     name: target?.name ?? "",
     kind: target?.kind ?? "",
     phone: target?.phone ?? "",
+    whatsapp: target?.whatsapp ?? "",
+    email: target?.email ?? "",
+    commercialRegistrationNumber: target?.commercialRegistrationNumber ?? "",
     contactName: target?.contactName ?? "",
     notes: target?.notes ?? "",
   }));
@@ -65,6 +68,9 @@ function SupplierForm({
     name: target?.name ?? "مورد",
     kind: target?.kind ?? "GENERAL",
     phone: target?.phone ?? "",
+    whatsapp: target?.whatsapp ?? "",
+    email: target?.email ?? "",
+    commercialRegistrationNumber: target?.commercialRegistrationNumber ?? "",
     contactName: target?.contactName ?? "",
     notes: target?.notes ?? "",
   }));
@@ -109,6 +115,17 @@ function SupplierForm({
             ))}
           </Select>
         </Field>
+        <Field label="رقم السجل التجاري (اختياري)" htmlFor="procurement-supplier-crn" error={errors.commercialRegistrationNumber}>
+          <Input
+            id="procurement-supplier-crn"
+            dir="ltr"
+            value={draft.commercialRegistrationNumber}
+            onChange={(event) => update({ commercialRegistrationNumber: event.target.value })}
+            placeholder="CR-12345"
+          />
+        </Field>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="رقم الهاتف" htmlFor="procurement-supplier-phone" error={errors.phone}>
           <Input
             id="procurement-supplier-phone"
@@ -121,21 +138,48 @@ function SupplierForm({
             placeholder="+968 9000 0000"
           />
         </Field>
+        <Field label="رقم الواتساب (اختياري)" htmlFor="procurement-supplier-whatsapp" error={errors.whatsapp}>
+          <Input
+            id="procurement-supplier-whatsapp"
+            dir="ltr"
+            inputMode="tel"
+            value={draft.whatsapp}
+            aria-invalid={Boolean(errors.whatsapp)}
+            onChange={(event) => update({ whatsapp: event.target.value })}
+            placeholder="+968 9000 0000"
+          />
+        </Field>
       </div>
-      <Field label="اسم مسؤول التواصل" htmlFor="procurement-supplier-contact">
-        <Input
-          id="procurement-supplier-contact"
-          value={draft.contactName}
-          autoComplete="name"
-          onChange={(event) => update({ contactName: event.target.value })}
-        />
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="اسم مسؤول التواصل" htmlFor="procurement-supplier-contact">
+          <Input
+            id="procurement-supplier-contact"
+            value={draft.contactName}
+            autoComplete="name"
+            onChange={(event) => update({ contactName: event.target.value })}
+            placeholder="مثال: أحمد الحارثي"
+          />
+        </Field>
+        <Field label="البريد الإلكتروني (اختياري)" htmlFor="procurement-supplier-email" error={errors.email}>
+          <Input
+            id="procurement-supplier-email"
+            dir="ltr"
+            type="email"
+            autoComplete="email"
+            value={draft.email}
+            aria-invalid={Boolean(errors.email)}
+            onChange={(event) => update({ email: event.target.value })}
+            placeholder="orders@supplier.om"
+          />
+        </Field>
+      </div>
       <Field label="ملاحظات" htmlFor="procurement-supplier-notes">
         <Textarea
           id="procurement-supplier-notes"
           rows={3}
           value={draft.notes}
           onChange={(event) => update({ notes: event.target.value })}
+          placeholder="شروط التوريد، أوقات العمل، أو ملاحظات خاصة"
         />
       </Field>
       {submitError && (
@@ -335,8 +379,11 @@ function SupplierDetailDialog({
             <Badge tone={detail.status === "ACTIVE" ? "success" : "neutral"}>{SUPPLIER_STATUS_LABELS[detail.status]}</Badge>
           </div>
           <dl className="grid gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">
-            <DetailRow label="رقم الهاتف"><span dir="ltr">{detail.phone ?? "—"}</span></DetailRow>
+            <DetailRow label="رقم السجل التجاري">{detail.commercialRegistrationNumber ?? "—"}</DetailRow>
             <DetailRow label="مسؤول التواصل">{detail.contactName ?? "—"}</DetailRow>
+            <DetailRow label="رقم الهاتف"><span dir="ltr">{detail.phone ?? "—"}</span></DetailRow>
+            <DetailRow label="رقم الواتساب"><span dir="ltr">{detail.whatsapp ?? "—"}</span></DetailRow>
+            <DetailRow label="البريد الإلكتروني"><span dir="ltr">{detail.email ?? "—"}</span></DetailRow>
             <DetailRow label="آخر طلب">{formatProcurementDateTime(detail.lastOrderAt)}</DetailRow>
             {detail.openOrderCount != null && <DetailRow label="الطلبات المفتوحة">{detail.openOrderCount}</DetailRow>}
           </dl>

@@ -160,6 +160,7 @@ describe("createSupabaseProcurementDataSource", () => {
         id: "sup-1",
         name: "شركة التموين",
         contactName: "سالم",
+        commercialRegistrationNumber: "CR-12345",
         notes: "ملاحظات تجارية",
       });
     });
@@ -418,6 +419,94 @@ describe("createSupabaseProcurementDataSource", () => {
           },
         ],
         p_idempotency_key: "idem-rc-1",
+      });
+    });
+
+    it("passes CRN, email, whatsapp to createSupplier and updateSupplier RPCs", async () => {
+      vi.mocked(supabase.rpc).mockImplementation((fn: string) => {
+        if (fn === "create_supplier") {
+          return Promise.resolve({ data: { id: "new-sup-1" }, error: null }) as any;
+        }
+        if (fn === "update_supplier") {
+          return Promise.resolve({ data: { id: "sup-1" }, error: null }) as any;
+        }
+        return Promise.resolve({ data: null, error: null }) as any;
+      });
+
+      vi.mocked(supabase.from).mockImplementation(() => {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                maybeSingle: () => Promise.resolve({
+                  data: {
+                    supplier_id: "new-sup-1",
+                    name: "مورد",
+                    category: "GENERAL",
+                    status: "ACTIVE",
+                    commercial_registration_number: "CR-12345",
+                    email: "info@supplier.om",
+                    whatsapp: "99001122",
+                  },
+                  error: null,
+                }),
+              }),
+            }),
+          }),
+        } as any;
+      });
+
+      const source = createSupabaseProcurementDataSource("org-1", "OWNER");
+
+      await source.createSupplier({
+        name: "مورد جديد",
+        kind: "CATERING_RESTAURANT",
+        commercialRegistrationNumber: "CR-12345",
+        contactName: "أحمد",
+        phone: "99001122",
+        whatsapp: "99001122",
+        email: "info@supplier.om",
+        notes: "ملاحظات",
+        idempotencyKey: "idem-sup-create",
+      });
+
+      expect(supabase.rpc).toHaveBeenCalledWith("create_supplier", {
+        p_org_id: "org-1",
+        p_name: "مورد جديد",
+        p_category: "CATERING_RESTAURANT",
+        p_commercial_registration_number: "CR-12345",
+        p_contact_name: "أحمد",
+        p_phone: "99001122",
+        p_whatsapp: "99001122",
+        p_email: "info@supplier.om",
+        p_notes: "ملاحظات",
+        p_idempotency_key: "idem-sup-create",
+      });
+
+      await source.updateSupplier("sup-1", {
+        name: "مورد معدل",
+        kind: "CATERING_RESTAURANT",
+        commercialRegistrationNumber: "CR-99999",
+        contactName: "سالم",
+        phone: "99003344",
+        whatsapp: "99003344",
+        email: "salem@supplier.om",
+        notes: "ملاحظات معدلة",
+        idempotencyKey: "idem-sup-update",
+      });
+
+      expect(supabase.rpc).toHaveBeenCalledWith("update_supplier", {
+        p_org_id: "org-1",
+        p_supplier_id: "sup-1",
+        p_name: "مورد معدل",
+        p_category: "CATERING_RESTAURANT",
+        p_commercial_registration_number: "CR-99999",
+        p_contact_name: "سالم",
+        p_phone: "99003344",
+        p_whatsapp: "99003344",
+        p_email: "salem@supplier.om",
+        p_notes: "ملاحظات معدلة",
+        p_idempotency_key: "idem-sup-update",
       });
     });
   });

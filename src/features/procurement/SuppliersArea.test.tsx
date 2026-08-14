@@ -91,17 +91,30 @@ describe("SuppliersArea", () => {
     await user.click(await screen.findByRole("button", { name: /عرض تفاصيل المورد/ }));
     const dialog = await screen.findByRole("dialog", { name: "تفاصيل المورد" });
     expect(within(dialog).getByText("أحمد")).toBeInTheDocument();
+    expect(within(dialog).getByText("CR-12345")).toBeInTheDocument();
+    expect(within(dialog).getByText("info@nokhba.om")).toBeInTheDocument();
 
     await user.click(within(dialog).getByRole("button", { name: "تعديل البيانات" }));
     expect(await screen.findByRole("dialog", { name: "تعديل المورد" })).toBeInTheDocument();
     const name = screen.getByLabelText(/اسم المورد/);
     await user.clear(name);
     await user.type(name, "المورد المعدل");
+    const crn = screen.getByLabelText(/رقم السجل التجاري/);
+    await user.clear(crn);
+    await user.type(crn, "CR-99999");
+    const email = screen.getByLabelText(/البريد الإلكتروني/);
+    await user.clear(email);
+    await user.type(email, "updated@nokhba.om");
     await user.click(screen.getByRole("button", { name: "حفظ التعديلات" }));
 
     await waitFor(() => expect(controls.calls.updateSupplier).toHaveBeenCalledWith(
       "supplier-internal-id",
-      expect.objectContaining({ name: "المورد المعدل", idempotencyKey: expect.any(String) }),
+      expect.objectContaining({
+        name: "المورد المعدل",
+        commercialRegistrationNumber: "CR-99999",
+        email: "updated@nokhba.om",
+        idempotencyKey: expect.any(String),
+      }),
     ));
   });
 
