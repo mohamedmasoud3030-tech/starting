@@ -25,7 +25,7 @@ describe("SuppliersArea", () => {
     pending.resolve(controls.suppliers);
 
     expect(await screen.findByText("مؤسسة النخبة للضيافة")).toBeInTheDocument();
-    expect(screen.getAllByText("تموين وضيافة").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("مطعم / تموين وضيافة").length).toBeGreaterThan(0);
     expect(screen.getByText("الطلبات المفتوحة")).toBeInTheDocument();
     expect(document.body.textContent).not.toContain("supplier-internal-id");
   });
@@ -62,7 +62,7 @@ describe("SuppliersArea", () => {
     expect(screen.getByText("لا توجد نتائج مطابقة")).toBeInTheDocument();
   });
 
-  it("validates and creates a supplier through the adapter", async () => {
+  it("validates and creates a supplier with an idempotent operator intent", async () => {
     const controls = createTestSource();
     const user = userEvent.setup();
     render(<SuppliersArea dataSource={controls.source} access={fullAccess} />);
@@ -72,18 +72,19 @@ describe("SuppliersArea", () => {
     expect(screen.getByText("اختر نوع المورد.")).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/اسم المورد/), "مورد جديد");
-    await user.selectOptions(screen.getByLabelText(/نوع المورد/), "SERVICES");
+    await user.selectOptions(screen.getByLabelText(/نوع المورد/), "GENERAL");
     await user.type(screen.getByLabelText("رقم الهاتف"), "99112233");
     await user.click(screen.getByRole("button", { name: "إضافة المورد" }));
 
     await waitFor(() => expect(controls.calls.createSupplier).toHaveBeenCalledWith(expect.objectContaining({
       name: "مورد جديد",
-      kind: "SERVICES",
+      kind: "GENERAL",
       phone: "99112233",
+      idempotencyKey: expect.any(String),
     })));
   });
 
-  it("loads detail, enters edit state, and saves changed data", async () => {
+  it("loads detail, enters edit state, and saves changed data with a request key", async () => {
     const controls = createTestSource();
     const user = userEvent.setup();
     render(<SuppliersArea dataSource={controls.source} access={fullAccess} />);
@@ -100,11 +101,11 @@ describe("SuppliersArea", () => {
 
     await waitFor(() => expect(controls.calls.updateSupplier).toHaveBeenCalledWith(
       "supplier-internal-id",
-      expect.objectContaining({ name: "المورد المعدل" }),
+      expect.objectContaining({ name: "المورد المعدل", idempotencyKey: expect.any(String) }),
     ));
   });
 
-  it("requires explicit confirmation before deactivation", async () => {
+  it("requires explicit confirmation before deactivation and supplies a stable key", async () => {
     const controls = createTestSource();
     const user = userEvent.setup();
     render(<SuppliersArea dataSource={controls.source} access={fullAccess} />);
@@ -114,5 +115,9 @@ describe("SuppliersArea", () => {
     expect(controls.suppliers[0]?.status).toBe("ACTIVE");
     await user.click(screen.getByRole("button", { name: "نعم، أوقف المورد" }));
     await waitFor(() => expect(controls.suppliers[0]?.status).toBe("INACTIVE"));
+    expect(controls.calls.deactivateSupplier).toHaveBeenCalledWith(
+      "supplier-internal-id",
+      expect.any(String),
+    );
   });
 });
