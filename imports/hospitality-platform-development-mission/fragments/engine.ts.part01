@@ -1,0 +1,450 @@
+import { useSyncExternalStore } from "react";
+import {
+  ALLOWED_TRANSITIONS,
+  CANCELLABLE_STATUSES,
+  canAssignStaffFor,
+  canCancelEventsFor,
+  canManageCommercialFor,
+  canManageEquipmentCapacityFor,
+  canManageStaffDirectoryFor,
+  canReadCostFor,
+  canReserveEquipmentFor,
+  canWriteCustomersFor,
+  canWriteEventsFor,
+  type AppRole,
+  type CatalogItemType,
+  type CompensationMethod,
+  type CustomerType,
+  type EventStatus,
+  type EventType,
+  type PricingMethod,
+  type StaffType,
+} from "@/lib/domain";
+import { DomainError } from "@/lib/errors";
+import { addOMR, parseQuantityMilli, subtractOMR, type MilliOMR } from "@/lib/money";
+import {
+  formatMuscatRange,
+  formatMuscatTime,
+  muscatYear,
+  nowIso,
+  rangesOverlap,
+  shiftMinutes,
+} from "@/lib/time";
+import { calculateCompensation, calculateLineTotal } from "./pricingMath";
+import { createSeedState, ORG_RAYAN, PROFILE_OWNER } from "./seed";
+import type {
+  Actor,
+  AppState,
+  CatalogItem,
+  Customer,
+  CustomerQuoteView,
+  EquipmentAvailability,
+  EventPricingLine,
+  EventReadiness,
+  EventRecord,
+  PackageTemplate,
+  Quotation,
+  StaffAvailability,
+  StaffMember,
+} from "./types";
+
+const STORAGE_KEY = "hospitality-ops-v4";
+const SESSION_KEY = "hospitality-ops-session-v1";
+
+function uid(prefix: string): string {
+  return `${prefix}-${crypto.randomUUID()}`;
+}
+
+function cloneState(state: AppState): AppState {
+  return structuredClone(state);
+}
+
+function loadState(): AppState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return createSeedState();
+    const parsed = JSON.parse(raw) as AppState;
+    if (parsed.version !== 4) return createSeedState();
+    return parsed;
+  } catch {
+    return createSeedState();
+  }
+}
+
+let state: AppState = loadState();
+const listeners = new Set<() => void>();
+
+function persist() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    /* quota — keep in-memory */
+  }
+}
+
+function emit() {
+  persist();
+  listeners.forEach((l) => l());
+}
+
+export function getState(): AppState {
+  return state;
+}
+
+export function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function useEngine(): AppState {
+  return useSyncExternalStore(subscribe, getState, getState);
+}
+
+export function resetWorkspace(): void {
+  state = createSeedState();
+  emit();
+}
+
+export interface Session {
+  profileId: string;
+  organizationId: string;
+  role: AppRole;
+  fullName: string;
+}
+
+export function loadSession(): Session | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as Session;
+  } catch {
+    return null;
+  }
+}
+
+export function saveSession(session: Session): void {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+export function clearSession(): void {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+export function loginAs(role: AppRole, fullName: string): Session {
+  const session: Session = {
+    profileId: PROFILE_OWNER,
+    organizationId: ORG_RAYAN,
+    role,
+    fullName: fullName.trim() || "محمد بن سالم الرياني",
+  };
+  const next = cloneState(state);
+  const profile = next.profiles.find((p) => p.id === PROFILE_OWNER);
+  if (profile) profile.fullName = session.fullName;
+  const membership = next.memberships.find(
+    (m) => m.profileId === PROFILE_OWNER && m.organizationId === ORG_RAYAN,
+  );
+  if (membership) membership.role = role;
+  state = next;
+  emit();
+  saveSession(session);
+  return session;
+}
+
+function actorOf(session: Session): Actor {
+  return {
+    profileId: session.profileId,
+    organizationId: session.organizationId,
+    role: session.role,
+  };
+}
+
+function requireActor(session: Session | null): Actor {
+  if (!session) throw new DomainError("UNAUTHORIZED", "يجب تسجيل الدخول أولاً");
+  return actorOf(session);
+}
+
+function assertOrgActive(s: AppState, orgId: string) {
+  const org = s.organizations.find((o) => o.id === orgId);
+  if (!org) throw new DomainError("NOT_FOUND", "المنظمة غير موجودة");
+  if (!org.isActive) throw new DomainError("INACTIVE_ORGANIZATION");
+}
+
+function assertMembership(s: AppState, actor: Actor) {
+  assertOrgActive(s, actor.organizationId);
+  const mem = s.memberships.find(
+    (m) =>
+      m.profileId === actor.profileId &&
+      m.organizationId === actor.organizationId,
+  );
+  if (!mem || !mem.isActive) throw new DomainError("INACTIVE_MEMBERSHIP");
+}
+
+function scoped<T extends { organizationId: string }>(
+  rows: T[],
+  orgId: string,
+): T[] {
+  return rows.filter((r) => r.organizationId === orgId);
+}
+
+function requireEvent(s: AppState, actor: Actor, eventId: string): EventRecord {
+  const event = s.events.find((e) => e.id === eventId);
+  if (!event) throw new DomainError("NOT_FOUND", "المناسبة غير موجودة");
+  if (event.organizationId !== actor.organizationId) {
+    throw new DomainError("CROSS_ORG");
+  }
+  return event;
+}
+
+function audit(
+  s: AppState,
+  actor: Actor,
+  action: string,
+  entityType: string,
+  entityId: string,
+  meta: Record<string, unknown> = {},
+) {
+  s.auditEvents.unshift({
+    id: uid("aud"),
+    organizationId: actor.organizationId,
+    actorId: actor.profileId,
+    action,
+    entityType,
+    entityId,
+    createdAt: nowIso(),
+    meta,
+  });
+}
+
+function nextSequence(
+  s: AppState,
+  orgId: string,
+  kind: "event" | "quotation",
+  year: number,
+): number {
+  let seq = s.sequences.find(
+    (x) => x.organizationId === orgId && x.kind === kind && x.year === year,
+  );
+  if (!seq) {
+    seq = { organizationId: orgId, kind, year, lastValue: 0 };
+    s.sequences.push(seq);
+  }
+  seq.lastValue += 1;
+  return seq.lastValue;
+}
+
+function pad(n: number): string {
+  return String(n).padStart(5, "0");
+}
+
+function recostLine(
+  line: EventPricingLine,
+  guestCount: number,
+): EventPricingLine {
+  return {
+    ...line,
+    sellingTotalMilli: calculateLineTotal(
+      line.pricingMethod,
+      line.unitSellingPriceMilli,
+      line.quantityMilli,
+      guestCount,
+    ),
+    expectedCostTotalMilli: calculateLineTotal(
+      line.pricingMethod,
+      line.unitExpectedCostMilli,
+      line.quantityMilli,
+      guestCount,
+    ),
+  };
+}
+
+function workingTotals(lines: EventPricingLine[]): {
+  selling: MilliOMR;
+  cost: MilliOMR;
+  profit: MilliOMR;
+} {
+  const selling = addOMR(...lines.map((l) => l.sellingTotalMilli), 0);
+  const cost = addOMR(...lines.map((l) => l.expectedCostTotalMilli), 0);
+  return { selling, cost, profit: subtractOMR(selling, cost) };
+}
+
+function assertPricingEditable(event: EventRecord) {
+  if (event.status === "CLOSED") throw new DomainError("EVENT_CLOSED");
+  if (event.status === "CANCELLED") throw new DomainError("EVENT_CANCELLED");
+  if (event.acceptedQuotationId) throw new DomainError("PRICING_LOCKED");
+  if (
+    event.status !== "DRAFT" &&
+    event.status !== "QUOTED"
+  ) {
+    throw new DomainError("EVENT_NOT_EDITABLE");
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Queries                                                                     */
+/* -------------------------------------------------------------------------- */
+
+export function selectOrg<T extends { organizationId: string }>(
+  rows: T[],
+  orgId: string,
+): T[] {
+  return scoped(rows, orgId);
+}
+
+export function findCustomer(s: AppState, orgId: string, id: string) {
+  return scoped(s.customers, orgId).find((c) => c.id === id) ?? null;
+}
+
+export function visibleCatalogItems(s: AppState, actor: Actor): CatalogItem[] {
+  const items = scoped(s.catalogItems, actor.organizationId);
+  if (canReadCostFor(actor.role)) return items;
+  return items.map((item) => ({
+    ...item,
+    costPriceMilli: 0,
+    internalNotes: "",
+  }));
+}
+
+export function eventTotals(s: AppState, eventId: string) {
+  const lines = s.pricingLines.filter((l) => l.eventId === eventId);
+  return workingTotals(lines);
+}
+
+export function getStaffAvailability(
+  s: AppState,
+  actor: Actor,
+  staffMemberId: string,
+  startIso: string,
+  endIso: string,
+  ignoreAssignmentId?: string,
+): StaffAvailability {
+  const staff = scoped(s.staffMembers, actor.organizationId).find(
+    (x) => x.id === staffMemberId,
+  );
+  if (!staff) {
+    return {
+      staffMemberId,
+      available: false,
+      reason: "الموظف غير موجود",
+      conflictingEventNumber: null,
+      conflictingFrom: null,
+      conflictingUntil: null,
+    };
+  }
+  if (!staff.isActive) {
+    return {
+      staffMemberId,
+      available: false,
+      reason: "الموظف غير نشط",
+      conflictingEventNumber: null,
+      conflictingFrom: null,
+      conflictingUntil: null,
+    };
+  }
+  const conflict = s.staffAssignments.find((a) => {
+    if (a.staffMemberId !== staffMemberId) return false;
+    if (a.status !== "ASSIGNED") return false;
+    if (ignoreAssignmentId && a.id === ignoreAssignmentId) return false;
+    if (a.organizationId !== actor.organizationId) return false;
+    const from = shiftMinutes(a.scheduledStart, -a.bufferBeforeMinutes);
+    const until = shiftMinutes(a.scheduledEnd, a.bufferAfterMinutes);
+    return rangesOverlap(startIso, endIso, from, until);
+  });
+  if (!conflict) {
+    return {
+      staffMemberId,
+      available: true,
+      reason: null,
+      conflictingEventNumber: null,
+      conflictingFrom: null,
+      conflictingUntil: null,
+    };
+  }
+  const other = s.events.find((e) => e.id === conflict.eventId);
+  return {
+    staffMemberId,
+    available: false,
+    reason: `مرتبط بمناسبة أخرى من ${formatMuscatTime(conflict.scheduledStart)} إلى ${formatMuscatTime(conflict.scheduledEnd)}`,
+    conflictingEventNumber: other?.eventNumber ?? null,
+    conflictingFrom: conflict.scheduledStart,
+    conflictingUntil: conflict.scheduledEnd,
+  };
+}
+
+export function getEquipmentAvailability(
+  s: AppState,
+  actor: Actor,
+  catalogItemId: string,
+  fromIso: string,
+  untilIso: string,
+  requested: number,
+  ignoreReservationId?: string,
+): EquipmentAvailability {
+  const item = scoped(s.catalogItems, actor.organizationId).find(
+    (i) => i.id === catalogItemId,
+  );
+  const stock = scoped(s.equipmentStock, actor.organizationId).find(
+    (e) => e.catalogItemId === catalogItemId,
+  );
+  const total = stock?.totalQuantity ?? 0;
+  const reserved = s.equipmentReservations
+    .filter((r) => {
+      if (r.catalogItemId !== catalogItemId) return false;
+      if (r.status !== "ACTIVE") return false;
+      if (r.organizationId !== actor.organizationId) return false;
+      if (ignoreReservationId && r.id === ignoreReservationId) return false;
+      return rangesOverlap(fromIso, untilIso, r.reservedFrom, r.reservedUntil);
+    })
+    .reduce((sum, r) => sum + r.quantity, 0);
+  const available = Math.max(0, total - reserved);
+  const shortage = Math.max(0, requested - available);
+  return {
+    catalogItemId,
+    nameAr: item?.nameAr ?? "معدة",
+    totalQuantity: total,
+    alreadyReserved: reserved,
+    available,
+    requested,
+    shortage,
+  };
+}
+
+export function getEventReadiness(
+  s: AppState,
+  actor: Actor,
+  eventId: string,
+): EventReadiness {
+  const event = requireEvent(s, actor, eventId);
+  const issues: EventReadiness["issues"] = [];
+
+  if (!event.acceptedQuotationId) {
+    issues.push({
+      code: "PRICING_MISSING",
+      message: "ينقص عرض سعر مقبول",
+    });
+  }
+
+  const assignments = s.staffAssignments.filter(
+    (a) => a.eventId === eventId && a.status === "ASSIGNED",
+  );
+  if (
+    event.status === "CONFIRMED" ||
+    event.status === "PREPARING" ||
+    event.status === "DISPATCHED" ||
+    event.status === "IN_PROGRESS"
+  ) {
+    if (assignments.length === 0) {
+      issues.push({ code: "STAFF_MISSING", message: "لم يُسند أي موظف بعد" });
+    }
+  }
+
+  for (const a of assignments) {
+    const avail = getStaffAvailability(
+      s,
+      actor,
+      a.staffMemberId,
+      shiftMinutes(a.scheduledStart, -a.bufferBeforeMinutes),
+      shiftMinutes(a.scheduledEnd, a.bufferAfterMinutes),
+      a.id,
+    );
+    if (!avail.available) {
+      const staff = s.staffMembers.find((x) => x.id === a.staffMemberId);
