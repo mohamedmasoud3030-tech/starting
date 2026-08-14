@@ -14,8 +14,8 @@ import {
 import type {
   CatalogItemType,
   PricingMethod,
-} from "@/lib/database.types";
-import type { CatalogCategoryRow } from "@/lib/database.types";
+} from "@/lib/dbTypes";
+import type { CatalogCategoryRow } from "@/lib/dbTypes";
 import { fromDbAmount } from "@/lib/money";
 import { validateCatalogItem } from "./catalogForm";
 import {

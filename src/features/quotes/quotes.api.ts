@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import type { CatalogItemType, PricingMethod } from "@/lib/database.types";
+import type { CatalogItemType, PricingMethod } from "@/lib/dbTypes";
 
 /**
  * Untyped client on purpose: this feature's tables/functions were added in

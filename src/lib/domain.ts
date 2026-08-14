@@ -3,7 +3,7 @@ import type {
   CatalogItemType,
   CustomerType,
   PricingMethod,
-} from "./database.types";
+} from "./dbTypes";
 
 /** Arabic labels for catalog item types. */
 export const ITEM_TYPE_LABELS: Record<CatalogItemType, string> = {

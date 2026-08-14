@@ -10,6 +10,7 @@ import {
   parseOMR,
   parseQuantityMilli,
   toDbAmount,
+  toDbNumeric,
   toOMRString,
 } from "./money";
 
@@ -51,6 +52,44 @@ describe("money — OMR 3-decimal handling", () => {
     expect(toDbAmount(12345)).toBe("12.345");
     expect(fromDbAmount("2.500")).toBe(2500);
     expect(fromDbAmount(null)).toBe(0);
+  });
+
+  it("normalizes the PostgREST numeric transport shape into exact milli-OMR", () => {
+    // `numeric(12,3)` is transported as a JSON number; it must become the
+    // exact same integer as the equivalent decimal string.
+    expect(fromDbAmount(2.5)).toBe(2500);
+    expect(fromDbAmount("2.500")).toBe(2500);
+    expect(fromDbAmount(3)).toBe(3000);
+    expect(fromDbAmount(0)).toBe(0);
+    expect(fromDbAmount(-1.25)).toBe(-1250);
+    expect(fromDbAmount(undefined)).toBe(0);
+  });
+
+  it("does not lose a milli-unit to float error on numeric transport", () => {
+    // 2.435 * 1000 === 2434.9999999999995 in IEEE-754. Normalization must not
+    // truncate to 2434.
+    expect(fromDbAmount(2.435)).toBe(2435);
+    expect(fromDbAmount(1.005)).toBe(1005);
+    expect(fromDbAmount(8.115)).toBe(8115);
+    expect(parseQuantityMilli(2.435)).toBe(2435);
+    expect(parseQuantityMilli(1.005)).toBe(1005);
+  });
+
+  it("round-trips every 3-decimal value through the numeric write shape", () => {
+    for (const millis of [0, 1, 999, 1005, 2435, 8115, 12345, -12345, 999_999]) {
+      expect(fromDbAmount(toDbNumeric(millis))).toBe(millis);
+    }
+    expect(toDbNumeric(12345)).toBe(12.345);
+    expect(toDbNumeric(0)).toBe(0);
+  });
+
+  it("rejects a numeric transport value outside the persisted domain", () => {
+    // Exponential notation cannot occur inside numeric(12,3).
+    expect(() => fromDbAmount(1e21)).toThrow(MoneyError);
+    expect(() => fromDbAmount(Number.NaN)).toThrow(MoneyError);
+    expect(() => fromDbAmount(Number.POSITIVE_INFINITY)).toThrow(MoneyError);
+    // More than 3 decimals is not a representable persisted amount.
+    expect(() => fromDbAmount(1.2345)).toThrow(MoneyError);
   });
 
   it("formats for display with the OMR symbol", () => {

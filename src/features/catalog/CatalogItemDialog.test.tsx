@@ -34,12 +34,12 @@ const itemA: CatalogListItem = {
   item_type: "SERVICE",
   unit: "ضيف",
   pricing_method: "PER_GUEST",
-  selling_price: "3.000",
+  selling_price: 3,
   status: "ACTIVE",
   sort_order: 0,
   created_at: "",
   updated_at: "",
-  cost_price: "1.500",
+  cost_price: 1.5,
   internal_notes: null,
 };
 
@@ -47,8 +47,8 @@ const itemB: CatalogListItem = {
   ...itemA,
   id: "b",
   name: "تمر",
-  selling_price: "5.000",
-  cost_price: "2.500",
+  selling_price: 5,
+  cost_price: 2.5,
 };
 
 function renderDialog(item: CatalogListItem | null) {
@@ -114,8 +114,10 @@ describe("CatalogItemDialog — money value synchronization", () => {
     const user = userEvent.setup();
     renderDialog(itemB);
     await user.click(screen.getByRole("button", { name: "حفظ" }));
+    // Money is written in the `numeric(12,3)` transport shape the generated
+    // types declare (a JSON number), produced losslessly from milli-OMR.
     expect(updateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ cost_price: "2.500", selling_price: "5.000" }),
+      expect.objectContaining({ cost_price: 2.5, selling_price: 5 }),
     );
   });
 });

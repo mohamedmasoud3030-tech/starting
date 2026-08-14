@@ -13,8 +13,15 @@ import { Textarea } from "@/components/ui/Textarea";
 import { usePackages } from "@/features/packages/packages.api";
 import { useCatalogItems } from "@/features/catalog/catalog.api";
 import { ITEM_TYPE_LABELS, PRICING_METHOD_LABELS } from "@/lib/domain";
-import type { CatalogItemType, PricingMethod } from "@/lib/database.types";
-import { formatOMR, parseOMR, parseQuantityMilli, type MilliOMR } from "@/lib/money";
+import type { CatalogItemType, PricingMethod } from "@/lib/dbTypes";
+import {
+  formatOMR,
+  fromDbAmount,
+  parseOMR,
+  parseQuantityMilli,
+  toOMRString,
+  type MilliOMR,
+} from "@/lib/money";
 import {
   arabicQuickQuoteError,
   useCreateQuickQuote,
@@ -244,8 +251,12 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
         itemType: item.item_type,
         unit: item.unit,
         pricingMethod: item.pricing_method,
-        quantity: l.quantity,
-        unitSellingPrice: item.selling_price ?? "0.000",
+        // `DraftLine` holds editable decimal TEXT. The package line quantity
+        // and catalog selling price arrive in the database numeric transport
+        // shape, so they are normalized through exact milli-OMR before being
+        // rendered as text — never via float formatting.
+        quantity: toOMRString(fromDbAmount(l.quantity)),
+        unitSellingPrice: toOMRString(fromDbAmount(item.selling_price)),
         isCustom: false,
       };
     });

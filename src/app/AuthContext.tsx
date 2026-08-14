@@ -14,7 +14,7 @@ import type {
   MembershipRow,
   OrganizationRow,
   ProfileRow,
-} from "@/lib/database.types";
+} from "@/lib/dbTypes";
 import {
   canManageCommercialFor,
   canReadCostFor,

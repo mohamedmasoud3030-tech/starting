@@ -1,4 +1,4 @@
-import type { AppRole } from "@/lib/database.types";
+import type { AppRole } from "@/lib/dbTypes";
 import {
   COMMERCIAL_ROLES,
   COST_READER_ROLES,

@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
 import { CUSTOMER_TYPE_LABELS } from "@/lib/domain";
-import type { CustomerRow, CustomerType } from "@/lib/database.types";
+import type { CustomerRow, CustomerType } from "@/lib/dbTypes";
 import {
   type CustomerFormValues,
   useCustomers,
