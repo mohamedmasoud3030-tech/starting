@@ -36,7 +36,10 @@ export function validateSupplierDraft(draft: SupplierFormDraft): SupplierFormErr
   return errors;
 }
 
-export function supplierDraftToInput(draft: SupplierFormDraft): SupplierInput {
+export function supplierDraftToInput(
+  draft: SupplierFormDraft,
+  idempotencyKey: string,
+): SupplierInput {
   if (!draft.kind) throw new Error("Supplier kind must be validated first");
   return {
     name: draft.name.trim(),
@@ -44,11 +47,13 @@ export function supplierDraftToInput(draft: SupplierFormDraft): SupplierInput {
     phone: draft.phone.trim() || null,
     contactName: draft.contactName.trim() || null,
     notes: draft.notes.trim() || null,
+    idempotencyKey,
   };
 }
 
 export interface OrderLineDraft {
   key: number;
+  catalogItemId: string;
   description: string;
   kind: ProcurementLineKind;
   unit: string;
@@ -59,6 +64,7 @@ export interface OrderLineDraft {
 export interface OrderFormDraft {
   supplierId: string;
   eventId: string;
+  orderDate: string;
   deliveryDueLocal: string;
   notes: string;
   lines: OrderLineDraft[];
@@ -66,9 +72,11 @@ export interface OrderFormDraft {
 
 export interface OrderFormErrors {
   supplierId?: string;
+  orderDate?: string;
   deliveryDueLocal?: string;
   lines?: string;
   lineErrors: Record<number, {
+    catalogItemId?: string;
     description?: string;
     unit?: string;
     quantity?: string;
@@ -98,11 +106,11 @@ export function parsePositiveQuantity(text: string): PositiveQuantityResult {
 }
 
 export type OMRInputResult =
-  | { ok: true; milli: MilliOMR | null }
+  | { ok: true; milli: MilliOMR }
   | { ok: false; message: string };
 
-export function parseOptionalNonNegativeOMR(text: string): OMRInputResult {
-  if (!text.trim()) return { ok: true, milli: null };
+export function parseRequiredNonNegativeOMR(text: string): OMRInputResult {
+  if (!text.trim()) return { ok: false, message: "أدخل سعر الوحدة المتفق عليه." };
   try {
     const milli = parseOMR(text);
     if (milli < 0) return { ok: false, message: "المبلغ لا يمكن أن يكون سالباً." };
@@ -117,24 +125,33 @@ export function parseOptionalNonNegativeOMR(text: string): OMRInputResult {
 
 function validLocalDateTime(value: string): boolean {
   if (!value.trim()) return false;
-  return !Number.isNaN(new Date(value).getTime());
+  return !Number.isNaN(new Date(`${value}:00+04:00`).getTime());
+}
+
+function validDateOnly(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime());
 }
 
 export function validateOrderDraft(draft: OrderFormDraft): OrderFormErrors {
   const errors: OrderFormErrors = { lineErrors: {} };
   if (!draft.supplierId) errors.supplierId = "اختر المورد.";
-  if (!validLocalDateTime(draft.deliveryDueLocal)) {
-    errors.deliveryDueLocal = "حدد تاريخ ووقت التوريد.";
+  if (!validDateOnly(draft.orderDate)) errors.orderDate = "حدد تاريخ الطلب.";
+  if (draft.deliveryDueLocal && !validLocalDateTime(draft.deliveryDueLocal)) {
+    errors.deliveryDueLocal = "أدخل تاريخ ووقت توريد صحيحين.";
   }
   if (draft.lines.length === 0) errors.lines = "أضف بنداً واحداً على الأقل.";
 
   for (const line of draft.lines) {
     const lineError: OrderFormErrors["lineErrors"][number] = {};
-    if (!line.description.trim()) lineError.description = "وصف البند مطلوب.";
-    if (!line.unit.trim()) lineError.unit = "الوحدة مطلوبة.";
+    if (line.kind === "CONSUMABLE") {
+      if (!line.catalogItemId) lineError.catalogItemId = "اختر صنف مخزون معتمداً.";
+    } else {
+      if (!line.description.trim()) lineError.description = "وصف البند مطلوب.";
+      if (!line.unit.trim()) lineError.unit = "الوحدة مطلوبة.";
+    }
     const quantity = parsePositiveQuantity(line.quantityText);
     if (!quantity.ok) lineError.quantity = quantity.message;
-    const cost = parseOptionalNonNegativeOMR(line.unitCostText);
+    const cost = parseRequiredNonNegativeOMR(line.unitCostText);
     if (!cost.ok) lineError.unitCost = cost.message;
     if (Object.keys(lineError).length > 0) errors.lineErrors[line.key] = lineError;
   }
@@ -144,23 +161,32 @@ export function validateOrderDraft(draft: OrderFormDraft): OrderFormErrors {
 export function hasOrderErrors(errors: OrderFormErrors): boolean {
   return Boolean(
     errors.supplierId ||
+      errors.orderDate ||
       errors.deliveryDueLocal ||
       errors.lines ||
       Object.keys(errors.lineErrors).length,
   );
 }
 
-export function orderDraftToInput(draft: OrderFormDraft): CreateProcurementOrderInput {
+export function orderDraftToInput(
+  draft: OrderFormDraft,
+  idempotencyKey: string,
+): CreateProcurementOrderInput {
   return {
     supplierId: draft.supplierId,
     eventId: draft.eventId || null,
-    deliveryDueAt: new Date(draft.deliveryDueLocal).toISOString(),
+    orderDate: draft.orderDate,
+    deliveryDueAt: draft.deliveryDueLocal
+      ? new Date(`${draft.deliveryDueLocal}:00+04:00`).toISOString()
+      : null,
     notes: draft.notes.trim() || null,
+    idempotencyKey,
     lines: draft.lines.map((line) => {
       const quantity = parsePositiveQuantity(line.quantityText);
-      const cost = parseOptionalNonNegativeOMR(line.unitCostText);
+      const cost = parseRequiredNonNegativeOMR(line.unitCostText);
       if (!quantity.ok || !cost.ok) throw new Error("Order draft must be validated first");
       return {
+        catalogItemId: line.kind === "CONSUMABLE" ? line.catalogItemId : null,
         description: line.description.trim(),
         kind: line.kind,
         unit: line.unit.trim(),
@@ -219,9 +245,9 @@ export function linePreviewTotal(
   unitCostText: string,
   quantityText: string,
 ): MilliOMR | null {
-  const cost = parseOptionalNonNegativeOMR(unitCostText);
+  const cost = parseRequiredNonNegativeOMR(unitCostText);
   const quantity = parsePositiveQuantity(quantityText);
-  if (!cost.ok || cost.milli === null || !quantity.ok) return null;
+  if (!cost.ok || !quantity.ok) return null;
   try {
     return multiplyOMR(cost.milli, quantity.milli);
   } catch {
