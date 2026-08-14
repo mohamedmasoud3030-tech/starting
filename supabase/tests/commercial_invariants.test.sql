@@ -8,11 +8,11 @@ select plan(15);
 
 insert into auth.users
   (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
-   created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin, confirmed_at)
+   created_at, updated_at, raw_app_meta_data, raw_user_meta_data, is_super_admin)
 values
-  ('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'owner_a@test.local', 'x', now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}', false, now()),
-  ('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'supervisor_a@test.local', 'x', now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}', false, now()),
-  ('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000010', 'authenticated', 'authenticated', 'new_owner@test.local', 'x', now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}', false, now());
+  ('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'owner_a@test.local', 'x', now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}', false),
+  ('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'supervisor_a@test.local', 'x', now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}', false),
+  ('00000000-0000-0000-0000-000000000000', '00000000-0000-0000-0000-000000000010', 'authenticated', 'authenticated', 'new_owner@test.local', 'x', now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}', false);
 
 insert into public.organizations (id, name) values
   ('00000000-0000-0000-0000-0000000000a1', 'Org A');

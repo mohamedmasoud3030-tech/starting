@@ -5,10 +5,10 @@ select plan(10);
 insert into auth.users
   (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
    created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
-   is_super_admin, confirmed_at)
+   is_super_admin)
 values
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'qq-owner@test.local', 'x', now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}', false, now()),
-  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'qq-supervisor@test.local', 'x', now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}', false, now());
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'qq-owner@test.local', 'x', now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}', false),
+  ('00000000-0000-0000-0000-000000000000', '10000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'qq-supervisor@test.local', 'x', now(), now(), now(), '{"provider":"email","providers":["email"]}', '{}', false);
 
 insert into public.organizations (id,name,is_active)
 values ('10000000-0000-0000-0000-0000000000a1','Quick Quote Hardening Org',true);

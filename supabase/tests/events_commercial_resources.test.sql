@@ -2,10 +2,10 @@
 begin;
 select plan(35);
 
-insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at,raw_app_meta_data,raw_user_meta_data,is_super_admin,confirmed_at) values
-('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000001','authenticated','authenticated','s123-owner-a@test.local','x',now(),now(),now(),'{"provider":"email","providers":["email"]}','{}',false,now()),
-('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000002','authenticated','authenticated','s123-super-a@test.local','x',now(),now(),now(),'{"provider":"email","providers":["email"]}','{}',false,now()),
-('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000003','authenticated','authenticated','s123-owner-b@test.local','x',now(),now(),now(),'{"provider":"email","providers":["email"]}','{}',false,now());
+insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at,raw_app_meta_data,raw_user_meta_data,is_super_admin) values
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000001','authenticated','authenticated','s123-owner-a@test.local','x',now(),now(),now(),'{"provider":"email","providers":["email"]}','{}',false),
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000002','authenticated','authenticated','s123-super-a@test.local','x',now(),now(),now(),'{"provider":"email","providers":["email"]}','{}',false),
+('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000003','authenticated','authenticated','s123-owner-b@test.local','x',now(),now(),now(),'{"provider":"email","providers":["email"]}','{}',false);
 insert into public.organizations(id,name) values('10000000-0000-0000-0000-0000000000a1','S123 A'),('10000000-0000-0000-0000-0000000000b1','S123 B');
 insert into public.organization_memberships(organization_id,user_id,role) values
 ('10000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-000000000001','OWNER'),
