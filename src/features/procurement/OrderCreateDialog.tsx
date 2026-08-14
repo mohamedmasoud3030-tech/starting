@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { formatOMR } from "@/lib/money";
 import type {
   ProcurementAccess,
+  ProcurementConsumableOption,
   ProcurementDataSource,
   ProcurementEventOption,
   ProcurementLineKind,
@@ -31,12 +32,26 @@ function newLine(): OrderLineDraft {
   draftLineSequence += 1;
   return {
     key: draftLineSequence,
+    catalogItemId: "",
     description: "",
     kind: "CONSUMABLE",
-    unit: "قطعة",
+    unit: "",
     quantityText: "1",
     unitCostText: "",
   };
+}
+
+function todayInMuscat(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Muscat",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function newIdempotencyKey(): string {
+  return globalThis.crypto.randomUUID();
 }
 
 interface OrderCreateDialogProps {
@@ -44,6 +59,7 @@ interface OrderCreateDialogProps {
   dataSource: ProcurementDataSource;
   access: ProcurementAccess;
   suppliers: SupplierListItem[];
+  consumables: ProcurementConsumableOption[];
   events: ProcurementEventOption[];
   onOpenChange: (open: boolean) => void;
   onCreated: (order: ProcurementOrderDetail) => void;
@@ -54,6 +70,7 @@ export function OrderCreateDialog({
   dataSource,
   access,
   suppliers,
+  consumables,
   events,
   onOpenChange,
   onCreated,
@@ -61,6 +78,7 @@ export function OrderCreateDialog({
   const [draft, setDraft] = useState<OrderFormDraft>(() => ({
     supplierId: "",
     eventId: "",
+    orderDate: todayInMuscat(),
     deliveryDueLocal: "",
     notes: "",
     lines: [newLine()],
@@ -68,18 +86,26 @@ export function OrderCreateDialog({
   const [errors, setErrors] = useState(() => validateOrderDraft({
     supplierId: "supplier-placeholder",
     eventId: "",
-    deliveryDueLocal: "2026-01-01T10:00",
+    orderDate: "2026-01-01",
+    deliveryDueLocal: "",
     notes: "",
-    lines: [{ ...newLine(), description: "بند", unit: "قطعة" }],
+    lines: [{ ...newLine(), kind: "OTHER", description: "بند", unit: "قطعة", unitCostText: "0" }],
   }));
   const [busy, setBusy] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
+
+  function rotateIntentKey() {
+    setIdempotencyKey(newIdempotencyKey());
+  }
 
   function update(patch: Partial<OrderFormDraft>) {
+    rotateIntentKey();
     setDraft((current) => ({ ...current, ...patch }));
   }
 
   function updateLine(key: number, patch: Partial<OrderLineDraft>) {
+    rotateIntentKey();
     setDraft((current) => ({
       ...current,
       lines: current.lines.map((line) => line.key === key ? { ...line, ...patch } : line),
@@ -87,10 +113,12 @@ export function OrderCreateDialog({
   }
 
   function addLine() {
+    rotateIntentKey();
     setDraft((current) => ({ ...current, lines: [...current.lines, newLine()] }));
   }
 
   function removeLine(key: number) {
+    rotateIntentKey();
     setDraft((current) => ({ ...current, lines: current.lines.filter((line) => line.key !== key) }));
   }
 
@@ -102,10 +130,11 @@ export function OrderCreateDialog({
     setBusy(true);
     setSubmitError("");
     try {
-      const created = await dataSource.createOrder(orderDraftToInput(draft));
+      const created = await dataSource.createOrder(orderDraftToInput(draft, idempotencyKey));
       onCreated(created);
       onOpenChange(false);
     } catch (cause) {
+      // The intent key remains unchanged so an ambiguous failure can replay.
       setSubmitError(procurementErrorMessage(cause));
     } finally {
       setBusy(false);
@@ -119,7 +148,7 @@ export function OrderCreateDialog({
       open={open}
       onOpenChange={(next) => !busy && onOpenChange(next)}
       title="طلب توريد جديد"
-      description="أنشئ مسودة واضحة للمورد. الاعتماد يتم في خطوة منفصلة."
+      description="أنشئ مسودة واضحة للمورد. الاعتماد والإرسال والتأكيد خطوات منفصلة."
       className="max-w-3xl"
     >
       {open && (
@@ -145,21 +174,33 @@ export function OrderCreateDialog({
               </Select>
             </Field>
           </div>
-          <Field label="موعد التوريد" htmlFor="order-delivery-due" required error={errors.deliveryDueLocal} hint="التاريخ والوقت المتوقعان لوصول المواد أو الخدمة.">
-            <Input
-              id="order-delivery-due"
-              type="datetime-local"
-              dir="ltr"
-              value={draft.deliveryDueLocal}
-              aria-invalid={Boolean(errors.deliveryDueLocal)}
-              aria-describedby={errors.deliveryDueLocal ? "order-delivery-due-error" : undefined}
-              onChange={(event) => update({ deliveryDueLocal: event.target.value })}
-            />
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="تاريخ الطلب" htmlFor="order-date" required error={errors.orderDate}>
+              <Input
+                id="order-date"
+                type="date"
+                dir="ltr"
+                value={draft.orderDate}
+                aria-invalid={Boolean(errors.orderDate)}
+                onChange={(event) => update({ orderDate: event.target.value })}
+              />
+            </Field>
+            <Field label="موعد التوريد المتوقع (اختياري)" htmlFor="order-delivery-due" error={errors.deliveryDueLocal} hint="بتوقيت سلطنة عمان.">
+              <Input
+                id="order-delivery-due"
+                type="datetime-local"
+                dir="ltr"
+                value={draft.deliveryDueLocal}
+                aria-invalid={Boolean(errors.deliveryDueLocal)}
+                aria-describedby={errors.deliveryDueLocal ? "order-delivery-due-error" : undefined}
+                onChange={(event) => update({ deliveryDueLocal: event.target.value })}
+              />
+            </Field>
+          </div>
 
           <section aria-labelledby="order-lines-heading" className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div><h3 id="order-lines-heading" className="text-lg font-black">الأصناف / البنود</h3><p className="text-sm text-slate-500">الكمية بدقة 3 خانات عشرية كحد أقصى.</p></div>
+              <div><h3 id="order-lines-heading" className="text-lg font-black">الأصناف / البنود</h3><p className="text-sm text-slate-500">الكمية والسعر بدقة 3 خانات عشرية كحد أقصى.</p></div>
               <Button variant="secondary" onClick={addLine}><Plus aria-hidden="true" />إضافة بند</Button>
             </div>
             {draft.lines.map((line, index) => {
@@ -172,22 +213,59 @@ export function OrderCreateDialog({
                     <button type="button" className="flex h-12 w-12 items-center justify-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-700 disabled:opacity-40" aria-label={`حذف البند ${index + 1}`} disabled={draft.lines.length === 1} onClick={() => removeLine(line.key)}><Trash2 aria-hidden="true" /></button>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <Field className="sm:col-span-2" label="وصف البند" htmlFor={`order-line-description-${line.key}`} required error={lineError.description}>
-                      <Input id={`order-line-description-${line.key}`} value={line.description} aria-invalid={Boolean(lineError.description)} aria-describedby={lineError.description ? `order-line-description-${line.key}-error` : undefined} onChange={(event) => updateLine(line.key, { description: event.target.value })} placeholder="مثال: عبوات مياه 330 مل" />
-                    </Field>
-                    <Field label="نوع الاستلام" htmlFor={`order-line-kind-${line.key}`}>
-                      <Select id={`order-line-kind-${line.key}`} value={line.kind} onChange={(event) => updateLine(line.key, { kind: event.target.value as ProcurementLineKind })}>
+                    <Field label="نوع البند" htmlFor={`order-line-kind-${line.key}`}>
+                      <Select
+                        id={`order-line-kind-${line.key}`}
+                        value={line.kind}
+                        onChange={(event) => {
+                          const kind = event.target.value as ProcurementLineKind;
+                          updateLine(line.key, {
+                            kind,
+                            catalogItemId: kind === "CONSUMABLE" ? line.catalogItemId : "",
+                          });
+                        }}
+                      >
                         {(Object.keys(LINE_KIND_LABELS) as ProcurementLineKind[]).map((kind) => <option key={kind} value={kind}>{LINE_KIND_LABELS[kind]}</option>)}
                       </Select>
                     </Field>
-                    <Field label="الوحدة" htmlFor={`order-line-unit-${line.key}`} required error={lineError.unit}>
-                      <Input id={`order-line-unit-${line.key}`} value={line.unit} aria-invalid={Boolean(lineError.unit)} aria-describedby={lineError.unit ? `order-line-unit-${line.key}-error` : undefined} onChange={(event) => updateLine(line.key, { unit: event.target.value })} placeholder="قطعة / كجم / خدمة" />
-                    </Field>
+                    {line.kind === "CONSUMABLE" ? (
+                      <Field label="صنف المخزون" htmlFor={`order-line-catalog-${line.key}`} required error={lineError.catalogItemId}>
+                        <Select
+                          id={`order-line-catalog-${line.key}`}
+                          value={line.catalogItemId}
+                          aria-invalid={Boolean(lineError.catalogItemId)}
+                          onChange={(event) => {
+                            const item = consumables.find((candidate) => candidate.id === event.target.value);
+                            updateLine(line.key, {
+                              catalogItemId: event.target.value,
+                              description: item?.name ?? "",
+                              unit: item?.unit ?? "",
+                            });
+                          }}
+                        >
+                          <option value="">اختر صنفاً متتبَّعاً</option>
+                          {consumables.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.unit}</option>)}
+                        </Select>
+                        {consumables.length === 0 && <p className="mt-1 text-sm font-semibold text-amber-700">لا توجد أصناف استهلاكية مفعّل لها تتبع المخزون.</p>}
+                      </Field>
+                    ) : (
+                      <>
+                        <Field className="sm:col-span-2" label="وصف البند" htmlFor={`order-line-description-${line.key}`} required error={lineError.description}>
+                          <Input id={`order-line-description-${line.key}`} value={line.description} aria-invalid={Boolean(lineError.description)} aria-describedby={lineError.description ? `order-line-description-${line.key}-error` : undefined} onChange={(event) => updateLine(line.key, { description: event.target.value })} placeholder="مثال: وجبات غداء" />
+                        </Field>
+                        <Field label="الوحدة" htmlFor={`order-line-unit-${line.key}`} required error={lineError.unit}>
+                          <Input id={`order-line-unit-${line.key}`} value={line.unit} aria-invalid={Boolean(lineError.unit)} aria-describedby={lineError.unit ? `order-line-unit-${line.key}-error` : undefined} onChange={(event) => updateLine(line.key, { unit: event.target.value })} placeholder="وجبة / خدمة / قطعة" />
+                        </Field>
+                      </>
+                    )}
+                    {line.kind === "CONSUMABLE" && line.catalogItemId && (
+                      <div className="rounded-xl bg-slate-50 p-3 text-sm font-semibold text-slate-600">الوحدة المعتمدة: <strong>{line.unit}</strong></div>
+                    )}
                     <Field label="الكمية" htmlFor={`order-line-quantity-${line.key}`} required error={lineError.quantity}>
                       <Input id={`order-line-quantity-${line.key}`} inputMode="decimal" dir="ltr" value={line.quantityText} aria-invalid={Boolean(lineError.quantity)} aria-describedby={lineError.quantity ? `order-line-quantity-${line.key}-error` : undefined} onChange={(event) => updateLine(line.key, { quantityText: event.target.value })} placeholder="0.000" />
                     </Field>
                     {access.canViewCommercialAmounts && (
-                      <Field label="سعر الوحدة (ر.ع.)" htmlFor={`order-line-cost-${line.key}`} error={lineError.unitCost} hint="اختياري — بدقة 3 خانات عشرية.">
+                      <Field label="سعر الوحدة المتفق عليه (ر.ع.)" htmlFor={`order-line-cost-${line.key}`} required error={lineError.unitCost} hint="بدقة 3 خانات عشرية.">
                         <Input id={`order-line-cost-${line.key}`} inputMode="decimal" dir="ltr" value={line.unitCostText} aria-invalid={Boolean(lineError.unitCost)} aria-describedby={lineError.unitCost ? `order-line-cost-${line.key}-error` : undefined} onChange={(event) => updateLine(line.key, { unitCostText: event.target.value })} placeholder="0.000" />
                       </Field>
                     )}
@@ -205,8 +283,9 @@ export function OrderCreateDialog({
           {submitError && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{submitError}</p>}
           <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
             <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>إلغاء</Button>
-            <Button type="submit" disabled={busy || activeSuppliers.length === 0}>{busy ? "جارٍ إنشاء المسودة…" : "إنشاء المسودة"}</Button>
+            <Button type="submit" disabled={busy || activeSuppliers.length === 0 || !access.canViewCommercialAmounts}>{busy ? "جارٍ إنشاء المسودة…" : "إنشاء المسودة"}</Button>
           </div>
+          {!access.canViewCommercialAmounts && <p className="text-sm font-semibold text-amber-700">إنشاء الطلب التجاري يحتاج صلاحية الاطلاع على التكلفة المتفق عليها.</p>}
         </form>
       )}
     </Dialog>
