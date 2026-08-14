@@ -1,0 +1,313 @@
+import { useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { CheckCircle2, FileCheck2 } from "lucide-react";
+import { useAuth } from "@/app/AuthContext";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Dialog } from "@/components/ui/Dialog";
+import { Field } from "@/components/ui/Field";
+import { Input } from "@/components/ui/Input";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
+import { buildQuickQuoteVoiceSummary } from "@/features/ownerVoice/screenSummary";
+import { formatOMR, fromDbAmount } from "@/lib/money";
+import { PRICING_METHOD_LABELS } from "@/lib/domain";
+import {
+  arabicQuickQuoteError,
+  useAcceptQuickQuote,
+  useConvertQuickQuote,
+  useQuickQuote,
+  useQuickQuoteQuotation,
+  useQuickQuoteQuotationLines,
+} from "./quotes.api";
+
+function isoToLocalInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`;
+}
+
+export function QuoteReviewPage({ quoteId }: { quoteId: string }) {
+  const { currentOrganization, canManageCommercial } = useAuth();
+  const orgId = currentOrganization?.id ?? null;
+  const navigate = useNavigate();
+
+  const quote = useQuickQuote(orgId, quoteId);
+  const quotation = useQuickQuoteQuotation(orgId, quote.data?.quotation_id ?? "");
+  const lines = useQuickQuoteQuotationLines(orgId, quote.data?.quotation_id ?? "");
+
+  const accept = useAcceptQuickQuote(orgId);
+  const convert = useConvertQuickQuote(orgId);
+
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [convertForm, setConvertForm] = useState({
+    startAt: "",
+    endAt: "",
+    venueName: "",
+    guestCount: "",
+    eventTitle: "",
+  });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState("");
+
+  const q = quotation.data;
+
+  function openConvert() {
+    setError("");
+    setConvertForm({
+      startAt: isoToLocalInput(q?.start_at_snapshot),
+      endAt: isoToLocalInput(q?.end_at_snapshot),
+      venueName: q?.venue_snapshot ?? "",
+      guestCount: q?.guest_count_snapshot != null ? String(q.guest_count_snapshot) : "",
+      eventTitle: q?.event_title_snapshot ?? "",
+    });
+    setConvertOpen(true);
+  }
+
+  async function onAccept() {
+    if (!q) return;
+    setError("");
+    setBusy("اعتماد");
+    try {
+      await accept.mutateAsync(q.id);
+    } catch (x) {
+      setError(arabicQuickQuoteError(x));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function onConvert() {
+    if (!q) return;
+    setError("");
+    setBusy("تحويل");
+    try {
+      const event = await convert.mutateAsync({
+        quotationId: q.id,
+        startAt: convertForm.startAt,
+        endAt: convertForm.endAt,
+        venueName: convertForm.venueName,
+        guestCount: convertForm.guestCount.trim() === "" ? undefined : Number(convertForm.guestCount),
+        eventTitle: convertForm.eventTitle,
+      });
+      setConvertOpen(false);
+      await navigate({ to: "/events/$eventId", params: { eventId: event.id } });
+    } catch (x) {
+      setError(arabicQuickQuoteError(x));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  const statusLabel: Record<string, string> = {
+    DRAFT: "مسودة",
+    ISSUED: "صادر",
+    ACCEPTED: "معتمد",
+    CONVERTED: "محوّل لمناسبة",
+  };
+
+  if (quote.isLoading || quotation.isLoading || lines.isLoading) {
+    return <p>جارٍ التحميل…</p>;
+  }
+  if (!q || !quote.data) {
+    return <p>تعذر العثور على عرض السعر.</p>;
+  }
+
+  const voiceSummary = buildQuickQuoteVoiceSummary({
+    totalSellingOmr: q.total_selling,
+    guestCount: q.guest_count_snapshot,
+    status: q.status,
+  });
+
+  return (
+    <div className="space-y-5">
+      <Link to="/quotes" className="font-bold text-brand-700">
+        → العودة إلى عروض الأسعار
+      </Link>
+
+      <PageHeader
+        title="عرض السعر"
+        description={`${q.quotation_number} · مراجعة ${q.revision}`}
+        actions={
+          <>
+            <OwnerVoiceButton summary={voiceSummary} />
+            <Badge
+              tone={
+                quote.data.status === "ACCEPTED"
+                  ? "success"
+                  : quote.data.status === "CONVERTED"
+                    ? "brand"
+                    : "warning"
+              }
+            >
+              {statusLabel[quote.data.status] ?? q.status}
+            </Badge>
+          </>
+        }
+      />
+
+      {error && (
+        <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">
+          {error}
+        </p>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="p-5">
+          <h2 className="font-black">بيانات العميل المتوقع</h2>
+          <dl className="mt-3 space-y-2">
+            <div>
+              <dt className="text-sm text-slate-500">الاسم</dt>
+              <dd className="font-bold">{q.customer_name_snapshot}</dd>
+            </div>
+            {q.customer_phone_snapshot && (
+              <div>
+                <dt className="text-sm text-slate-500">الجوال</dt>
+                <dd dir="ltr" className="text-right font-bold">
+                  {q.customer_phone_snapshot}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </Card>
+
+        <Card className="p-5">
+          <h2 className="font-black">بيانات المناسبة (إن وُجدت)</h2>
+          <dl className="mt-3 space-y-2">
+            <div>
+              <dt className="text-sm text-slate-500">التاريخ</dt>
+              <dd className="font-bold">
+                {q.start_at_snapshot
+                  ? new Date(q.start_at_snapshot).toLocaleString("ar-OM", {
+                      timeZone: "Asia/Muscat",
+                    })
+                  : "غير محدد"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">الموقع</dt>
+              <dd className="font-bold">{q.venue_snapshot ?? "غير محدد"}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">عدد الضيوف</dt>
+              <dd className="font-bold">{q.guest_count_snapshot ?? "غير محدد"}</dd>
+            </div>
+          </dl>
+        </Card>
+      </div>
+
+      <Card className="p-5">
+        <h2 className="mb-3 font-black">الخدمات</h2>
+        <div className="space-y-2">
+          {lines.data?.length === 0 ? (
+            <p className="text-slate-500">لا توجد خدمات.</p>
+          ) : (
+            lines.data?.map((line) => (
+              <div
+                key={line.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 p-3"
+              >
+                <div>
+                  <p className="font-bold">{line.description}</p>
+                  <p className="text-sm text-slate-500">
+                    {line.quantity} {line.unit} · {PRICING_METHOD_LABELS[line.pricing_method]}
+                  </p>
+                </div>
+                <p className="font-black">{formatOMR(fromDbAmount(line.total_selling))}</p>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
+          <p className="text-base text-slate-500">الإجمالي</p>
+          <p className="text-2xl font-black text-brand-800">{formatOMR(fromDbAmount(q.total_selling))}</p>
+        </div>
+      </Card>
+
+      {canManageCommercial && (
+        <div className="flex flex-wrap justify-end gap-3">
+          {q.status === "ISSUED" && (
+            <Button size="lg" onClick={() => void onAccept()} disabled={busy !== ""}>
+              <FileCheck2 className="h-5 w-5" />
+              {busy === "اعتماد" ? "جارٍ الاعتماد…" : "اعتماد العرض"}
+            </Button>
+          )}
+          {q.status === "ACCEPTED" && (
+            <Button size="lg" onClick={openConvert} disabled={busy !== ""}>
+              <CheckCircle2 className="h-5 w-5" />
+              تأكيد الحجز / تحويل إلى مناسبة
+            </Button>
+          )}
+        </div>
+      )}
+
+      {quote.data.status === "CONVERTED" && (
+        <p className="rounded-xl bg-brand-50 p-3 font-bold text-brand-800">
+          تم تحويل هذا العرض إلى مناسبة.
+        </p>
+      )}
+
+      <Dialog
+        open={convertOpen}
+        onOpenChange={setConvertOpen}
+        title="تأكيد الحجز"
+        description="سيتم إنشاء العميل والمناسبة من بيانات العرض. أكمل أي معلومات ناقصة."
+      >
+        <div className="grid gap-3">
+          <Field label="تاريخ البداية" htmlFor="convert-start">
+            <Input
+              id="convert-start"
+              type="datetime-local"
+              value={convertForm.startAt}
+              onChange={(e) => setConvertForm((f) => ({ ...f, startAt: e.target.value }))}
+            />
+          </Field>
+          <Field label="تاريخ النهاية" htmlFor="convert-end">
+            <Input
+              id="convert-end"
+              type="datetime-local"
+              value={convertForm.endAt}
+              onChange={(e) => setConvertForm((f) => ({ ...f, endAt: e.target.value }))}
+            />
+          </Field>
+          <Field label="الموقع" htmlFor="convert-venue">
+            <Input
+              id="convert-venue"
+              value={convertForm.venueName}
+              onChange={(e) => setConvertForm((f) => ({ ...f, venueName: e.target.value }))}
+            />
+          </Field>
+          <Field label="عدد الضيوف" htmlFor="convert-guests">
+            <Input
+              id="convert-guests"
+              type="number"
+              min="1"
+              value={convertForm.guestCount}
+              onChange={(e) => setConvertForm((f) => ({ ...f, guestCount: e.target.value }))}
+            />
+          </Field>
+          <Field label="اسم المناسبة" htmlFor="convert-title">
+            <Input
+              id="convert-title"
+              value={convertForm.eventTitle}
+              onChange={(e) => setConvertForm((f) => ({ ...f, eventTitle: e.target.value }))}
+            />
+          </Field>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setConvertOpen(false)}>
+              إلغاء
+            </Button>
+            <Button onClick={() => void onConvert()} disabled={busy !== ""}>
+              {busy === "تحويل" ? "جارٍ التحويل…" : "تأكيد التحويل"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+    </div>
+  );
+}
