@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canManageCommercialFor,
   canReadCostFor,
+  canWriteCustomersFor,
   selectCurrentMembership,
 } from "./authRoles";
 
@@ -31,6 +32,14 @@ describe("organization-scoped role resolution", () => {
   it("null role grants nothing", () => {
     expect(canManageCommercialFor(null)).toBe(false);
     expect(canReadCostFor(null)).toBe(false);
+  });
+
+  it("customer write: OWNER/MANAGER/SUPERVISOR only", () => {
+    expect(canWriteCustomersFor("OWNER")).toBe(true);
+    expect(canWriteCustomersFor("MANAGER")).toBe(true);
+    expect(canWriteCustomersFor("SUPERVISOR")).toBe(true);
+    expect(canWriteCustomersFor("WAREHOUSE")).toBe(false);
+    expect(canWriteCustomersFor("ACCOUNTANT")).toBe(false);
   });
 
   it("derives permission from the CURRENT org only (OWNER in B, SUPERVISOR in A)", () => {

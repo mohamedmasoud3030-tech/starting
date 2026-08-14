@@ -20,7 +20,7 @@ import {
 } from "./customers.api";
 
 export function CustomersPage() {
-  const { currentOrganization, canManageCommercial } = useAuth();
+  const { currentOrganization, canWriteCustomers } = useAuth();
   const orgId = currentOrganization?.id ?? null;
   const customersQuery = useCustomers(orgId);
   const saveMutation = useSaveCustomer(orgId);
@@ -44,7 +44,7 @@ export function CustomersPage() {
         title="العملاء"
         description="جهات الاتصال والعملاء"
         actions={
-          canManageCommercial ? (
+          canWriteCustomers ? (
             <Button
               onClick={() => {
                 setEditing(null);
@@ -63,7 +63,7 @@ export function CustomersPage() {
           title="لا يوجد عملاء بعد"
           description="أضف العملاء للبدء بتنظيم المناسبات لهم"
           action={
-            canManageCommercial ? (
+            canWriteCustomers ? (
               <Button
                 onClick={() => {
                   setEditing(null);
@@ -101,7 +101,7 @@ export function CustomersPage() {
                     )}
                   </div>
                 )}
-                {canManageCommercial && (
+                {canWriteCustomers && (
                   <Button
                     variant="outline"
                     size="sm"

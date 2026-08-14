@@ -18,6 +18,7 @@ import type {
 import {
   canManageCommercialFor,
   canReadCostFor,
+  canWriteCustomersFor,
   selectCurrentMembership,
 } from "./authRoles";
 
@@ -44,6 +45,8 @@ interface AuthContextValue {
   canManageCommercial: boolean;
   /** OWNER, MANAGER, or ACCOUNTANT within the CURRENT organization only. */
   canReadCost: boolean;
+  /** OWNER, MANAGER, or SUPERVISOR within the CURRENT organization only. */
+  canWriteCustomers: boolean;
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
@@ -219,6 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Authorization derives ONLY from the role inside the CURRENT organization.
   const canManageCommercial = canManageCommercialFor(currentRole);
   const canReadCost = canReadCostFor(currentRole);
+  const canWriteCustomers = canWriteCustomersFor(currentRole);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -231,6 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentRole,
       canManageCommercial,
       canReadCost,
+      canWriteCustomers,
       loading,
       error,
       login,
@@ -246,6 +251,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentRole,
       canManageCommercial,
       canReadCost,
+      canWriteCustomers,
       loading,
       error,
       login,

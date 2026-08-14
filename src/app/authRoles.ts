@@ -1,5 +1,9 @@
 import type { AppRole } from "@/lib/database.types";
-import { COMMERCIAL_ROLES, COST_READER_ROLES } from "@/lib/domain";
+import {
+  COMMERCIAL_ROLES,
+  COST_READER_ROLES,
+  CUSTOMER_WRITE_ROLES,
+} from "@/lib/domain";
 
 /**
  * Commercial configuration permission derives ONLY from the role the user
@@ -12,6 +16,10 @@ export function canManageCommercialFor(role: AppRole | null): boolean {
 
 export function canReadCostFor(role: AppRole | null): boolean {
   return role !== null && COST_READER_ROLES.includes(role);
+}
+
+export function canWriteCustomersFor(role: AppRole | null): boolean {
+  return role !== null && CUSTOMER_WRITE_ROLES.includes(role);
 }
 
 export interface MembershipLike {
