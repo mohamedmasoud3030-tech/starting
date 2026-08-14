@@ -85,6 +85,64 @@ describe("ReceivingDialog", () => {
     expect(attempts[0]).toBe(attempts[1]);
   });
 
+  it("keeps the idempotency key when returning to edit after an ambiguous failure without changing payload", async () => {
+    const controls = createTestSource();
+    const order = orderFixture("CONFIRMED", { lines: [orderFixture("CONFIRMED").lines[0]!] });
+    const attempts: string[] = [];
+    const original = controls.source.recordReceipt;
+    controls.source.recordReceipt = vi.fn(async (input) => {
+      attempts.push(input.idempotencyKey);
+      if (attempts.length === 1) throw new Error("NETWORK_ERROR");
+      return original(input);
+    });
+    const user = userEvent.setup();
+    render(<ReceivingDialog open order={order} dataSource={controls.source} onOpenChange={() => {}} onReceived={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "تحديد كل المتبقي" }));
+    await user.click(screen.getByRole("button", { name: "مراجعة الاستلام" }));
+    await user.click(screen.getByRole("button", { name: "تأكيد الاستلام" }));
+    expect(await screen.findByText(/يمكنك إعادة المحاولة بأمان/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "تعديل الكميات" }));
+    expect(screen.getByLabelText("الكمية المستلمة الآن (كجم)")).toHaveValue("10");
+    await user.click(screen.getByRole("button", { name: "مراجعة الاستلام" }));
+    await user.click(screen.getByRole("button", { name: "تأكيد الاستلام" }));
+    await screen.findByText("تم حفظ الاستلام بنجاح");
+
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]).toBe(attempts[1]);
+  });
+
+  it("rotates the idempotency key only when the receipt payload actually changes", async () => {
+    const controls = createTestSource();
+    const order = orderFixture("CONFIRMED", { lines: [orderFixture("CONFIRMED").lines[0]!] });
+    const attempts: string[] = [];
+    const original = controls.source.recordReceipt;
+    controls.source.recordReceipt = vi.fn(async (input) => {
+      attempts.push(input.idempotencyKey);
+      if (attempts.length === 1) throw new Error("NETWORK_ERROR");
+      return original(input);
+    });
+    const user = userEvent.setup();
+    render(<ReceivingDialog open order={order} dataSource={controls.source} onOpenChange={() => {}} onReceived={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "تحديد كل المتبقي" }));
+    await user.click(screen.getByRole("button", { name: "مراجعة الاستلام" }));
+    await user.click(screen.getByRole("button", { name: "تأكيد الاستلام" }));
+    expect(await screen.findByText(/يمكنك إعادة المحاولة بأمان/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "تعديل الكميات" }));
+    const quantity = screen.getByLabelText("الكمية المستلمة الآن (كجم)");
+    await user.clear(quantity);
+    await user.type(quantity, "9");
+    await user.click(screen.getByRole("button", { name: "مراجعة الاستلام" }));
+    await user.click(screen.getByRole("button", { name: "تأكيد الاستلام" }));
+    await screen.findByText("تم حفظ الاستلام بنجاح");
+
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]).not.toBe(attempts[1]);
+  });
+
   it("uses large mobile-safe controls instead of a wide table", () => {
     const controls = createTestSource();
     render(<ReceivingDialog open order={orderFixture("CONFIRMED")} dataSource={controls.source} onOpenChange={() => {}} onReceived={() => {}} />);
