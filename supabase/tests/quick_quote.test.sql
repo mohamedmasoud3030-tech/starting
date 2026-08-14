@@ -59,7 +59,7 @@ select is((select count(*)::int from public.quick_quotes where organization_id='
 select is((select status::text from public.quick_quotes where organization_id='00000000-0000-0000-0000-0000000000a1' and idempotency_key='20000000-0000-0000-0000-000000000001'),'DRAFT','new draft is DRAFT');
 
 -- 4. PER_GUEST line without a guest count is rejected (unknown guests)
-select throws_ok($$select public.save_quick_quote_line('00000000-0000-0000-0000-0000000000a1',(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000001'),null,'Coffee','SERVICE','guest','PER_GUEST',1,2.800,true)$$,'GUEST_COUNT_REQUIRED',null,'PER_GUEST line requires a guest count');
+select throws_ok($$select public.save_quick_quote_line('00000000-0000-0000-0000-0000000000a1',(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000001'),null,'Coffee','SERVICE','guest','PER_GUEST',1,2.800,true)$$,'P0001','GUEST_COUNT_REQUIRED','PER_GUEST line requires a guest count');
 
 -- 5. discarding an abandoned draft
 select lives_ok($$select public.discard_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000001'),'client declined')$$,'abandoned draft discarded');
@@ -89,7 +89,7 @@ select is((select public.apply_package_to_quick_quote('00000000-0000-0000-0000-0
 select is((select sum(total_selling)::text from public.quick_quote_lines where quick_quote_id=(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002')),'676.000','draft totals exact (336 + 336 + 4)');
 
 -- 13. double-applying the same package is rejected
-select throws_ok($$select public.apply_package_to_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002'),'00000000-0000-0000-0000-0000000000e1')$$,'PACKAGE_ALREADY_APPLIED',null,'double package apply rejected');
+select throws_ok($$select public.apply_package_to_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002'),'00000000-0000-0000-0000-0000000000e1')$$,'P0001','PACKAGE_ALREADY_APPLIED','double package apply rejected');
 
 -- 14. issue creates a real quotation
 select lives_ok($$select public.issue_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002'),null,null,'20000000-0000-0000-0000-000000000011')$$,'draft issued as a quotation');
@@ -113,10 +113,10 @@ select is((select count(*)::int from public.quotation_lines ql join public.quota
 select is((select sum(expected_unit_cost)::text from public.quotation_lines ql join public.quotations q on q.id=ql.quotation_id where q.organization_id='00000000-0000-0000-0000-0000000000a1' and q.quotation_number=(select quotation_number from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002')),'0.000','quick quote lines carry no expected cost');
 
 -- 21. issued quotation snapshot is immutable
-select throws_ok($$update public.quotations set customer_name_snapshot='Hacked' where organization_id='00000000-0000-0000-0000-0000000000a1' and quotation_number=(select quotation_number from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002')$$,'QUOTATION_IMMUTABLE',null,'issued quotation snapshot immutable');
+select throws_ok($$update public.quotations set customer_name_snapshot='Hacked' where organization_id='00000000-0000-0000-0000-0000000000a1' and quotation_number=(select quotation_number from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002')$$,'42501',null,'issued quotation snapshot cannot be directly mutated by client');
 
 -- 22. issued quotation lines are immutable
-select throws_ok($$update public.quotation_lines set unit_selling_price=0.001 where quotation_id=(select id from public.quotations where organization_id='00000000-0000-0000-0000-0000000000a1' and quotation_number=(select quotation_number from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002'))$$,'QUOTATION_IMMUTABLE',null,'issued quotation lines immutable');
+select throws_ok($$update public.quotation_lines set unit_selling_price=0.001 where quotation_id=(select id from public.quotations where organization_id='00000000-0000-0000-0000-0000000000a1' and quotation_number=(select quotation_number from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002'))$$,'42501',null,'issued quotation lines cannot be directly mutated by client');
 
 -- 23. re-issuing (retry) is idempotent
 select lives_ok($$select public.issue_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002'),null,null,'20000000-0000-0000-0000-000000000099')$$,'issue retry succeeds');
@@ -125,7 +125,7 @@ select lives_ok($$select public.issue_quick_quote('00000000-0000-0000-0000-00000
 select is((select count(*)::int from public.quotations where organization_id='00000000-0000-0000-0000-0000000000a1' and quotation_number=(select quotation_number from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002')),1,'issue retry did not duplicate the quotation');
 
 -- 25. converting an UN-accepted quotation is rejected
-select throws_ok($$select public.convert_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quotations where organization_id='00000000-0000-0000-0000-0000000000a1' and quotation_number=(select quotation_number from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002')),'20000000-0000-0000-0000-000000000031',null,null,null,null,null)$$,'QUOTATION_NOT_ACCEPTED',null,'un-accepted quotation cannot convert');
+select throws_ok($$select public.convert_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quotations where organization_id='00000000-0000-0000-0000-0000000000a1' and quotation_number=(select quotation_number from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002')),'20000000-0000-0000-0000-000000000031',null,null,null,null,null)$$,'P0001','QUOTATION_NOT_ACCEPTED','un-accepted quotation cannot convert');
 
 -- 26. accept the issued quotation
 select lives_ok($$select public.accept_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quotations where organization_id='00000000-0000-0000-0000-0000000000a1' and quotation_number=(select quotation_number from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000002')),'20000000-0000-0000-0000-000000000021')$$,'issued quotation accepted');
@@ -170,7 +170,7 @@ select is((select guest_count_snapshot is null and start_at_snapshot is null and
 select lives_ok($$select public.accept_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quotations where quotation_number=(select quotation_number from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000003')),'20000000-0000-0000-0000-000000000022')$$,'date-less quotation accepted');
 
 -- 39. converting without a date raises a clear error
-select throws_ok($$select public.convert_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quotations where quotation_number=(select quotation_number from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000003')),'20000000-0000-0000-0000-000000000034',null,null,null,null,null)$$,'EVENT_DATE_REQUIRED',null,'conversion without a date rejected');
+select throws_ok($$select public.convert_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quotations where quotation_number=(select quotation_number from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000003')),'20000000-0000-0000-0000-000000000034',null,null,null,null,null)$$,'P0001','EVENT_DATE_REQUIRED','conversion without a date rejected');
 
 -- 40. convert with date/venue/guests overrides succeeds
 select lives_ok($$select public.convert_quick_quote('00000000-0000-0000-0000-0000000000a1',(select id from public.quotations where quotation_number=(select quotation_number from public.quick_quotes where idempotency_key='20000000-0000-0000-0000-000000000003')),'20000000-0000-0000-0000-000000000035','2026-09-10 09:00+04','2026-09-10 13:00+04','Beach Hall',60,'Noura Wedding')$$,'convert with overrides succeeds');
