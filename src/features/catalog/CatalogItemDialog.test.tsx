@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -116,5 +117,66 @@ describe("CatalogItemDialog — money value synchronization", () => {
     expect(updateSpy).toHaveBeenCalledWith(
       expect.objectContaining({ cost_price: "2.500", selling_price: "5.000" }),
     );
+  });
+});
+
+/** A harness that can close and reopen the same dialog without remounting. */
+function ToggleHarness({ initial }: { initial: CatalogListItem | null }) {
+  const [open, setOpen] = useState(true);
+  const [item] = useState(initial);
+  return (
+    <QueryClientProvider client={new QueryClient()}>
+      <button onClick={() => setOpen(false)}>close-harness</button>
+      <button onClick={() => setOpen(true)}>reopen-harness</button>
+      <CatalogItemDialog
+        open={open}
+        onOpenChange={setOpen}
+        orgId="org"
+        categories={[]}
+        item={item}
+      />
+    </QueryClientProvider>
+  );
+}
+
+describe("CatalogItemDialog — cancel + reopen reset", () => {
+  it("resets edited values when an item is cancelled and reopened", async () => {
+    const user = userEvent.setup();
+    render(<ToggleHarness initial={itemA} />);
+
+    const name = () => screen.getByLabelText(/الاسم \(عربي\)/) as HTMLInputElement;
+    const selling = () => screen.getByLabelText(/سعر البيع/) as HTMLInputElement;
+
+    expect(name().value).toBe("قهوة");
+    await user.clear(name());
+    await user.type(name(), "قهوة معدلة");
+    await user.clear(selling());
+    await user.type(selling(), "9.999");
+    expect(name().value).toBe("قهوة معدلة");
+    expect(selling().value).toBe("9.999");
+
+    // Cancel (dialog close) then reopen the SAME item.
+    await user.click(screen.getByRole("button", { name: "إلغاء" }));
+    await user.click(screen.getByRole("button", { name: "reopen-harness" }));
+
+    expect(name().value).toBe("قهوة");
+    expect(selling().value).toBe("3.000");
+    expect((screen.getByLabelText(/سعر التكلفة/) as HTMLInputElement).value).toBe("1.500");
+  });
+
+  it("resets a new-item form after cancel and reopen", async () => {
+    const user = userEvent.setup();
+    render(<ToggleHarness initial={null} />);
+
+    const name = () => screen.getByLabelText(/الاسم \(عربي\)/) as HTMLInputElement;
+    await user.type(name(), "صنف مؤقت");
+    expect(name().value).toBe("صنف مؤقت");
+
+    await user.click(screen.getByRole("button", { name: "إلغاء" }));
+    await user.click(screen.getByRole("button", { name: "reopen-harness" }));
+
+    expect(name().value).toBe("");
+    expect((screen.getByLabelText(/سعر التكلفة/) as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText(/سعر البيع/) as HTMLInputElement).value).toBe("");
   });
 });

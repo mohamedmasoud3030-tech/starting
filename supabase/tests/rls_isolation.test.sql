@@ -9,7 +9,7 @@
 -- ============================================================================
 
 begin;
-select plan(24);
+select plan(26);
 
 -- ---------------------------------------------------------------------------
 -- Fixtures (inserted as the migration owner / postgres, before switching role)
@@ -197,6 +197,23 @@ select throws_ok(
          values ('00000000-0000-0000-0000-0000000000a1', 'c2') $sql$,
   '42501', null, 'SUPERVISOR of Org B cannot create customers in Org A'
 );
+
+-- Customer master records must not be hard-deleted (no DELETE policy/grant);
+-- deactivation (update) remains allowed.
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000003","role":"authenticated"}'; -- SUPERVISOR A
+select throws_ok(
+  $sql$ delete from public.customers where name = 'cust a' $sql$,
+  '42501', null, 'SUPERVISOR cannot hard-delete a customer'
+);
+
+update public.customers set is_active = false where name = 'cust a';
+set local role postgres;
+select is(
+  (select is_active from public.customers where name = 'cust a'),
+  false, 'SUPERVISOR can deactivate a customer (update remains allowed)'
+);
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000003","role":"authenticated"}';
 
 -- ---------------------------------------------------------------------------
 -- Audit isolation

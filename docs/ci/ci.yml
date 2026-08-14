@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend:
+    name: Frontend (typecheck, lint, test, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Check for whitespace errors
+        run: git diff --check
+
+  database:
+    name: Database (Supabase replay, pgTAP, types drift)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.114.0
+
+      - name: Print versions
+        run: |
+          supabase --version
+          docker --version
+          node --version
+
+      - name: Start Supabase local stack
+        run: supabase start
+
+      - name: Replay migrations from a clean database
+        run: supabase db reset
+
+      - name: Run pgTAP tests (authoritative security/RLS evidence)
+        run: supabase test db
+
+      - name: Generate types from the replayed schema
+        run: supabase gen types typescript --local --schema public > /tmp/database.types.ts
+
+      - name: Upload generated types artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-types
+          path: /tmp/database.types.ts
+          if-no-files-found: error
+
+      - name: Fail if committed types drift from generated schema
+        run: diff -u src/lib/database.types.ts /tmp/database.types.ts
+
+      - name: Stop Supabase local stack
+        if: always()
+        run: supabase stop

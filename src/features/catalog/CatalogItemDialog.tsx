@@ -50,14 +50,25 @@ export function CatalogItemDialog({
   );
   const [errors, setErrors] = useState<ReturnType<typeof validateCatalogItem>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Increments on every open transition and target change, so money inputs
+  // (keyed on this) remount and reseed even across cancel + reopen.
+  const [session, setSession] = useState(0);
 
-  // Reset the form each time the dialog target changes.
-  const [lastItem, setLastItem] = useState(item);
-  if (lastItem !== item) {
-    setLastItem(item);
-    setValues(initialValues(item));
-    setErrors({});
-    setSubmitError(null);
+  // Reset the whole form on each dialog open transition and whenever the
+  // target item changes while the dialog is open. This runs during render
+  // (React's "adjust state during render" pattern) so there is no stale flash,
+  // and it does NOT clobber typing while the dialog remains open.
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevItem, setPrevItem] = useState(item);
+  if (open !== prevOpen || item !== prevItem) {
+    setPrevOpen(open);
+    setPrevItem(item);
+    if (open) {
+      setSession((s) => s + 1);
+      setValues(initialValues(item));
+      setErrors({});
+      setSubmitError(null);
+    }
   }
 
   const set = <K extends keyof CatalogItemFormValues>(
@@ -181,7 +192,7 @@ export function CatalogItemDialog({
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <MoneyInput
-            key={`cost-${item?.id ?? "new"}`}
+            key={`cost-${item?.id ?? "new"}-${session}`}
             id="ci-cost"
             label="سعر التكلفة (لك)"
             value={values.costPrice}
@@ -190,7 +201,7 @@ export function CatalogItemDialog({
             hint="ما تدفعه أنت مقابل هذا الصنف"
           />
           <MoneyInput
-            key={`selling-${item?.id ?? "new"}`}
+            key={`selling-${item?.id ?? "new"}-${session}`}
             id="ci-selling"
             label="سعر البيع (للعميل)"
             value={values.sellingPrice}

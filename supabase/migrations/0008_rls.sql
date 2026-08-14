@@ -78,15 +78,21 @@ create policy "memberships_write_owner" on public.organization_memberships
   with check (public.has_org_role(organization_id, array['OWNER'::app_role]));
 
 -- ---------------------------------------------------------------------------
--- customers — write roles: OWNER / MANAGER / SUPERVISOR (per 04-security doc)
+-- customers — write roles: OWNER / MANAGER / SUPERVISOR (per 04-security doc).
+-- No DELETE policy and no DELETE grant: customers are master records referenced
+-- by future Events; deactivation (is_active = false) replaces hard delete.
 -- ---------------------------------------------------------------------------
 alter table public.customers enable row level security;
 
 create policy "customers_select_member" on public.customers
   for select using (public.is_org_member(organization_id));
 
-create policy "customers_write_operational" on public.customers
-  for all
+create policy "customers_insert_operational" on public.customers
+  for insert
+  with check (public.has_org_role(organization_id, array['OWNER'::app_role, 'MANAGER'::app_role, 'SUPERVISOR'::app_role]));
+
+create policy "customers_update_operational" on public.customers
+  for update
   using (public.has_org_role(organization_id, array['OWNER'::app_role, 'MANAGER'::app_role, 'SUPERVISOR'::app_role]))
   with check (public.has_org_role(organization_id, array['OWNER'::app_role, 'MANAGER'::app_role, 'SUPERVISOR'::app_role]));
 
@@ -185,7 +191,7 @@ revoke all on table public.audit_events from anon;
 grant select, update on table public.organizations to authenticated;
 grant select, insert, update on table public.profiles to authenticated;
 grant select, insert, update, delete on table public.organization_memberships to authenticated;
-grant select, insert, update, delete on table public.customers to authenticated;
+grant select, insert, update on table public.customers to authenticated;
 grant select, insert, update on table public.catalog_categories to authenticated;
 grant select, insert, update on table public.catalog_items to authenticated;
 grant select on table public.catalog_items_operational to authenticated;

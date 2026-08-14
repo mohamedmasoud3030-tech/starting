@@ -156,12 +156,18 @@ function CustomerDialog({
   const [error, setError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
 
-  const [lastCustomer, setLastCustomer] = useState(customer);
-  if (lastCustomer !== customer) {
-    setLastCustomer(customer);
-    setValues(initial(customer));
-    setError(null);
-    setNameError(null);
+  // Reset the whole form on each dialog open transition and whenever the
+  // target customer changes while open (no clobbering while open).
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevCustomer, setPrevCustomer] = useState(customer);
+  if (open !== prevOpen || customer !== prevCustomer) {
+    setPrevOpen(open);
+    setPrevCustomer(customer);
+    if (open) {
+      setValues(initial(customer));
+      setError(null);
+      setNameError(null);
+    }
   }
 
   const set = <K extends keyof CustomerFormValues>(

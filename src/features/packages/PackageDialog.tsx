@@ -41,43 +41,59 @@ export function PackageDialog({
   const isEditing = target !== null;
   const saveMutation = useSavePackage(orgId);
 
-  const [name, setName] = useState("");
-  const [nameEn, setNameEn] = useState("");
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<PackageStatus>("ACTIVE");
-  const [baseGuestCount, setBaseGuestCount] = useState("");
-  const [lines, setLines] = useState<LineDraft[]>([]);
-  const [errors, setErrors] = useState<ReturnType<typeof validatePackage>>({});
-  const [submitError, setSubmitError] = useState<string | null>(null);
-
-  const [lastTarget, setLastTarget] = useState(target);
-  if (lastTarget !== target) {
-    setLastTarget(target);
-    if (target) {
-      setName(target.package.name);
-      setNameEn(target.package.name_en ?? "");
-      setDescription(target.package.description ?? "");
-      setStatus(target.package.status);
-      setBaseGuestCount(
-        target.package.base_guest_count?.toString() ?? "",
-      );
-      setLines(
-        target.lines.map((l) => ({
+  const [name, setName] = useState(target?.package.name ?? "");
+  const [nameEn, setNameEn] = useState(target?.package.name_en ?? "");
+  const [description, setDescription] = useState(target?.package.description ?? "");
+  const [status, setStatus] = useState<PackageStatus>(target?.package.status ?? "ACTIVE");
+  const [baseGuestCount, setBaseGuestCount] = useState(
+    target?.package.base_guest_count?.toString() ?? "",
+  );
+  const [lines, setLines] = useState<LineDraft[]>(() =>
+    target
+      ? target.lines.map((l) => ({
           key: nextLineKey(),
           catalogItemId: l.catalog_item_id,
           quantityText: trimQuantity(toOMRString(parseOMR(l.quantity))),
-        })),
-      );
-    } else {
-      setName("");
-      setNameEn("");
-      setDescription("");
-      setStatus("ACTIVE");
-      setBaseGuestCount("");
-      setLines([]);
+        }))
+      : [],
+  );
+  const [errors, setErrors] = useState<ReturnType<typeof validatePackage>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Reset the whole form on each dialog open transition and whenever the
+  // target package changes while open (no clobbering while open).
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevTarget, setPrevTarget] = useState(target);
+  if (open !== prevOpen || target !== prevTarget) {
+    setPrevOpen(open);
+    setPrevTarget(target);
+    if (open) {
+      if (target) {
+        setName(target.package.name);
+        setNameEn(target.package.name_en ?? "");
+        setDescription(target.package.description ?? "");
+        setStatus(target.package.status);
+        setBaseGuestCount(
+          target.package.base_guest_count?.toString() ?? "",
+        );
+        setLines(
+          target.lines.map((l) => ({
+            key: nextLineKey(),
+            catalogItemId: l.catalog_item_id,
+            quantityText: trimQuantity(toOMRString(parseOMR(l.quantity))),
+          })),
+        );
+      } else {
+        setName("");
+        setNameEn("");
+        setDescription("");
+        setStatus("ACTIVE");
+        setBaseGuestCount("");
+        setLines([]);
+      }
+      setErrors({});
+      setSubmitError(null);
     }
-    setErrors({});
-    setSubmitError(null);
   }
 
   const activeItems = catalogItems.filter((i) => i.status === "ACTIVE");
