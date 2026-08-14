@@ -9,7 +9,7 @@
 -- ============================================================================
 
 begin;
-select plan(26);
+select plan(24);
 
 -- ---------------------------------------------------------------------------
 -- Fixtures (inserted as the migration owner / postgres, before switching role)

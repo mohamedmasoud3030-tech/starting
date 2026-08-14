@@ -18,7 +18,12 @@ create table if not exists public._pgtap_results (
   description text not null
 );
 
+create table if not exists public._pgtap_plan (
+  n int not null
+);
+
 grant select, insert, delete on public._pgtap_results to public;
+grant select, insert, delete on public._pgtap_plan to public;
 grant usage on sequence public._pgtap_results_id_seq to public;
 
 create or replace function public.plan(n int)
@@ -27,6 +32,8 @@ language plpgsql
 as $$
 begin
   delete from public._pgtap_results;
+  delete from public._pgtap_plan;
+  insert into public._pgtap_plan (n) values (n);
   return '1..' || n::text;
 end;
 $$;
@@ -88,9 +95,11 @@ declare
   r record;
   failed int;
   total int;
+  planned int;
 begin
   select count(*) into total from public._pgtap_results;
   select count(*) into failed from public._pgtap_results where ok = false;
+  select n into planned from public._pgtap_plan limit 1;
   for r in select * from public._pgtap_results order by id loop
     return next r.description;
   end loop;
@@ -98,6 +107,9 @@ begin
     raise exception 'pgTAP: % of % tests failed: %',
       failed, total,
       (select string_agg(description, '; ') from public._pgtap_results where ok = false);
+  end if;
+  if planned is not null and total <> planned then
+    raise exception 'pgTAP: plan was %, but % assertions ran', planned, total;
   end if;
   return;
 end;
