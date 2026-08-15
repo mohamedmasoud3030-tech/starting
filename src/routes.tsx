@@ -1,5 +1,4 @@
 import {
-  Navigate,
   Outlet,
   createRootRoute,
   createRoute,
