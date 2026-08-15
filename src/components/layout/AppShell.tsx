@@ -4,7 +4,6 @@ import {
   CalendarDays,
   Home,
   LogOut,
-  Menu,
   MoreHorizontal,
   Users,
   X,
@@ -109,32 +108,21 @@ export function AppShell({ children }: { children: ReactNode }) {
             })}
           </nav>
 
-          <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-2 rounded-xl border border-slate-200 py-1 pr-3 pl-1 md:flex">
-              <div className="leading-tight">
-                <p className="text-sm font-bold text-slate-800">{fullName}</p>
-                {currentRole && (
-                  <Badge tone="brand" className="text-xs">
-                    {ROLE_LABELS[currentRole]}
-                  </Badge>
-                )}
-              </div>
-              <button
-                onClick={() => void logout()}
-                aria-label="تسجيل الخروج"
-                className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
+          <div className="hidden items-center gap-2 rounded-xl border border-slate-200 py-1 pr-3 pl-1 md:flex">
+            <div className="leading-tight">
+              <p className="text-sm font-bold text-slate-800">{fullName}</p>
+              {currentRole && (
+                <Badge tone="brand" className="text-xs">
+                  {ROLE_LABELS[currentRole]}
+                </Badge>
+              )}
             </div>
-
             <button
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-label={menuOpen ? "إغلاق القائمة" : "فتح القائمة"}
-              aria-expanded={menuOpen}
-              className="flex h-11 min-w-11 items-center justify-center rounded-xl border border-slate-200 px-3 text-slate-700 md:hidden"
+              onClick={() => void logout()}
+              aria-label="تسجيل الخروج"
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600"
             >
-              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              <LogOut className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -153,14 +141,21 @@ export function AppShell({ children }: { children: ReactNode }) {
             style={{ bottom: "calc(5.25rem + env(safe-area-inset-bottom))" }}
             aria-label="التنقل على الجوال"
           >
-            <div className="mb-2 flex items-center justify-between px-2 py-1">
+            <div className="mb-2 flex items-center justify-between gap-3 px-2 py-1">
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-slate-900">{fullName}</p>
                 {currentRole && (
                   <p className="text-xs text-slate-500">{ROLE_LABELS[currentRole]}</p>
                 )}
               </div>
-              <span className="text-xs font-bold text-slate-400">كل الأقسام</span>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                aria-label="إغلاق القائمة"
+                className="flex h-11 w-11 flex-none items-center justify-center rounded-xl border border-slate-200 text-slate-500"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
             <div className="grid grid-cols-2 gap-1">
               {visibleItems.map((item) => {
