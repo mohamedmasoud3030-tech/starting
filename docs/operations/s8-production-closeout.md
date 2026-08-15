@@ -78,14 +78,23 @@ The proof:
 3. calculates a stable content fingerprint;
 4. takes a custom-format, data-only public-schema backup with `pg_dump`;
 5. resets the database again and verifies the fixture is gone;
-6. restores the dump with `pg_restore --disable-triggers`;
+6. restores the dump with normal `pg_restore` privileges, without attempting to
+   disable PostgreSQL system referential-integrity triggers;
 7. compares the pre/post fingerprint;
 8. verifies customer→organization referential integrity and Oman/OMR invariants;
 9. resets the local database again in `finally` so later gates start clean.
 
-This proves that the repository's actual PostgreSQL data shape survives a real
-dump/restore cycle. It does **not** prove that Supabase-managed production backups
-are enabled or retained; that requires a real production project.
+The privilege choice is deliberate: Supabase's database `postgres` role is not a
+true PostgreSQL superuser and cannot disable system FK triggers. The repository
+proof must exercise a restore path that actually works under Supabase-compatible
+privileges rather than depending on superuser-only behavior.
+
+This proves that the repository's deterministic business fixture and current
+public-schema data archive survive a real dump/restore cycle. It does **not** prove
+that arbitrary production data containing every possible circular relationship can
+be restored with the same data-only command, nor that Supabase-managed production
+backups are enabled or retained. Those require a real isolated restore drill using
+the backup/recovery mechanism selected for production.
 
 ## 4. Deployment contract
 
@@ -134,7 +143,8 @@ launch, all of the following must be true:
 - [ ] Pending migrations are applied to staging/production using the documented
       forward-only process.
 - [ ] Managed production backups are enabled and their retention is verified.
-- [ ] A real production/staging dump is restored to a separate target and checked.
+- [ ] A real production/staging backup is restored to a separate target using the
+      selected platform/native recovery path and checked.
 - [ ] Human UAT is executed on the deployed URL with the required roles/devices.
 - [ ] No demo users or seed business data exist in production.
 - [ ] A rollback owner and last-known-good frontend deployment are identified.
