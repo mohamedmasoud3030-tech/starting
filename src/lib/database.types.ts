@@ -220,6 +220,13 @@ export type Database = {
             foreignKeyName: "consumable_movements_event_fk"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "consumable_movements_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "event_procurement_cost_summaries"
             referencedColumns: ["organization_id", "event_id"]
           },
@@ -290,6 +297,85 @@ export type Database = {
             columns: ["organization_id", "catalog_item_id"]
             isOneToOne: true
             referencedRelation: "catalog_items_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      customer_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          event_id: string
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          paid_at: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          recorded_by: string
+          reference: string | null
+          request_fingerprint: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          event_id: string
+          id?: string
+          idempotency_key: string
+          notes?: string | null
+          organization_id: string
+          paid_at: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          recorded_by: string
+          reference?: string | null
+          request_fingerprint: string
+          status?: Database["public"]["Enums"]["customer_payment_status"]
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          event_id?: string
+          id?: string
+          idempotency_key?: string
+          notes?: string | null
+          organization_id?: string
+          paid_at?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          recorded_by?: string
+          reference?: string | null
+          request_fingerprint?: string
+          status?: Database["public"]["Enums"]["customer_payment_status"]
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_payments_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "customer_payments_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "customer_payments_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -484,6 +570,13 @@ export type Database = {
             foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "event_procurement_cost_summaries"
             referencedColumns: ["organization_id", "event_id"]
           },
@@ -561,6 +654,13 @@ export type Database = {
           total_wasted_quantity?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "consumable_reconciliations_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: true
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
           {
             foreignKeyName: "consumable_reconciliations_event_fk"
             columns: ["organization_id", "event_id"]
@@ -659,6 +759,13 @@ export type Database = {
             foreignKeyName: "movements_event_fk"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "movements_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "event_procurement_cost_summaries"
             referencedColumns: ["organization_id", "event_id"]
           },
@@ -744,6 +851,13 @@ export type Database = {
             foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "event_procurement_cost_summaries"
             referencedColumns: ["organization_id", "event_id"]
           },
@@ -813,6 +927,13 @@ export type Database = {
             foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "event_procurement_cost_summaries"
             referencedColumns: ["organization_id", "event_id"]
           },
@@ -871,6 +992,13 @@ export type Database = {
           to_status?: Database["public"]["Enums"]["event_status"]
         }
         Relationships: [
+          {
+            foreignKeyName: "event_status_history_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
           {
             foreignKeyName: "event_status_history_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
@@ -937,6 +1065,13 @@ export type Database = {
           total_returned_good_quantity?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "reconciliations_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: true
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
           {
             foreignKeyName: "reconciliations_event_fk"
             columns: ["organization_id", "event_id"]
@@ -1227,6 +1362,50 @@ export type Database = {
           },
         ]
       }
+      payments_command_idempotency: {
+        Row: {
+          actor_id: string
+          command_name: string
+          created_at: string
+          idempotency_key: string
+          organization_id: string
+          request_fingerprint: string
+          response_payload: Json
+          result_entity: string
+          result_id: string
+        }
+        Insert: {
+          actor_id: string
+          command_name: string
+          created_at?: string
+          idempotency_key: string
+          organization_id: string
+          request_fingerprint: string
+          response_payload: Json
+          result_entity: string
+          result_id: string
+        }
+        Update: {
+          actor_id?: string
+          command_name?: string
+          created_at?: string
+          idempotency_key?: string
+          organization_id?: string
+          request_fingerprint?: string
+          response_payload?: Json
+          result_entity?: string
+          result_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_command_idempotency_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       procurement_command_idempotency: {
         Row: {
           actor_id: string
@@ -1462,6 +1641,13 @@ export type Database = {
           updated_by?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "procurement_orders_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
           {
             foreignKeyName: "procurement_orders_event_fk"
             columns: ["organization_id", "event_id"]
@@ -2019,6 +2205,13 @@ export type Database = {
             foreignKeyName: "quotations_converted_event_org_fk"
             columns: ["organization_id", "converted_event_id"]
             isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "quotations_converted_event_org_fk"
+            columns: ["organization_id", "converted_event_id"]
+            isOneToOne: false
             referencedRelation: "event_procurement_cost_summaries"
             referencedColumns: ["organization_id", "event_id"]
           },
@@ -2035,6 +2228,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "quotations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
           },
           {
             foreignKeyName: "quotations_organization_id_event_id_fkey"
@@ -2272,6 +2472,48 @@ export type Database = {
           },
         ]
       }
+      customer_payment_summaries: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          event_id: string | null
+          event_number: string | null
+          notes: string | null
+          organization_id: string | null
+          paid_at: string | null
+          payment_id: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          recorded_by: string | null
+          reference: string | null
+          status: Database["public"]["Enums"]["customer_payment_status"] | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_payments_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "customer_payments_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "customer_payments_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       event_commercial_lines_operational: {
         Row: {
           created_at: string | null
@@ -2335,6 +2577,13 @@ export type Database = {
             foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "event_procurement_cost_summaries"
             referencedColumns: ["organization_id", "event_id"]
           },
@@ -2389,6 +2638,13 @@ export type Database = {
             foreignKeyName: "consumable_movements_event_fk"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "consumable_movements_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "event_procurement_cost_summaries"
             referencedColumns: ["organization_id", "event_id"]
           },
@@ -2412,6 +2668,31 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "consumable_stock_summary"
             referencedColumns: ["organization_id", "stock_item_id"]
+          },
+        ]
+      }
+      event_finance_summaries: {
+        Row: {
+          accepted_revenue: number | null
+          amount_paid: number | null
+          committed_cost: number | null
+          delivered_cost: number | null
+          event_id: string | null
+          event_number: string | null
+          event_status: Database["public"]["Enums"]["event_status"] | null
+          expected_cost: number | null
+          expected_profit: number | null
+          gross_margin: number | null
+          organization_id: string | null
+          outstanding_balance: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2478,6 +2759,13 @@ export type Database = {
             foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "event_procurement_cost_summaries"
             referencedColumns: ["organization_id", "event_id"]
           },
@@ -2540,6 +2828,13 @@ export type Database = {
             foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "event_procurement_cost_summaries"
             referencedColumns: ["organization_id", "event_id"]
           },
@@ -2575,6 +2870,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "equipment_capacity"
             referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
           },
           {
             foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
@@ -2624,6 +2926,13 @@ export type Database = {
           updated_at: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "procurement_orders_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
           {
             foreignKeyName: "procurement_orders_event_fk"
             columns: ["organization_id", "event_id"]
@@ -2768,6 +3077,13 @@ export type Database = {
           updated_at: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "procurement_orders_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
           {
             foreignKeyName: "procurement_orders_event_fk"
             columns: ["organization_id", "event_id"]
@@ -3035,6 +3351,13 @@ export type Database = {
             foreignKeyName: "procurement_orders_event_fk"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "event_procurement_cost_summaries"
             referencedColumns: ["organization_id", "event_id"]
           },
@@ -3203,6 +3526,13 @@ export type Database = {
           venue_snapshot?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "quotations_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
           {
             foreignKeyName: "quotations_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
@@ -3545,6 +3875,7 @@ export type Database = {
         Args: { p_allow_negative?: boolean; p_quantity: number }
         Returns: undefined
       }
+      assert_payment_omr: { Args: { p_amount: number }; Returns: undefined }
       assert_procurement_omr: { Args: { p_amount: number }; Returns: undefined }
       assert_procurement_quantity: {
         Args: { p_quantity: number }
@@ -3585,6 +3916,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      begin_payment_command: {
+        Args: {
+          p_fingerprint: string
+          p_idempotency_key: string
+          p_org_id: string
+        }
+        Returns: Json
       }
       begin_procurement_command: {
         Args: {
@@ -4068,6 +4407,18 @@ export type Database = {
         Args: { p_event_id: string; p_org_id: string }
         Returns: Json
       }
+      finish_payment_command: {
+        Args: {
+          p_command_name: string
+          p_fingerprint: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_response: Json
+          p_result_entity: string
+          p_result_id: string
+        }
+        Returns: undefined
+      }
       finish_procurement_command: {
         Args: {
           p_command_name: string
@@ -4378,6 +4729,42 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "consumable_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_customer_payment: {
+        Args: {
+          p_amount: number
+          p_event_id: string
+          p_idempotency_key: string
+          p_notes: string
+          p_org_id: string
+          p_paid_at: string
+          p_payment_method: Database["public"]["Enums"]["payment_method"]
+          p_reference: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          event_id: string
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          paid_at: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          recorded_by: string
+          reference: string | null
+          request_fingerprint: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "customer_payments"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -4792,6 +5179,38 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      void_customer_payment: {
+        Args: {
+          p_idempotency_key: string
+          p_org_id: string
+          p_payment_id: string
+          p_reason: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          event_id: string
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          paid_at: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          recorded_by: string
+          reference: string | null
+          request_fingerprint: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "customer_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       warehouse_fingerprint: { Args: { p_payload: Json }; Returns: string }
       warehouse_reservation_state: {
         Args: { p_org_id: string; p_reservation_id: string }
@@ -4890,6 +5309,7 @@ export type Database = {
         | "WASTE_AT_EVENT"
         | "WAREHOUSE_WASTE"
         | "ADJUSTMENT"
+      customer_payment_status: "RECORDED" | "VOIDED"
       customer_type: "INDIVIDUAL" | "COMPANY" | "GOVERNMENT"
       event_status:
         | "DRAFT"
@@ -4903,6 +5323,13 @@ export type Database = {
         | "CANCELLED"
       membership_status: "ACTIVE" | "INACTIVE" | "INVITED"
       package_status: "ACTIVE" | "INACTIVE"
+      payment_method:
+        | "CASH"
+        | "BANK_TRANSFER"
+        | "CARD"
+        | "CHEQUE"
+        | "MOBILE_WALLET"
+        | "OTHER"
       pricing_method:
         | "FIXED"
         | "PER_EVENT"
@@ -5093,6 +5520,7 @@ export const Constants = {
         "WAREHOUSE_WASTE",
         "ADJUSTMENT",
       ],
+      customer_payment_status: ["RECORDED", "VOIDED"],
       customer_type: ["INDIVIDUAL", "COMPANY", "GOVERNMENT"],
       event_status: [
         "DRAFT",
@@ -5107,6 +5535,14 @@ export const Constants = {
       ],
       membership_status: ["ACTIVE", "INACTIVE", "INVITED"],
       package_status: ["ACTIVE", "INACTIVE"],
+      payment_method: [
+        "CASH",
+        "BANK_TRANSFER",
+        "CARD",
+        "CHEQUE",
+        "MOBILE_WALLET",
+        "OTHER",
+      ],
       pricing_method: [
         "FIXED",
         "PER_EVENT",
