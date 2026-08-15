@@ -22,11 +22,28 @@
 @layer base {
   html {
     direction: rtl;
+    min-height: 100%;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
+    min-height: 100dvh;
     font-family: var(--font-sans);
     @apply bg-slate-50 text-slate-900 antialiased;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a {
+    touch-action: manipulation;
   }
 
   :focus-visible {
