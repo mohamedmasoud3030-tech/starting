@@ -125,7 +125,6 @@ try {
     "--dbname",
     dbUrl,
     "--data-only",
-    "--disable-triggers",
     "--no-owner",
     "--no-privileges",
     "--exit-on-error",
