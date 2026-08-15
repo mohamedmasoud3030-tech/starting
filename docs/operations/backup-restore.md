@@ -18,7 +18,7 @@ reconstruct schema and behavior, not production rows.
 
 ## 2. Automated S8 restore proof
 
-CI now runs a real data round-trip after pgTAP and concurrency checks:
+CI runs a real data round-trip after pgTAP and concurrency checks:
 
 ```bash
 DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres \
@@ -33,13 +33,19 @@ DB_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres \
 4. fingerprints the fixture;
 5. creates a custom-format public-schema data dump with `pg_dump`;
 6. resets the database and proves the fixture disappeared;
-7. restores with `pg_restore --disable-triggers`;
+7. restores with normal `pg_restore` privileges;
 8. verifies the exact fingerprint and relational/Oman/OMR invariants;
 9. resets the local database again in `finally`.
 
-This proves that the repository's current business-data shape survives a real
-backup/restore cycle. It does **not** prove that a live Supabase project's managed
-backup schedule, retention, or disaster-recovery access is configured.
+The proof intentionally does **not** pass `--disable-triggers`. Supabase's
+`postgres` role is not a true PostgreSQL superuser and cannot disable system
+referential-integrity triggers. A CI proof that requires superuser-only behavior
+would not represent the target platform correctly.
+
+This proves the repository's deterministic business fixture and current
+public-schema archive survive a real backup/restore round trip. It does **not**
+prove that a live project's managed backup schedule, retention, or every possible
+production data graph has been restored. Those remain live launch gates.
 
 ## 3. Production backup
 
@@ -65,7 +71,7 @@ pg_dump \
   --file=hospitality-$(date +%Y-%m-%d).dump
 ```
 
-For a public-schema data-only recovery artifact:
+For a public-schema data-only diagnostic/recovery artifact:
 
 ```bash
 pg_dump \
@@ -81,6 +87,12 @@ pg_dump \
   --file=hospitality-public-data-$(date +%Y-%m-%d).dump
 ```
 
+A data-only dump may warn about circular foreign keys such as relationships
+between event and quotation records. That warning must not be ignored for a real
+production recovery plan. For full disaster recovery, prefer the Supabase-managed
+backup/recovery path or a full native backup that has been proven on an isolated
+target with the same privilege model.
+
 Never put the database password, service-role key, or production connection
 string in Git, chat, a `VITE_*` variable, or a browser-accessible file.
 
@@ -89,14 +101,30 @@ string in Git, chat, a `VITE_*` variable, or a browser-accessible file.
 A production disaster-recovery drill must use a separate target project/database,
 not the live source.
 
-### Step 1 — establish the target schema
+### Step 1 — choose the recovery mechanism
 
-Replay the same migration set on the target and run the database test suite. A
-schema mismatch is a stop condition.
+Use the same mechanism intended for production recovery:
 
-### Step 2 — restore data
+- **Managed Supabase backup/recovery:** preferred for full project/database
+  recovery, especially when managed schemas such as `auth` are involved.
+- **Native full dump:** acceptable only after it has been tested on an isolated
+  target with the same PostgreSQL/Supabase privilege constraints.
+- **Public-schema data-only dump:** useful for controlled recovery cases, but must
+  not be assumed to handle arbitrary circular data graphs without a proven plan.
 
-For a custom-format data dump:
+Do not design a runbook around `pg_restore --disable-triggers` against Supabase's
+normal `postgres` role. It can fail when PostgreSQL attempts to disable system FK
+triggers because that operation requires true superuser privileges.
+
+### Step 2 — establish the target schema when using data-only recovery
+
+Replay the exact migration set on the isolated target and run the database test
+suite. A schema mismatch is a stop condition.
+
+### Step 3 — restore using the proven command for that artifact
+
+For a data-only archive that has already been validated as dependency-safe on the
+same target shape:
 
 ```bash
 pg_restore \
@@ -105,22 +133,21 @@ pg_restore \
   --username=postgres \
   --dbname=postgres \
   --data-only \
-  --disable-triggers \
   --no-owner \
   --no-privileges \
   --exit-on-error \
   hospitality-public-data-<date>.dump
 ```
 
-`--disable-triggers` is required for data-only restoration because the production
-schema contains append-only/structural guards that correctly reject historical
-rows when they are replayed as normal application writes.
+If this fails because real production rows form circular FK dependencies, stop.
+Do not weaken constraints or improvise on the live database. Use the managed/full
+recovery procedure that was proven on the isolated target.
 
 If the recovery artifact contains managed schemas such as `auth`, follow the
 Supabase recovery procedure for that backup type rather than treating it as a
 public-schema-only dump.
 
-### Step 3 — verify restored data
+### Step 4 — verify restored data
 
 At minimum verify object counts, business relationships, financial/stock
 invariants, auth access, and tenant isolation. Example checks:
@@ -178,7 +205,7 @@ Before production launch, confirm all of the following with evidence:
 - [ ] Dedicated Hospitality Supabase project selected.
 - [ ] Managed backup schedule and retention enabled/verified.
 - [ ] Manual pre-launch backup taken.
-- [ ] A real backup restored to a **separate** target successfully.
+- [ ] The chosen production recovery mechanism is restored to a **separate** target successfully.
 - [ ] Restored target passes data-integrity, auth, tenant-isolation, and app smoke checks.
 - [ ] Database password and privileged keys are held in a secrets manager.
 - [ ] A named operator understands and can execute the restore procedure.
