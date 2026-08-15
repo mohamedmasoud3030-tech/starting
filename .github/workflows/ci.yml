@@ -8,7 +8,7 @@ on:
 
 jobs:
   frontend:
-    name: Frontend (typecheck, lint, test, build)
+    name: Frontend (typecheck, lint, test, build, smoke)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,11 +33,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Run production preview smoke proof
+        run: npm run smoke:production
+
       - name: Check for whitespace errors
         run: git diff --check
 
   database:
-    name: Database (Supabase replay, pgTAP, types drift)
+    name: Database (replay, pgTAP, concurrency, restore, types)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,6 +63,8 @@ jobs:
           supabase --version
           docker --version
           node --version
+          pg_dump --version
+          pg_restore --version
 
       - name: Start Supabase local stack
         run: supabase start
@@ -89,6 +94,11 @@ jobs:
         env:
           DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: node scripts/native-db/staff_payroll_concurrency.mjs
+
+      - name: Prove backup -> reset -> restore -> verify
+        env:
+          DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: npm run db:backup-restore-proof
 
       - name: Generate types from the replayed schema
         run: supabase gen types typescript --local --schema public > /tmp/database.types.ts
