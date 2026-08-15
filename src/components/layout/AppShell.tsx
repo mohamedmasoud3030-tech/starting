@@ -6,11 +6,20 @@ import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/domain";
 import { Badge } from "@/components/ui/Badge";
 
-type NavTarget = "/home" | "/events" | "/quotes" | "/consumables" | "/catalog" | "/packages" | "/customers";
+type NavTarget =
+  | "/home"
+  | "/events"
+  | "/quotes"
+  | "/procurement"
+  | "/consumables"
+  | "/catalog"
+  | "/packages"
+  | "/customers";
 const NAV_ITEMS: ReadonlyArray<{ to: NavTarget; label: string; commercial?: boolean }> = [
   { to: "/home", label: "الرئيسية" },
   { to: "/events", label: "المناسبات" },
   { to: "/quotes", label: "عروض الأسعار", commercial: true },
+  { to: "/procurement", label: "المشتريات" },
   { to: "/consumables", label: "المواد الاستهلاكية" },
   { to: "/catalog", label: "الكتالوج" },
   { to: "/packages", label: "الباقات" },

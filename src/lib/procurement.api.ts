@@ -2,8 +2,8 @@
  * S5A Supabase adapter.
  *
  * Raw procurement tables are intentionally not queried here: reads use the
- * stable RLS-scoped projections published by migration 0031, and every write
- * uses a server-authoritative SECURITY DEFINER command with an idempotency key.
+ * stable RLS-scoped projections published by migration 0031/0034, and every
+ * write uses a server-authoritative SECURITY DEFINER command with an idempotency key.
  * Quantities and OMR values enter line JSON as exact 3-decimal strings; the
  * database rejects excess precision and performs all persisted arithmetic.
  */
@@ -17,9 +17,11 @@ import type {
   ProcurementOrderSummaryRow,
   ProcurementReceiptRow,
   ProcurementReceiptSummaryRow,
+  ProcurementReceiptLineSummaryRow,
   ProcurementReceivingLineSummaryRow,
   ProcurementReceivingOrderSummaryRow,
   SupplierCategory,
+  SupplierDetailRow,
   SupplierRow,
   SupplierStatus,
   SupplierSummaryRow,
@@ -74,6 +76,20 @@ export async function listSupplierSummaries(
       .eq("organization_id", organizationId)
       .order("name"),
   );
+}
+
+export async function getSupplierDetail(
+  organizationId: string,
+  supplierId: string,
+): Promise<SupplierDetailRow | null> {
+  const result = await supabase
+    .from("supplier_details")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("supplier_id", supplierId)
+    .maybeSingle();
+  if (result.error) throw result.error;
+  return result.data;
 }
 
 export async function createSupplier(
@@ -242,6 +258,19 @@ export async function listReceivingLines(
       .eq("organization_id", organizationId)
       .eq("order_id", orderId)
       .order("sort_order"),
+  );
+}
+
+export async function listProcurementReceiptLines(
+  organizationId: string,
+  receiptId: string,
+): Promise<ProcurementReceiptLineSummaryRow[]> {
+  return resultOrThrow(
+    await supabase
+      .from("procurement_receipt_line_summaries")
+      .select("*")
+      .eq("organization_id", organizationId)
+      .eq("receipt_id", receiptId),
   );
 }
 

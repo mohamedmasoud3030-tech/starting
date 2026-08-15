@@ -6,8 +6,10 @@ import {
   linePreviewTotal,
   parseRequiredNonNegativeOMR,
   parsePositiveQuantity,
+  supplierDraftToInput,
   validateOrderDraft,
   validateReceiptDraft,
+  validateSupplierDraft,
 } from "./validation";
 
 describe("procurement exact frontend validation", () => {
@@ -92,6 +94,49 @@ describe("procurement exact frontend validation", () => {
       { orderLineId: "line-consumable-internal", quantityText: "6.001" },
     ], order.lines)).toEqual({
       "line-consumable-internal": "الكمية أكبر من المتبقي (6).",
+    });
+  });
+
+  it("validates supplier draft with CRN, email, whatsapp and phone", () => {
+    const invalidErrors = validateSupplierDraft({
+      name: "أ",
+      kind: "",
+      phone: "123",
+      whatsapp: "abc",
+      email: "invalid-email",
+      commercialRegistrationNumber: "",
+      contactName: "",
+      notes: "",
+    });
+    expect(invalidErrors.name).toBe("اسم المورد مطلوب (حرفان على الأقل).");
+    expect(invalidErrors.kind).toBe("اختر نوع المورد.");
+    expect(invalidErrors.phone).toBe("أدخل رقم هاتف صحيحاً من 7 إلى 15 رقماً.");
+    expect(invalidErrors.whatsapp).toBe("أدخل رقم واتساب صحيحاً من 7 إلى 15 رقماً.");
+    expect(invalidErrors.email).toBe("أدخل بريداً إلكترونياً صحيحاً.");
+
+    const validDraft = {
+      name: "شركة الوفاء للتموين",
+      kind: "CATERING_RESTAURANT" as const,
+      phone: "+968 9123 4567",
+      whatsapp: "+968 9123 4567",
+      email: "orders@alwafaa.om",
+      commercialRegistrationNumber: "CR-998877",
+      contactName: "سالم",
+      notes: "شروط الدفع 30 يوماً",
+    };
+    expect(validateSupplierDraft(validDraft)).toEqual({});
+
+    const input = supplierDraftToInput(validDraft, "idem-sup-1");
+    expect(input).toEqual({
+      name: "شركة الوفاء للتموين",
+      kind: "CATERING_RESTAURANT",
+      phone: "+968 9123 4567",
+      whatsapp: "+968 9123 4567",
+      email: "orders@alwafaa.om",
+      commercialRegistrationNumber: "CR-998877",
+      contactName: "سالم",
+      notes: "شروط الدفع 30 يوماً",
+      idempotencyKey: "idem-sup-1",
     });
   });
 });

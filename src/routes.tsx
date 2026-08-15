@@ -19,6 +19,7 @@ import { EventWorkspace } from "@/features/events/EventWorkspace";
 import { QuotesPage } from "@/features/quotes/QuotesPage";
 import { QuotePage } from "@/features/quotes/QuotePage";
 import { ConsumablesPage } from "@/features/consumables/ConsumablesPage";
+import { ProcurementPage } from "@/features/procurement/ProcurementPage";
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -123,6 +124,12 @@ const consumablesRoute = createRoute({
   component: ConsumablesPage,
 });
 
+const procurementRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/procurement",
+  component: ProcurementPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -133,6 +140,7 @@ const routeTree = rootRoute.addChildren([
     quotesRoute,
     quoteNewRoute,
     quoteDetailRoute,
+    procurementRoute,
     consumablesRoute,
     catalogRoute,
     packagesRoute,

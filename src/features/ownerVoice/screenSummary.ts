@@ -77,6 +77,16 @@ export interface QuickQuoteVoiceSummaryInput {
   status: string;
 }
 
+export interface ProcurementVoiceSummaryInput {
+  orderCount: number;
+  openOrderCount: number;
+  supplierCount: number;
+  /** Exact 3-decimal OMR string (or milli-value) — never a float sum. */
+  totalCommittedOmr?: string | number | null;
+  /** Hard permission gate: cost is spoken only when authorized. */
+  canReadCost: boolean;
+}
+
 export const EVENT_STATUS_ARABIC: Record<string, string> = {
   DRAFT: "مسودة",
   QUOTED: "مسعّرة",
@@ -584,4 +594,62 @@ export function buildQuickQuoteVoiceSummary(
   };
   parts.push(statusPhrase[input.status] ?? "");
   return parts.join(" ").trim();
+}
+
+/**
+ * Procurement / supplier workspace summary.
+ * Cost is spoken ONLY when authorized by canReadCost.
+ */
+export function buildProcurementVoiceSummary(
+  input: ProcurementVoiceSummaryInput,
+): string {
+  if (input.orderCount === 0 && input.supplierCount === 0) {
+    return "لا توجد طلبات توريد أو موردون بعد.";
+  }
+
+  const parts: string[] = [];
+
+  if (input.supplierCount > 0) {
+    parts.push(
+      `عندك ${arabicCountPhrase(input.supplierCount, {
+        one: "مورد واحد",
+        two: "موردان",
+        few: "موردين",
+        many: "مورداً",
+      })}.`,
+    );
+  }
+
+  if (input.orderCount > 0) {
+    parts.push(
+      `إجمالي الطلبات ${arabicCountPhrase(input.orderCount, {
+        one: "طلب واحد",
+        two: "طلبان",
+        few: "طلبات",
+        many: "طلباً",
+      })}`,
+    );
+
+    if (input.openOrderCount > 0) {
+      parts.push(
+        `منها ${arabicCountPhrase(input.openOrderCount, {
+          one: "طلب واحد مفتوح",
+          two: "طلبان مفتوحان",
+          few: "طلبات مفتوحة",
+          many: "طلباً مفتوحاً",
+        })}.`,
+      );
+    } else {
+      parts.push("وكل الطلبات مكتملة.");
+    }
+  }
+
+  if (input.canReadCost) {
+    const cost = omrToSpoken(input.totalCommittedOmr);
+    if (cost) {
+      parts.push(`إجمالي الالتزامات ${cost}.`);
+    }
+  }
+
+  return parts.join(" ");
 }

@@ -1487,6 +1487,13 @@ export type Database = {
             foreignKeyName: "procurement_orders_supplier_fk"
             columns: ["organization_id", "supplier_id"]
             isOneToOne: false
+            referencedRelation: "supplier_details"
+            referencedColumns: ["organization_id", "supplier_id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
             referencedRelation: "supplier_summaries"
             referencedColumns: ["organization_id", "supplier_id"]
           },
@@ -2642,6 +2649,13 @@ export type Database = {
             foreignKeyName: "procurement_orders_supplier_fk"
             columns: ["organization_id", "supplier_id"]
             isOneToOne: false
+            referencedRelation: "supplier_details"
+            referencedColumns: ["organization_id", "supplier_id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
             referencedRelation: "supplier_summaries"
             referencedColumns: ["organization_id", "supplier_id"]
           },
@@ -2779,6 +2793,13 @@ export type Database = {
             foreignKeyName: "procurement_orders_supplier_fk"
             columns: ["organization_id", "supplier_id"]
             isOneToOne: false
+            referencedRelation: "supplier_details"
+            referencedColumns: ["organization_id", "supplier_id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
             referencedRelation: "supplier_summaries"
             referencedColumns: ["organization_id", "supplier_id"]
           },
@@ -2788,6 +2809,82 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "suppliers"
             referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      procurement_receipt_line_summaries: {
+        Row: {
+          consumable_movement_id: string | null
+          created_at: string | null
+          order_id: string | null
+          order_line_id: string | null
+          organization_id: string | null
+          quantity: number | null
+          receipt_id: string | null
+          receipt_line_id: string | null
+        }
+        Insert: {
+          consumable_movement_id?: string | null
+          created_at?: string | null
+          order_id?: string | null
+          order_line_id?: string | null
+          organization_id?: string | null
+          quantity?: number | null
+          receipt_id?: string | null
+          receipt_line_id?: string | null
+        }
+        Update: {
+          consumable_movement_id?: string | null
+          created_at?: string | null
+          order_id?: string | null
+          order_line_id?: string | null
+          organization_id?: string | null
+          quantity?: number | null
+          receipt_id?: string | null
+          receipt_line_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_receipt_lines_movement_fk"
+            columns: ["organization_id", "consumable_movement_id"]
+            isOneToOne: true
+            referencedRelation: "consumable_movements"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_receipt_lines_order_line_fk"
+            columns: ["organization_id", "order_id", "order_line_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_line_summaries"
+            referencedColumns: ["organization_id", "order_id", "order_line_id"]
+          },
+          {
+            foreignKeyName: "procurement_receipt_lines_order_line_fk"
+            columns: ["organization_id", "order_id", "order_line_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_lines"
+            referencedColumns: ["organization_id", "order_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_receipt_lines_order_line_fk"
+            columns: ["organization_id", "order_id", "order_line_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_receiving_line_summaries"
+            referencedColumns: ["organization_id", "order_id", "order_line_id"]
+          },
+          {
+            foreignKeyName: "procurement_receipt_lines_receipt_fk"
+            columns: ["organization_id", "receipt_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_receipt_summaries"
+            referencedColumns: ["organization_id", "receipt_id", "order_id"]
+          },
+          {
+            foreignKeyName: "procurement_receipt_lines_receipt_fk"
+            columns: ["organization_id", "receipt_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_receipts"
+            referencedColumns: ["organization_id", "id", "order_id"]
           },
         ]
       }
@@ -2954,6 +3051,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "procurement_orders_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_details"
+            referencedColumns: ["organization_id", "supplier_id"]
           },
           {
             foreignKeyName: "procurement_orders_supplier_fk"
@@ -3155,6 +3259,62 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "staff_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_details: {
+        Row: {
+          category: Database["public"]["Enums"]["supplier_category"] | null
+          commercial_registration_number: string | null
+          contact_name: string | null
+          created_at: string | null
+          email: string | null
+          name: string | null
+          notes: string | null
+          organization_id: string | null
+          phone: string | null
+          status: Database["public"]["Enums"]["supplier_status"] | null
+          supplier_id: string | null
+          updated_at: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["supplier_category"] | null
+          commercial_registration_number?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          email?: string | null
+          name?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["supplier_status"] | null
+          supplier_id?: string | null
+          updated_at?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["supplier_category"] | null
+          commercial_registration_number?: string | null
+          contact_name?: string | null
+          created_at?: string | null
+          email?: string | null
+          name?: string | null
+          notes?: string | null
+          organization_id?: string | null
+          phone?: string | null
+          status?: Database["public"]["Enums"]["supplier_status"] | null
+          supplier_id?: string | null
+          updated_at?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"

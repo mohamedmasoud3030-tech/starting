@@ -121,12 +121,15 @@ export type ProcurementReceiptLineRow = TableRow<"procurement_receipt_lines">;
 export type CatalogItemOperationalRow = ViewRow<"catalog_items_operational">;
 
 export type SupplierSummaryRow = ViewRow<"supplier_summaries">;
+export type SupplierDetailRow = ViewRow<"supplier_details">;
 export type ProcurementOrderSummaryRow = ViewRow<"procurement_order_summaries">;
 export type ProcurementOrderDetailRow = ViewRow<"procurement_order_details">;
 export type ProcurementOrderLineSummaryRow =
   ViewRow<"procurement_order_line_summaries">;
 export type ProcurementReceiptSummaryRow =
   ViewRow<"procurement_receipt_summaries">;
+export type ProcurementReceiptLineSummaryRow =
+  ViewRow<"procurement_receipt_line_summaries">;
 export type ProcurementReceivingOrderSummaryRow =
   ViewRow<"procurement_receiving_order_summaries">;
 export type ProcurementReceivingLineSummaryRow =
