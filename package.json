@@ -8,12 +8,14 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "smoke:production": "node scripts/production_smoke.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:types": "supabase gen types typescript --local > src/lib/database.types.ts",
-    "db:reset": "supabase db reset"
+    "db:reset": "supabase db reset",
+    "db:backup-restore-proof": "node scripts/native-db/backup_restore_proof.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.4",

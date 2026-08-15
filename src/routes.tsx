@@ -1,26 +1,25 @@
 import {
-  Navigate,
   Outlet,
   createRootRoute,
   createRoute,
   createRouter,
   redirect,
 } from "@tanstack/react-router";
-import { AppShell } from "@/components/layout/AppShell";
-import { Spinner } from "@/components/ui/Spinner";
-import { useAuth } from "@/app/AuthContext";
+import { AuthGate } from "@/app/AuthGate";
 import { LoginPage } from "@/features/auth/LoginPage";
-import { HomePage } from "@/features/home/HomePage";
-import { CatalogPage } from "@/features/catalog/CatalogPage";
-import { PackagesPage } from "@/features/packages/PackagesPage";
-import { CustomersPage } from "@/features/customers/CustomersPage";
-import { EventsPage } from "@/features/events/EventsPage";
-import { EventWorkspace } from "@/features/events/EventWorkspace";
-import { QuotesPage } from "@/features/quotes/QuotesPage";
-import { QuotePage } from "@/features/quotes/QuotePage";
-import { ConsumablesPage } from "@/features/consumables/ConsumablesPage";
-import { ProcurementPage } from "@/features/procurement/ProcurementPage";
-import { StaffPage } from "@/features/staff/StaffPage";
+import {
+  CatalogPage,
+  ConsumablesPage,
+  CustomersPage,
+  EventWorkspace,
+  EventsPage,
+  HomePage,
+  PackagesPage,
+  ProcurementPage,
+  QuotePage,
+  QuotesPage,
+  StaffPage,
+} from "@/routes.lazy";
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -39,25 +38,6 @@ const loginRoute = createRoute({
   path: "/login",
   component: LoginPage,
 });
-
-function AuthGate() {
-  const { user, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-  return (
-    <AppShell>
-      <Outlet />
-    </AppShell>
-  );
-}
 
 const appRoute = createRoute({
   getParentRoute: () => rootRoute,
