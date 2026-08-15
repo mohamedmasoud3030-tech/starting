@@ -35,21 +35,23 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
+    <div className="flex min-h-dvh items-center justify-center bg-slate-50 px-4 py-8 sm:py-10">
       <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-700 text-2xl font-bold text-white">
+        <div className="mb-5 text-center sm:mb-6">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-700 text-xl font-bold text-white sm:h-16 sm:w-16 sm:text-2xl">
             ض
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">نظام إدارة الضيافة</h1>
-          <p className="mt-1 text-base text-slate-500">
+          <h1 className="text-xl font-black text-slate-900 sm:text-2xl">
+            نظام إدارة الضيافة
+          </h1>
+          <p className="mt-1 text-sm leading-6 text-slate-500 sm:text-base">
             عمليات المناسبات والضيافة في سلطنة عُمان
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           {!isSupabaseConfigured && (
-            <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-base text-amber-800">
+            <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800 sm:text-base">
               النظام غير مهيأ بعد. يرجى ضبط إعدادات الاتصال في ملف البيئة (
               <span dir="ltr" className="font-mono">
                 .env
@@ -65,6 +67,7 @@ export function LoginPage() {
                 type="email"
                 dir="ltr"
                 autoComplete="email"
+                inputMode="email"
                 placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -84,13 +87,13 @@ export function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="pl-12"
+                  className="pl-14"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
-                  className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+                  className="absolute left-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5" />
@@ -104,7 +107,7 @@ export function LoginPage() {
             {error && (
               <div
                 role="alert"
-                className="rounded-xl border border-red-200 bg-red-50 p-3 text-base font-semibold text-red-700"
+                className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold leading-6 text-red-700 sm:text-base"
               >
                 {error}
               </div>
