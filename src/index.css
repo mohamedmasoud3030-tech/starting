@@ -29,6 +29,7 @@
 
   body {
     min-height: 100dvh;
+    overflow-x: clip;
     font-family: var(--font-sans);
     @apply bg-slate-50 text-slate-900 antialiased;
   }
@@ -48,6 +49,25 @@
 
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+}
+
+@media (max-width: 767px) {
+  [role="tablist"] {
+    margin-inline: -0.75rem;
+    padding-inline: 0.75rem;
+    scroll-padding-inline: 0.75rem;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  [role="tablist"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  [role="tab"] {
+    scroll-snap-align: start;
   }
 }
 
