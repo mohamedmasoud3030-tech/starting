@@ -46,13 +46,14 @@ export function InvoicesPanel({
 
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
-
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-${eventNumber}`);
-  const [totalMilli, setTotalMilli] = useState<MilliOMR>(acceptedRevenueMilli || 0);
   const [depositMilli, setDepositMilli] = useState<MilliOMR>(0);
   const [count, setCount] = useState(2);
   const [firstDue, setFirstDue] = useState(() => new Date().toISOString().slice(0, 10));
   const [intervalDays, setIntervalDays] = useState(30);
+
+  const totalMilli = acceptedRevenueMilli as MilliOMR;
+  const canIssue = canMutate && totalMilli > 0;
 
   if (!canReadCost) {
     return (
@@ -74,7 +75,7 @@ export function InvoicesPanel({
       return;
     }
     if (totalMilli <= 0) {
-      setError("قيمة الفاتورة يجب أن تكون أكبر من صفر");
+      setError("يجب اعتماد عرض سعر بقيمة أكبر من صفر قبل إصدار الفاتورة");
       return;
     }
     if (depositMilli < 0 || depositMilli > totalMilli) {
@@ -122,25 +123,41 @@ export function InvoicesPanel({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-black">فاتورة العميل</h2>
-            <p className="mt-1 text-slate-600">أنشئ فاتورة رسمية بالعربون والدفعات المتعددة مقابل عرض السعر المعتمد.</p>
+            <p className="mt-1 text-slate-600">
+              الفاتورة تُصدر بقيمة عرض السعر المعتمد؛ العربون والدفعات يكوّنان جدول التحصيل فقط.
+            </p>
           </div>
           {canMutate && (
-            <Button onClick={() => setOpen(true)} disabled={createInvoice.isPending}>
+            <Button onClick={() => setOpen(true)} disabled={!canIssue || createInvoice.isPending}>
               إصدار فاتورة
             </Button>
           )}
         </div>
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{error}</p>}
+        {canMutate && totalMilli <= 0 && (
+          <EmptyState
+            title="لا يوجد عرض سعر معتمد قابل للفوترة"
+            description="اعتمد عرض السعر أولاً؛ قاعدة البيانات ترفض أي فاتورة لا تطابق قيمته المعتمدة."
+          />
+        )}
         {!canMutate && (
           <EmptyState title="لا توجد فاتورة" description="لم يُصدر أي فاتورة لهذه المناسبة بعد." />
         )}
 
-        <Dialog open={open} onOpenChange={setOpen} title="إصدار فاتورة" description="العربون والدفعات تُبنى تلقائياً من القيمة الإجمالية.">
+        <Dialog
+          open={open}
+          onOpenChange={setOpen}
+          title="إصدار فاتورة"
+          description="قيمة الفاتورة ثابتة من عرض السعر المعتمد، ويمكنك فقط توزيعها على العربون والأقساط."
+        >
           <form className="space-y-3" onSubmit={submit}>
             <Field label="رقم الفاتورة" htmlFor="inv-num" required>
               <Input id="inv-num" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} required />
             </Field>
-            <MoneyInput id="inv-total" label="قيمة الفاتورة (ر.ع.)" value={totalMilli} onChange={(m) => setTotalMilli(m ?? 0)} required />
+            <div className="rounded-xl border bg-slate-50 p-3">
+              <p className="text-sm text-slate-500">قيمة الفاتورة من عرض السعر المعتمد</p>
+              <p className="mt-1 text-xl font-black" dir="ltr">{formatOMR(totalMilli)}</p>
+            </div>
             <MoneyInput id="inv-deposit" label="العربون (ر.ع.)" value={depositMilli} onChange={(m) => setDepositMilli(m ?? 0)} required />
             <div className="grid grid-cols-2 gap-3">
               <Field label="عدد الأقساط" htmlFor="inv-count">
@@ -156,7 +173,7 @@ export function InvoicesPanel({
             {error && <p role="alert" className="font-bold text-red-700">{error}</p>}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
-              <Button type="submit" disabled={createInvoice.isPending}>
+              <Button type="submit" disabled={!canIssue || createInvoice.isPending}>
                 {createInvoice.isPending ? "جارٍ الإصدار…" : "إصدار الفاتورة"}
               </Button>
             </div>
@@ -173,7 +190,7 @@ export function InvoicesPanel({
           <h2 className="text-xl font-black">فاتورة {inv.invoiceNumber}</h2>
           <p className="mt-1 text-slate-600">{inv.eventTitle}</p>
         </div>
-        {inv.status === "ISSUED" && canMutate && (
+        {canMutate && (
           <Button variant="outline" onClick={() => void submitVoid()} disabled={voidInvoice.isPending}>
             إلغاء الفاتورة
           </Button>
@@ -181,10 +198,6 @@ export function InvoicesPanel({
       </div>
 
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{error}</p>}
-
-      {inv.status === "CANCELLED" && (
-        <p className="rounded-xl bg-red-50 p-3 font-bold text-red-700">الفاتورة ملغاة. {inv.voidReason}</p>
-      )}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Card><CardBody>
@@ -204,7 +217,7 @@ export function InvoicesPanel({
       <div>
         <h3 className="mb-3 font-black">جدول الدفعات</h3>
         {rows.length === 0 ? (
-          <EmptyState title="لا يوجد جدول دفعات" description="سُجلت الفاتورة بدون دفعات مجدولة." />
+          <EmptyState title="لا يوجد جدول دفعات" description="لم يُعثر على جدول دفعات للفـاتورة الحالية." />
         ) : (
           <ul className="space-y-2">
             {rows.map((r) => (
