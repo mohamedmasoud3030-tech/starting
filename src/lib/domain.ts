@@ -66,3 +66,6 @@ export const COST_READER_ROLES: AppRole[] = ["OWNER", "MANAGER", "ACCOUNTANT"];
 
 /** Roles permitted to write customers (create/update/delete). */
 export const CUSTOMER_WRITE_ROLES: AppRole[] = ["OWNER", "MANAGER", "SUPERVISOR"];
+
+/** Roles permitted to record/void customer payments (financial mutations). */
+export const PAYMENT_WRITE_ROLES: AppRole[] = ["OWNER", "MANAGER", "ACCOUNTANT"];

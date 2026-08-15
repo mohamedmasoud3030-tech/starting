@@ -571,6 +571,55 @@ export function buildQuoteVoiceSummary(input: QuoteSummaryInput): string {
 }
 
 /**
+ * Customer payments / event economics summary. Cost and margin are spoken ONLY
+ * when the current role is already authorized to see them on the payments
+ * screen (canReadCost).
+ */
+export interface PaymentsVoiceSummaryInput {
+  /** Exact 3-decimal OMR string (or milli-value) — never a float sum. */
+  acceptedRevenueOmr?: string | number | null;
+  paidOmr?: string | number | null;
+  outstandingOmr?: string | number | null;
+  committedCostOmr?: string | number | null;
+  grossMarginOmr?: string | number | null;
+  paymentCount?: number;
+  /** Hard permission gate: cost/margin are spoken only when authorized. */
+  canReadCost: boolean;
+}
+
+export function buildPaymentsVoiceSummary(
+  input: PaymentsVoiceSummaryInput,
+): string {
+  const revenue = omrToSpoken(input.acceptedRevenueOmr);
+  const paid = omrToSpoken(input.paidOmr);
+  const outstanding = omrToSpoken(input.outstandingOmr);
+
+  if (revenue === null && paid === null && outstanding === null) {
+    return "لا توجد بيانات مالية بعد.";
+  }
+
+  const parts: string[] = [];
+  if (revenue) parts.push(`الإيراد المقبول ${revenue}.`);
+  if (paid) parts.push(`المدفوع ${paid}.`);
+  if (outstanding) parts.push(`المتبقي على العميل ${outstanding}.`);
+
+  if (typeof input.paymentCount === "number" && input.paymentCount > 0) {
+    parts.push(
+      `عدد الدفعات ${toArabicDigits(input.paymentCount)}.`,
+    );
+  }
+
+  if (input.canReadCost) {
+    const cost = omrToSpoken(input.committedCostOmr);
+    if (cost) parts.push(`التكلفة الملتزم بها ${cost}.`);
+    const margin = omrToSpoken(input.grossMarginOmr);
+    if (margin) parts.push(`الهامش الإجمالي الحالي ${margin}.`);
+  }
+
+  return parts.join(" ");
+}
+
+/**
  * Quick Quote review summary. No cost/profit ever (quick quotes carry no
  * internal cost model). Returns null when there is no total to speak, so the
  * OwnerVoiceButton renders nothing.

@@ -4,6 +4,7 @@ import {
   buildEventVoiceSummary,
   buildEventsListVoiceSummary,
   buildHomeVoiceSummary,
+  buildPaymentsVoiceSummary,
   buildProcurementVoiceSummary,
   buildQuickQuoteVoiceSummary,
   buildQuoteVoiceSummary,
@@ -507,5 +508,45 @@ describe("buildProcurementVoiceSummary", () => {
         canReadCost: true,
       }),
     ).toBe("لا توجد طلبات توريد أو موردون بعد.");
+  });
+});
+
+describe("buildPaymentsVoiceSummary", () => {
+  it("speaks revenue, paid and outstanding", () => {
+    expect(
+      buildPaymentsVoiceSummary({
+        acceptedRevenueOmr: "500.000",
+        paidOmr: "150.000",
+        outstandingOmr: "350.000",
+        canReadCost: false,
+      }),
+    ).toBe(
+      "الإيراد المقبول ٥٠٠ ريال. المدفوع ١٥٠ ريال. المتبقي على العميل ٣٥٠ ريال.",
+    );
+  });
+
+  it("speaks cost and margin only when authorized", () => {
+    const base = {
+      acceptedRevenueOmr: "500.000",
+      paidOmr: "150.000",
+      outstandingOmr: "350.000",
+      committedCostOmr: "50.000",
+      grossMarginOmr: "450.000",
+    };
+    expect(buildPaymentsVoiceSummary({ ...base, canReadCost: false })).not.toContain(
+      "التكلفة",
+    );
+    expect(buildPaymentsVoiceSummary({ ...base, canReadCost: true })).toContain(
+      "التكلفة الملتزم بها ٥٠ ريال.",
+    );
+    expect(buildPaymentsVoiceSummary({ ...base, canReadCost: true })).toContain(
+      "الهامش الإجمالي الحالي ٤٥٠ ريال.",
+    );
+  });
+
+  it("handles empty financial data", () => {
+    expect(buildPaymentsVoiceSummary({ canReadCost: true })).toBe(
+      "لا توجد بيانات مالية بعد.",
+    );
   });
 });

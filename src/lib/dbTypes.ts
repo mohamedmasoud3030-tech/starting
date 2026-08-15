@@ -69,7 +69,9 @@ export type CatalogItemType = DbEnum<"catalog_item_type">;
 export type CompensationMethod = DbEnum<"compensation_method">;
 export type ConsumableMovementKind = DbEnum<"consumable_movement_kind">;
 export type CustomerType = DbEnum<"customer_type">;
+export type CustomerPaymentStatus = DbEnum<"customer_payment_status">;
 export type EventStatus = DbEnum<"event_status">;
+export type PaymentMethod = DbEnum<"payment_method">;
 export type ProcurementLineKind = DbEnum<"procurement_line_kind">;
 export type ProcurementOrderStatus = DbEnum<"procurement_order_status">;
 export type SupplierCategory = DbEnum<"supplier_category">;
@@ -104,6 +106,7 @@ export type PackageInsert = TableInsert<"packages">;
 export type PackageItemRow = TableRow<"package_items">;
 
 export type SupplierRow = TableRow<"suppliers">;
+export type CustomerPaymentRow = TableRow<"customer_payments">;
 export type ProcurementOrderRow = TableRow<"procurement_orders">;
 export type ProcurementOrderLineRow = TableRow<"procurement_order_lines">;
 export type ProcurementReceiptRow = TableRow<"procurement_receipts">;
@@ -136,3 +139,5 @@ export type ProcurementReceivingLineSummaryRow =
   ViewRow<"procurement_receiving_line_summaries">;
 export type EventProcurementCostSummaryRow =
   ViewRow<"event_procurement_cost_summaries">;
+export type CustomerPaymentSummaryRow = ViewRow<"customer_payment_summaries">;
+export type EventFinanceSummaryRow = ViewRow<"event_finance_summaries">;
