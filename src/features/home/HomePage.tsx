@@ -13,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { useAuth } from "@/app/AuthContext";
+import { COST_READER_ROLES } from "@/lib/domain";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -23,11 +24,13 @@ import { eventReadinessQuery, useEvents } from "@/features/events/events.api";
 import { usePackages } from "@/features/packages/packages.api";
 import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
 import {
-  buildHomeVoiceSummary,
+  buildAttentionVoiceSummary,
   DEFAULT_TIME_ZONE,
   EVENT_STATUS_ARABIC,
   isSameLocalDay,
+  toArabicDigits,
 } from "@/features/ownerVoice/screenSummary";
+import { useAttendanceGaps, type AttendanceGap } from "@/features/staff/staff.api";
 import {
   buildEventWhatsAppUrl,
   buildOperationalDashboard,
@@ -55,7 +58,7 @@ function readinessLabel(status: string | undefined): string {
 }
 
 export function HomePage() {
-  const { profile, currentOrganization } = useAuth();
+  const { profile, currentOrganization, currentRole } = useAuth();
   const orgId = currentOrganization?.id ?? null;
 
   const catalog = useCatalogItems(orgId);
@@ -88,14 +91,16 @@ export function HomePage() {
   });
   const dashboardLoaded = readinessSettled && stock.isSuccess;
 
-  const voiceSummary = readinessSettled
-    ? buildHomeVoiceSummary({
-        events: todayEvents.map((event, index) => ({
-          ...event,
-          readiness: readinessQueries[index]?.data ?? null,
-        })),
-      })
-    : null;
+  const gaps = useAttendanceGaps(orgId);
+  const attendanceGapCount = (gaps.data ?? []).length;
+  const attentionSummary = buildAttentionVoiceSummary({
+    todayEventCount: dashboardLoaded ? dashboard.todayEvents.length : 0,
+    readyCount: dashboardLoaded ? dashboard.readyCount : 0,
+    attentionCount: dashboardLoaded ? dashboard.eventAttentionCount : 0,
+    lowStockCount: dashboardLoaded ? dashboard.lowStockCount : 0,
+    attendanceGapCount,
+    canReadFinance: !!currentRole && COST_READER_ROLES.includes(currentRole),
+  });
 
   const name = profile?.full_name || "أهلاً بك";
 
@@ -152,7 +157,7 @@ export function HomePage() {
       <PageHeader
         title={`${name}، ${currentOrganization?.name ?? ""}`}
         description="لوحة تشغيل اليوم: المناسبات، الجاهزية والتنبيهات التي تحتاج تدخل"
-        actions={<OwnerVoiceButton summary={voiceSummary} />}
+        actions={<OwnerVoiceButton summary={attentionSummary} />}
       />
 
       {(events.isError || stock.isError) && (
@@ -327,6 +332,58 @@ export function HomePage() {
                 </Link>
               );
             })}
+          </div>
+        )}
+      </section>
+
+      <section aria-labelledby="attention-center-title" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 id="attention-center-title" className="text-xl font-bold text-slate-900">
+              مركز انتباه المالك
+            </h2>
+            <p className="text-sm text-slate-500">ما يحتاج عينك اليوم — اضغط زر الصوت لتسمعه.</p>
+          </div>
+          <OwnerVoiceButton summary={attentionSummary} />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="p-4">
+            <p className="text-sm font-semibold text-slate-500">مناسبات اليوم</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">
+              {dashboardLoaded ? dashboard.todayEvents.length : "—"}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm font-semibold text-slate-500">تحتاج تدخل</p>
+            <p className="mt-1 text-2xl font-bold text-amber-700">
+              {dashboardLoaded ? dashboard.eventAttentionCount : "—"}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm font-semibold text-slate-500">لم يُسجَّل حضورها</p>
+            <p className="mt-1 text-2xl font-bold text-red-700">{attendanceGapCount}</p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-sm font-semibold text-slate-500">مخزون منخفض</p>
+            <p className="mt-1 text-2xl font-bold text-red-700">
+              {dashboardLoaded ? dashboard.lowStockCount : "—"}
+            </p>
+          </Card>
+        </div>
+
+        {!gaps.isLoading && (gaps.data ?? []).length > 0 && (
+          <div className="space-y-2">
+            {(gaps.data ?? []).map((g: AttendanceGap) => (
+              <Link key={g.eventId} to="/events/$eventId" params={{ eventId: g.eventId }}>
+                <Card className="border-amber-200 bg-amber-50 p-4 hover:border-amber-300">
+                  <p className="font-bold text-slate-900">{g.eventTitle}</p>
+                  <p className="mt-1 text-sm text-slate-700">
+                    مُسند لها {toArabicDigits(g.assignmentCount)} مضيفاً ولم يُسجَّل حضور {toArabicDigits(g.attendanceCount)} منهم اليوم.
+                  </p>
+                </Card>
+              </Link>
+            ))}
           </div>
         )}
       </section>

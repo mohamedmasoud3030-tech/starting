@@ -1192,6 +1192,246 @@ export type Database = {
           },
         ]
       }
+      host_payouts: {
+        Row: {
+          amount: number
+          created_at: string
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          organization_id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          payout_date: string
+          reason: string | null
+          recorded_by: string
+          reference: string | null
+          request_fingerprint: string
+          staff_member_id: string
+          status: Database["public"]["Enums"]["host_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          idempotency_key: string
+          organization_id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          payout_date: string
+          reason?: string | null
+          recorded_by: string
+          reference?: string | null
+          request_fingerprint: string
+          staff_member_id: string
+          status?: Database["public"]["Enums"]["host_payment_status"]
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          idempotency_key?: string
+          organization_id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          payout_date?: string
+          reason?: string | null
+          recorded_by?: string
+          reference?: string | null
+          request_fingerprint?: string
+          staff_member_id?: string
+          status?: Database["public"]["Enums"]["host_payment_status"]
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "host_payouts_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "host_payouts_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "host_payouts_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "host_payouts_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "host_payouts_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      invoice_installments: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string
+          id: string
+          invoice_id: string
+          kind: Database["public"]["Enums"]["invoice_installment_kind"]
+          organization_id: string
+          seq: number
+          status: Database["public"]["Enums"]["installment_status"]
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date: string
+          id?: string
+          invoice_id: string
+          kind: Database["public"]["Enums"]["invoice_installment_kind"]
+          organization_id: string
+          seq: number
+          status?: Database["public"]["Enums"]["installment_status"]
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string
+          id?: string
+          invoice_id?: string
+          kind?: Database["public"]["Enums"]["invoice_installment_kind"]
+          organization_id?: string
+          seq?: number
+          status?: Database["public"]["Enums"]["installment_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_installments_org_fk"
+            columns: ["organization_id", "invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_summaries"
+            referencedColumns: ["organization_id", "invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_installments_org_fk"
+            columns: ["organization_id", "invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          created_at: string
+          created_by: string
+          currency: string
+          due_at: string | null
+          event_id: string
+          id: string
+          invoice_number: string
+          issued_at: string
+          note: string | null
+          organization_id: string
+          quotation_id: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          total_amount: number
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          currency?: string
+          due_at?: string | null
+          event_id: string
+          id?: string
+          invoice_number: string
+          issued_at?: string
+          note?: string | null
+          organization_id: string
+          quotation_id?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          total_amount: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          currency?: string
+          due_at?: string | null
+          event_id?: string
+          id?: string
+          invoice_number?: string
+          issued_at?: string
+          note?: string | null
+          organization_id?: string
+          quotation_id?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          total_amount?: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "invoices_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "invoices_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "invoices_org_quotation_fk"
+            columns: ["organization_id", "quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "invoices_org_quotation_fk"
+            columns: ["organization_id", "quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations_customer"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       organization_memberships: {
         Row: {
           created_at: string
@@ -2252,6 +2492,200 @@ export type Database = {
           },
         ]
       }
+      staff_advances: {
+        Row: {
+          advance_date: string
+          amount: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          reason: string | null
+          recorded_by: string
+          request_fingerprint: string
+          staff_member_id: string
+          status: Database["public"]["Enums"]["host_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          advance_date: string
+          amount: number
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          organization_id: string
+          reason?: string | null
+          recorded_by: string
+          request_fingerprint: string
+          staff_member_id: string
+          status?: Database["public"]["Enums"]["host_payment_status"]
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          advance_date?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          organization_id?: string
+          reason?: string | null
+          recorded_by?: string
+          request_fingerprint?: string
+          staff_member_id?: string
+          status?: Database["public"]["Enums"]["host_payment_status"]
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_advances_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_advances_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      staff_attendance: {
+        Row: {
+          assignment_id: string | null
+          attendance_date: string
+          break_minutes: number
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          earned_amount: number
+          event_id: string
+          hours_worked: number
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          recorded_by: string
+          request_fingerprint: string
+          shift: Database["public"]["Enums"]["staff_shift"]
+          staff_member_id: string
+          status: Database["public"]["Enums"]["attendance_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          wage_method: Database["public"]["Enums"]["compensation_method"]
+          wage_rate: number
+        }
+        Insert: {
+          assignment_id?: string | null
+          attendance_date: string
+          break_minutes?: number
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          earned_amount?: number
+          event_id: string
+          hours_worked?: number
+          id?: string
+          idempotency_key: string
+          notes?: string | null
+          organization_id: string
+          recorded_by: string
+          request_fingerprint: string
+          shift: Database["public"]["Enums"]["staff_shift"]
+          staff_member_id: string
+          status: Database["public"]["Enums"]["attendance_status"]
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          wage_method: Database["public"]["Enums"]["compensation_method"]
+          wage_rate: number
+        }
+        Update: {
+          assignment_id?: string | null
+          attendance_date?: string
+          break_minutes?: number
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          earned_amount?: number
+          event_id?: string
+          hours_worked?: number
+          id?: string
+          idempotency_key?: string
+          notes?: string | null
+          organization_id?: string
+          recorded_by?: string
+          request_fingerprint?: string
+          shift?: Database["public"]["Enums"]["staff_shift"]
+          staff_member_id?: string
+          status?: Database["public"]["Enums"]["attendance_status"]
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          wage_method?: Database["public"]["Enums"]["compensation_method"]
+          wage_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_attendance_org_assignment_fk"
+            columns: ["organization_id", "assignment_id"]
+            isOneToOne: false
+            referencedRelation: "event_staff_assignments"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_assignment_fk"
+            columns: ["organization_id", "assignment_id"]
+            isOneToOne: false
+            referencedRelation: "event_staff_assignments_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       staff_members: {
         Row: {
           created_at: string
@@ -2298,6 +2732,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "staff_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_payroll_command_idempotency: {
+        Row: {
+          actor_id: string
+          command_name: string
+          created_at: string
+          idempotency_key: string
+          organization_id: string
+          request_fingerprint: string
+          response_payload: Json
+          result_entity: string
+          result_id: string
+        }
+        Insert: {
+          actor_id: string
+          command_name: string
+          created_at?: string
+          idempotency_key: string
+          organization_id: string
+          request_fingerprint: string
+          response_payload: Json
+          result_entity: string
+          result_id: string
+        }
+        Update: {
+          actor_id?: string
+          command_name?: string
+          created_at?: string
+          idempotency_key?: string
+          organization_id?: string
+          request_fingerprint?: string
+          response_payload?: Json
+          result_entity?: string
+          result_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_payroll_command_idempotency_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -2890,6 +3368,212 @@ export type Database = {
             columns: ["organization_id", "event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      host_event_payroll_summaries: {
+        Row: {
+          advances_total: number | null
+          attendance_count: number | null
+          due_total: number | null
+          earned_total: number | null
+          event_id: string | null
+          event_number: string | null
+          event_title: string | null
+          late_total: number | null
+          organization_id: string | null
+          paid_total: number | null
+          payouts_total: number | null
+          staff_member_id: string | null
+          staff_name: string | null
+          staff_type: Database["public"]["Enums"]["staff_type"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_attendance_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      host_payout_summaries: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          event_id: string | null
+          event_number: string | null
+          organization_id: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          payout_date: string | null
+          payout_id: string | null
+          reason: string | null
+          recorded_by: string | null
+          reference: string | null
+          staff_member_id: string | null
+          staff_name: string | null
+          staff_type: Database["public"]["Enums"]["staff_type"] | null
+          status: Database["public"]["Enums"]["host_payment_status"] | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "host_payouts_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "host_payouts_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "host_payouts_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "host_payouts_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "host_payouts_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      invoice_installment_summaries: {
+        Row: {
+          amount: number | null
+          cumulative_amount: number | null
+          due_date: string | null
+          effective_status: string | null
+          event_id: string | null
+          installment_id: string | null
+          invoice_id: string | null
+          invoice_number: string | null
+          invoice_paid_total: number | null
+          kind: Database["public"]["Enums"]["invoice_installment_kind"] | null
+          organization_id: string | null
+          plan_status: Database["public"]["Enums"]["installment_status"] | null
+          seq: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_installments_org_fk"
+            columns: ["organization_id", "invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_summaries"
+            referencedColumns: ["organization_id", "invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_installments_org_fk"
+            columns: ["organization_id", "invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      invoice_summaries: {
+        Row: {
+          created_at: string | null
+          due_at: string | null
+          event_id: string | null
+          event_number: string | null
+          event_title: string | null
+          invoice_id: string | null
+          invoice_number: string | null
+          invoice_status: Database["public"]["Enums"]["invoice_status"] | null
+          issued_at: string | null
+          note: string | null
+          organization_id: string | null
+          paid_total: number | null
+          quotation_id: string | null
+          remaining_balance: number | null
+          total_amount: number | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "invoices_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "invoices_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "invoices_org_quotation_fk"
+            columns: ["organization_id", "quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "invoices_org_quotation_fk"
+            columns: ["organization_id", "quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations_customer"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -3549,6 +4233,123 @@ export type Database = {
           },
         ]
       }
+      staff_advances_summaries: {
+        Row: {
+          advance_date: string | null
+          advance_id: string | null
+          amount: number | null
+          created_at: string | null
+          organization_id: string | null
+          reason: string | null
+          recorded_by: string | null
+          staff_member_id: string | null
+          staff_name: string | null
+          staff_type: Database["public"]["Enums"]["staff_type"] | null
+          status: Database["public"]["Enums"]["host_payment_status"] | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_advances_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_advances_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      staff_attendance_summaries: {
+        Row: {
+          assignment_id: string | null
+          attendance_date: string | null
+          attendance_id: string | null
+          attendance_status:
+            | Database["public"]["Enums"]["attendance_status"]
+            | null
+          break_minutes: number | null
+          check_in: string | null
+          check_out: string | null
+          created_at: string | null
+          earned_amount: number | null
+          event_id: string | null
+          event_number: string | null
+          event_title: string | null
+          hours_worked: number | null
+          notes: string | null
+          organization_id: string | null
+          record_status: Database["public"]["Enums"]["attendance_status"] | null
+          recorded_by: string | null
+          shift: Database["public"]["Enums"]["staff_shift"] | null
+          staff_member_id: string | null
+          staff_name: string | null
+          staff_type: Database["public"]["Enums"]["staff_type"] | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          wage_method: Database["public"]["Enums"]["compensation_method"] | null
+          wage_rate: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_attendance_org_assignment_fk"
+            columns: ["organization_id", "assignment_id"]
+            isOneToOne: false
+            referencedRelation: "event_staff_assignments"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_assignment_fk"
+            columns: ["organization_id", "assignment_id"]
+            isOneToOne: false
+            referencedRelation: "event_staff_assignments_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_finance_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "event_procurement_cost_summaries"
+            referencedColumns: ["organization_id", "event_id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members_operational"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       staff_members_operational: {
         Row: {
           created_at: string | null
@@ -3881,6 +4682,7 @@ export type Database = {
         Args: { p_quantity: number }
         Returns: undefined
       }
+      assert_wage_rate: { Args: { p_rate: number }; Returns: undefined }
       assign_event_staff: {
         Args: {
           p_assignment_role: Database["public"]["Enums"]["staff_type"]
@@ -3926,6 +4728,14 @@ export type Database = {
         Returns: Json
       }
       begin_procurement_command: {
+        Args: {
+          p_fingerprint: string
+          p_idempotency_key: string
+          p_org_id: string
+        }
+        Returns: Json
+      }
+      begin_staff_command: {
         Args: {
           p_fingerprint: string
           p_idempotency_key: string
@@ -4021,6 +4831,16 @@ export type Database = {
           p_method: Database["public"]["Enums"]["pricing_method"]
           p_quantity: number
           p_unit: number
+        }
+        Returns: number
+      }
+      compute_earned_amount: {
+        Args: {
+          p_break_minutes: number
+          p_check_in: string
+          p_check_out: string
+          p_wage_method: Database["public"]["Enums"]["compensation_method"]
+          p_wage_rate: number
         }
         Returns: number
       }
@@ -4186,6 +5006,42 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_event_invoice: {
+        Args: {
+          p_due_at: string
+          p_event_id: string
+          p_idempotency_key: string
+          p_installments: Json
+          p_invoice_number: string
+          p_note: string
+          p_org_id: string
+          p_total_amount: number
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          currency: string
+          due_at: string | null
+          event_id: string
+          id: string
+          invoice_number: string
+          issued_at: string
+          note: string | null
+          organization_id: string
+          quotation_id: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          total_amount: number
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoices"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -4430,6 +5286,36 @@ export type Database = {
           p_result_id: string
         }
         Returns: undefined
+      }
+      finish_staff_command: {
+        Args: {
+          p_command_name: string
+          p_fingerprint: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_response: Json
+          p_result_entity: string
+          p_result_id: string
+        }
+        Returns: undefined
+      }
+      get_host_payroll_summary: {
+        Args: {
+          p_event_id?: string
+          p_org_id: string
+          p_staff_member_id: string
+        }
+        Returns: {
+          advances_total: number
+          attendance_count: number
+          due_total: number
+          earned_total: number
+          event_id: string
+          late_total: number
+          paid_total: number
+          payouts_total: number
+          staff_member_id: string
+        }[]
       }
       has_org_role: {
         Args: {
@@ -4769,6 +5655,125 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      record_host_payout: {
+        Args: {
+          p_amount: number
+          p_event_id: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_payment_method: Database["public"]["Enums"]["payment_method"]
+          p_payout_date: string
+          p_reason: string
+          p_reference: string
+          p_staff_member_id: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          organization_id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          payout_date: string
+          reason: string | null
+          recorded_by: string
+          reference: string | null
+          request_fingerprint: string
+          staff_member_id: string
+          status: Database["public"]["Enums"]["host_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "host_payouts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_staff_advance: {
+        Args: {
+          p_advance_date: string
+          p_amount: number
+          p_idempotency_key: string
+          p_org_id: string
+          p_reason: string
+          p_staff_member_id: string
+        }
+        Returns: {
+          advance_date: string
+          amount: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          reason: string | null
+          recorded_by: string
+          request_fingerprint: string
+          staff_member_id: string
+          status: Database["public"]["Enums"]["host_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "staff_advances"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_staff_attendance: {
+        Args: {
+          p_assignment_id: string
+          p_attendance_date: string
+          p_break_minutes: number
+          p_check_in: string
+          p_check_out: string
+          p_event_id: string
+          p_idempotency_key: string
+          p_notes: string
+          p_org_id: string
+          p_shift: Database["public"]["Enums"]["staff_shift"]
+          p_staff_member_id: string
+          p_status: Database["public"]["Enums"]["attendance_status"]
+          p_wage_method: Database["public"]["Enums"]["compensation_method"]
+          p_wage_rate: number
+        }
+        Returns: {
+          assignment_id: string | null
+          attendance_date: string
+          break_minutes: number
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          earned_amount: number
+          event_id: string
+          hours_worked: number
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          recorded_by: string
+          request_fingerprint: string
+          shift: Database["public"]["Enums"]["staff_shift"]
+          staff_member_id: string
+          status: Database["public"]["Enums"]["attendance_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          wage_method: Database["public"]["Enums"]["compensation_method"]
+          wage_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "staff_attendance"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       release_equipment_reservation: {
         Args: { p_org_id: string; p_reservation_id: string }
         Returns: undefined
@@ -5056,6 +6061,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      today_attendance_gaps: {
+        Args: { p_now?: string; p_org_id: string }
+        Returns: {
+          assignment_count: number
+          attendance_count: number
+          event_id: string
+          event_number: string
+          event_title: string
+        }[]
+      }
       transition_event_status: {
         Args: {
           p_event_id: string
@@ -5211,6 +6226,140 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      void_host_payout: {
+        Args: {
+          p_idempotency_key: string
+          p_org_id: string
+          p_payout_id: string
+          p_reason: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          organization_id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          payout_date: string
+          reason: string | null
+          recorded_by: string
+          reference: string | null
+          request_fingerprint: string
+          staff_member_id: string
+          status: Database["public"]["Enums"]["host_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "host_payouts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      void_invoice: {
+        Args: {
+          p_idempotency_key: string
+          p_invoice_id: string
+          p_org_id: string
+          p_reason: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          currency: string
+          due_at: string | null
+          event_id: string
+          id: string
+          invoice_number: string
+          issued_at: string
+          note: string | null
+          organization_id: string
+          quotation_id: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          total_amount: number
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      void_staff_advance: {
+        Args: {
+          p_advance_id: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_reason: string
+        }
+        Returns: {
+          advance_date: string
+          amount: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          reason: string | null
+          recorded_by: string
+          request_fingerprint: string
+          staff_member_id: string
+          status: Database["public"]["Enums"]["host_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "staff_advances"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      void_staff_attendance: {
+        Args: {
+          p_attendance_id: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_reason: string
+        }
+        Returns: {
+          assignment_id: string | null
+          attendance_date: string
+          break_minutes: number
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          earned_amount: number
+          event_id: string
+          hours_worked: number
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          recorded_by: string
+          request_fingerprint: string
+          shift: Database["public"]["Enums"]["staff_shift"]
+          staff_member_id: string
+          status: Database["public"]["Enums"]["attendance_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          wage_method: Database["public"]["Enums"]["compensation_method"]
+          wage_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "staff_attendance"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       warehouse_fingerprint: { Args: { p_payload: Json }; Returns: string }
       warehouse_reservation_state: {
         Args: { p_org_id: string; p_reservation_id: string }
@@ -5290,6 +6439,7 @@ export type Database = {
     Enums: {
       app_role: "OWNER" | "MANAGER" | "SUPERVISOR" | "WAREHOUSE" | "ACCOUNTANT"
       assignment_status: "ACTIVE" | "RELEASED" | "CANCELLED"
+      attendance_status: "PRESENT" | "LATE" | "PARTIAL" | "ABSENT" | "VOIDED"
       catalog_item_status: "ACTIVE" | "INACTIVE"
       catalog_item_type:
         | "SERVICE"
@@ -5321,6 +6471,10 @@ export type Database = {
         | "RETURNING"
         | "CLOSED"
         | "CANCELLED"
+      host_payment_status: "RECORDED" | "VOIDED"
+      installment_status: "PENDING" | "PAID" | "CANCELLED"
+      invoice_installment_kind: "DEPOSIT" | "INSTALLMENT" | "FINAL"
+      invoice_status: "ISSUED" | "CANCELLED"
       membership_status: "ACTIVE" | "INACTIVE" | "INVITED"
       package_status: "ACTIVE" | "INACTIVE"
       payment_method:
@@ -5355,6 +6509,7 @@ export type Database = {
         | "DISCARDED"
       quotation_status: "ISSUED" | "ACCEPTED" | "SUPERSEDED"
       reservation_status: "ACTIVE" | "RELEASED" | "CANCELLED"
+      staff_shift: "MORNING" | "EVENING"
       staff_type:
         | "HOST"
         | "HOSTESS"
@@ -5499,6 +6654,7 @@ export const Constants = {
     Enums: {
       app_role: ["OWNER", "MANAGER", "SUPERVISOR", "WAREHOUSE", "ACCOUNTANT"],
       assignment_status: ["ACTIVE", "RELEASED", "CANCELLED"],
+      attendance_status: ["PRESENT", "LATE", "PARTIAL", "ABSENT", "VOIDED"],
       catalog_item_status: ["ACTIVE", "INACTIVE"],
       catalog_item_type: [
         "SERVICE",
@@ -5533,6 +6689,10 @@ export const Constants = {
         "CLOSED",
         "CANCELLED",
       ],
+      host_payment_status: ["RECORDED", "VOIDED"],
+      installment_status: ["PENDING", "PAID", "CANCELLED"],
+      invoice_installment_kind: ["DEPOSIT", "INSTALLMENT", "FINAL"],
+      invoice_status: ["ISSUED", "CANCELLED"],
       membership_status: ["ACTIVE", "INACTIVE", "INVITED"],
       package_status: ["ACTIVE", "INACTIVE"],
       payment_method: [
@@ -5571,6 +6731,7 @@ export const Constants = {
       ],
       quotation_status: ["ISSUED", "ACCEPTED", "SUPERSEDED"],
       reservation_status: ["ACTIVE", "RELEASED", "CANCELLED"],
+      staff_shift: ["MORNING", "EVENING"],
       staff_type: [
         "HOST",
         "HOSTESS",

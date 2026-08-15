@@ -20,6 +20,7 @@ import { QuotesPage } from "@/features/quotes/QuotesPage";
 import { QuotePage } from "@/features/quotes/QuotePage";
 import { ConsumablesPage } from "@/features/consumables/ConsumablesPage";
 import { ProcurementPage } from "@/features/procurement/ProcurementPage";
+import { StaffPage } from "@/features/staff/StaffPage";
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -130,6 +131,12 @@ const procurementRoute = createRoute({
   component: ProcurementPage,
 });
 
+const staffRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/staff",
+  component: StaffPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -145,6 +152,7 @@ const routeTree = rootRoute.addChildren([
     catalogRoute,
     packagesRoute,
     customersRoute,
+    staffRoute,
   ]),
 ]);
 

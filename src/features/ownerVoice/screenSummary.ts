@@ -702,3 +702,168 @@ export function buildProcurementVoiceSummary(
 
   return parts.join(" ");
 }
+
+/**
+ * Staff attendance summary for an event. Pure, role-safe: it only narrates
+ * what the workspace already shows. "حضر ٣ مضيفين في هذه المناسبة، المستحق
+ * الإجمالي ٤٥ ريال."
+ */
+export interface AttendanceVoiceSummaryInput {
+  /** Exact 3-decimal OMR string (or milli-value) of total earned. */
+  earnedOmr?: string | number | null;
+  presentCount?: number;
+  totalCount?: number;
+}
+
+export function buildAttendanceVoiceSummary(
+  input: AttendanceVoiceSummaryInput,
+): string {
+  const earned = omrToSpoken(input.earnedOmr);
+  if ((input.presentCount ?? 0) === 0 && (input.totalCount ?? 0) === 0 && earned === null) {
+    return "لا يوجد حضور مسجّل لهذه المناسبة بعد.";
+  }
+  const parts: string[] = [];
+  const present = input.presentCount ?? 0;
+  const total = input.totalCount ?? 0;
+  if (total > 0) {
+    parts.push(
+      `سُجّل حضور ${toArabicDigits(present)} من ${toArabicDigits(total)} مضيفين في هذه المناسبة.`,
+    );
+  } else if (present > 0) {
+    parts.push(`حضر ${toArabicDigits(present)} مضيفين.`);
+  }
+  if (earned) parts.push(`المستحق الإجمالي ${earned}.`);
+  return parts.join(" ");
+}
+
+/**
+ * Host payroll summary. "المستحق ٤٥٠ ريال، المدفوع ٢٠٠، المتأخر ٢٥٠."
+ */
+export interface PayrollVoiceSummaryInput {
+  dueOmr?: string | number | null;
+  paidOmr?: string | number | null;
+  lateOmr?: string | number | null;
+  advancesOmr?: string | number | null;
+  hostCount?: number;
+}
+
+export function buildPayrollVoiceSummary(
+  input: PayrollVoiceSummaryInput,
+): string {
+  const due = omrToSpoken(input.dueOmr);
+  const paid = omrToSpoken(input.paidOmr);
+  const late = omrToSpoken(input.lateOmr);
+  const advances = omrToSpoken(input.advancesOmr);
+  if (due === null && paid === null && late === null && advances === null) {
+    return "لا توجد بيانات أجور بعد.";
+  }
+  const parts: string[] = [];
+  if (input.hostCount && input.hostCount > 1) {
+    parts.push(`عندك أجور لـ ${toArabicDigits(input.hostCount)} مضيفين.`);
+  }
+  if (due) parts.push(`المستحق ${due}.`);
+  if (advances) parts.push(`السلف ${advances}.`);
+  if (paid) parts.push(`المدفوع ${paid}.`);
+  if (late) parts.push(`المتأخر ${late}.`);
+  return parts.join(" ");
+}
+
+/**
+ * Owner Attention Center: a single spoken roll-up of what needs the owner's
+ * eyes today — hospitality happening, readiness gaps, low stock, and any
+ * attendance not yet recorded for today's events. Cost/financial figures are
+ * gated by canReadFinance so the spoken output never exceeds the screen.
+ */
+export interface AttentionVoiceSummaryInput {
+  todayEventCount: number;
+  readyCount: number;
+  attentionCount: number;
+  lowStockCount: number;
+  attendanceGapCount: number;
+  unpaidInvoiceCount?: number;
+  canReadFinance: boolean;
+}
+
+export function buildAttentionVoiceSummary(
+  input: AttentionVoiceSummaryInput,
+): string {
+  if (input.todayEventCount === 0) return "لا توجد مناسبات اليوم.";
+  const parts: string[] = [];
+  parts.push(
+    `عندك اليوم ${arabicCountPhrase(input.todayEventCount, {
+      one: "مناسبة واحدة",
+      two: "مناسبتان",
+      few: "مناسبات",
+      many: "مناسبة",
+    })}.`,
+  );
+  if (input.readyCount > 0) {
+    parts.push(
+      `${arabicCountPhrase(input.readyCount, {
+        one: "مناسبة واحدة جاهزة",
+        two: "مناسبتان جاهزتان",
+        few: "مناسبات جاهزة",
+        many: "مناسبة جاهزة",
+      })}.`,
+    );
+  }
+  if (input.attentionCount > 0) {
+    parts.push(
+      `${toArabicDigits(input.attentionCount)} منها تحتاج تدخل.`,
+    );
+  }
+  if (input.attendanceGapCount > 0) {
+    parts.push(
+      `${toArabicDigits(input.attendanceGapCount)} مناسبة لم يُسجَّل حضورها بعد.`,
+    );
+  }
+  if (input.lowStockCount > 0) {
+    parts.push(`مخزون منخفض في ${toArabicDigits(input.lowStockCount)} صنف.`);
+  }
+  if (input.canReadFinance && (input.unpaidInvoiceCount ?? 0) > 0) {
+    parts.push(`عندك ${toArabicDigits(input.unpaidInvoiceCount ?? 0)} فاتورة غير محصّلة.`);
+  }
+  if (
+    input.attentionCount === 0 &&
+    input.attendanceGapCount === 0 &&
+    input.lowStockCount === 0 &&
+    (input.unpaidInvoiceCount ?? 0) === 0
+  ) {
+    parts.push("لا توجد مشاكل تحتاج تدخل الآن.");
+  }
+  return parts.join(" ");
+}
+
+/**
+ * Invoice summary: total, deposit schedule, what is collected and what remains.
+ * "الفاتورة بقيمة ٥٠٠ ريال، المحصَّل ٢٠٠، المتبقي ٣٠٠، من أصل ٣ دفعات تم سداد ١."
+ */
+export interface InvoiceVoiceSummaryInput {
+  totalOmr?: string | number | null;
+  paidOmr?: string | number | null;
+  remainingOmr?: string | number | null;
+  installmentCount?: number;
+  paidInstallments?: number;
+}
+
+export function buildInvoiceVoiceSummary(
+  input: InvoiceVoiceSummaryInput,
+): string {
+  const total = omrToSpoken(input.totalOmr);
+  const paid = omrToSpoken(input.paidOmr);
+  const remaining = omrToSpoken(input.remainingOmr);
+  if (total === null && paid === null && remaining === null) {
+    return "لا توجد فاتورة بعد.";
+  }
+  const parts: string[] = [];
+  if (total) parts.push(`الفاتورة بقيمة ${total}.`);
+  if (paid) parts.push(`المحصَّل ${paid}.`);
+  if (remaining) parts.push(`المتبقي ${remaining}.`);
+  if (typeof input.installmentCount === "number" && input.installmentCount > 0) {
+    const paidN = input.paidInstallments ?? 0;
+    parts.push(
+      `مقسّمة إلى ${toArabicDigits(input.installmentCount)} دفعة، تم سداد ${toArabicDigits(paidN)} منها.`,
+    );
+  }
+  return parts.join(" ");
+}

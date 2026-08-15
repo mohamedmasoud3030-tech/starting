@@ -14,8 +14,9 @@ type NavTarget =
   | "/consumables"
   | "/catalog"
   | "/packages"
-  | "/customers";
-const NAV_ITEMS: ReadonlyArray<{ to: NavTarget; label: string; commercial?: boolean }> = [
+  | "/customers"
+  | "/staff";
+const NAV_ITEMS: ReadonlyArray<{ to: NavTarget; label: string; commercial?: boolean; financial?: boolean }> = [
   { to: "/home", label: "الرئيسية" },
   { to: "/events", label: "المناسبات" },
   { to: "/quotes", label: "عروض الأسعار", commercial: true },
@@ -24,10 +25,11 @@ const NAV_ITEMS: ReadonlyArray<{ to: NavTarget; label: string; commercial?: bool
   { to: "/catalog", label: "الكتالوج" },
   { to: "/packages", label: "الباقات" },
   { to: "/customers", label: "العملاء" },
+  { to: "/staff", label: "المضيفون", financial: true },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, profile, currentOrganization, currentRole, logout, canManageCommercial } = useAuth();
+  const { user, profile, currentOrganization, currentRole, logout, canManageCommercial, canReadCost } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -52,7 +54,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           {/* Desktop nav */}
           <nav className="hidden items-center gap-1 md:flex" aria-label="التنقل الرئيسي">
-            {NAV_ITEMS.filter((item) => !item.commercial || canManageCommercial).map((item) => {
+            {NAV_ITEMS.filter((item) => (!item.commercial || canManageCommercial) && (!item.financial || canReadCost)).map((item) => {
               const active = pathname === item.to;
               return (
                 <Link
@@ -101,12 +103,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Mobile nav */}
-        {menuOpen && (
+          {menuOpen && (
           <nav
             className="border-t border-slate-200 bg-white px-4 py-3 md:hidden"
             aria-label="التنقل على الجوال"
           >
-            {NAV_ITEMS.filter((item) => !item.commercial || canManageCommercial).map((item) => {
+            {NAV_ITEMS.filter((item) => (!item.commercial || canManageCommercial) && (!item.financial || canReadCost)).map((item) => {
               const active = pathname === item.to;
               return (
                 <Link
