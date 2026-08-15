@@ -80,7 +80,9 @@ begin
     v_kind := v_item ->> 'kind';
     v_due := (v_item ->> 'due_date')::date;
     v_amount := (v_item ->> 'amount')::numeric;
-    if v_kind is distinct from all (array['DEPOSIT', 'INSTALLMENT', 'FINAL']) then
+    -- NULL must be rejected too: `<> all (...)` yields NULL (not true) for a
+    -- NULL left operand, so the missing-kind case is tested explicitly.
+    if v_kind is null or v_kind <> all (array['DEPOSIT', 'INSTALLMENT', 'FINAL']) then
       raise exception 'INVALID_INSTALLMENT_KIND';
     end if;
     if v_due is null then

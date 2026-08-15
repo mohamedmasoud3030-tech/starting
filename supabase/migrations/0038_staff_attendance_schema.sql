@@ -12,13 +12,24 @@
 -- second count (EXTRACT EPOCH cast to integer) — never from a rounded float.
 -- ============================================================================
 
+-- ---------------------------------------------------------------------------
+-- Prerequisite: attendance rows are keyed by (organization_id, assignment_id)
+-- so the tenant boundary is carried by the foreign key itself. The 0013 table
+-- only declares a single-column primary key on id, which cannot back that
+-- composite reference. 0013 is already applied and therefore immutable, so the
+-- missing composite unique is added forward here (idempotent, no data change).
+-- ---------------------------------------------------------------------------
+alter table public.event_staff_assignments
+  add constraint event_staff_assignments_org_id_unique unique (organization_id, id);
+
 create type public.staff_shift as enum ('MORNING', 'EVENING');
 
 create type public.attendance_status as enum (
   'PRESENT',   -- حضر وسجّل دخول وخروج
   'LATE',      -- حضر متأخراً (سجّل وقت دخول بعد موعد البداية المجدول)
   'PARTIAL',   -- حضر جزءاً من الوردية
-  'ABSENT'     -- غائب (بدون ساعات ولا مستحق)
+  'ABSENT',    -- غائب (بدون ساعات ولا مستحق)
+  'VOIDED'     -- سجل مُبطَل (إلحاقي، لا يُحذف؛ يُستثنى من كل المستحقات)
 );
 
 create type public.host_payment_status as enum ('RECORDED', 'VOIDED');
@@ -80,8 +91,12 @@ create table public.staff_attendance (
     references public.event_staff_assignments(organization_id, id) on delete restrict,
   constraint staff_attendance_org_id_unique unique (organization_id, id),
   constraint staff_attendance_org_idempotency_unique unique (organization_id, idempotency_key),
+  -- A VOIDED row keeps whatever shape it had before the void (an absent row
+  -- stays without timestamps, a worked row keeps them), so the shape rule is
+  -- asserted only for live statuses.
   constraint staff_attendance_void_shape check (
-    (status = 'ABSENT'
+    status = 'VOIDED'
+    or (status = 'ABSENT'
       and check_in is null
       and check_out is null)
     or (status <> 'ABSENT'
@@ -211,7 +226,9 @@ begin
     or new.check_out is distinct from old.check_out
     or new.break_minutes is distinct from old.break_minutes
     or new.hours_worked is distinct from old.hours_worked
-    or new.status is distinct from old.status
+    -- status is deliberately NOT listed: the transition above is the one
+    -- permitted mutation, and re-asserting immutability here would make the
+    -- void command unreachable.
     or new.wage_method is distinct from old.wage_method
     or new.wage_rate is distinct from old.wage_rate
     or new.earned_amount is distinct from old.earned_amount
