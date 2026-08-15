@@ -5,6 +5,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import "./index.css";
 import { AuthProvider } from "@/app/AuthContext";
 import { queryClient } from "@/lib/queryClient";
+import { registerServiceWorker } from "@/pwa/registerServiceWorker";
 import { router } from "@/routes";
 
 createRoot(document.getElementById("root")!).render(
@@ -16,3 +17,5 @@ createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </StrictMode>,
 );
+
+registerServiceWorker();
