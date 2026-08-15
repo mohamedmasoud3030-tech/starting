@@ -21,7 +21,10 @@ export function CardHeader({
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("border-b border-slate-100 p-5", className)} {...props} />
+    <div
+      className={cn("border-b border-slate-100 p-4 sm:p-5", className)}
+      {...props}
+    />
   );
 }
 
@@ -29,5 +32,5 @@ export function CardBody({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-5", className)} {...props} />;
+  return <div className={cn("p-4 sm:p-5", className)} {...props} />;
 }
