@@ -71,12 +71,12 @@ select throws_ok($$select public.record_staff_attendance('96000000-0000-0000-000
 select lives_ok($$select public.record_staff_advance('96000000-0000-0000-0000-0000000000a1','96000000-0000-0000-0000-0000000000f1',50.000,'2026-10-01','cash need',gen_random_uuid())$$,'ACCOUNTANT records an advance');
 select throws_ok($$select public.record_staff_advance('96000000-0000-0000-0000-0000000000a1','96000000-0000-0000-0000-0000000000f1',-5.000,'2026-10-01','bad',gen_random_uuid())$$,'P0001','INVALID_PAYMENT_AMOUNT','negative advance is rejected');
 
--- Host payout + payroll rollup.
+-- Host payout + payroll rollup. Event-scoped totals exclude staff-global advances because they cannot be attributed to one event.
 select lives_ok($$select public.record_host_payout('96000000-0000-0000-0000-0000000000a1','96000000-0000-0000-0000-0000000000f1','96000000-0000-0000-0000-0000000000e1',30.000,'2026-10-02','CASH',null,'partial',gen_random_uuid())$$,'OWNER records a payout');
 select is((select due_total::text from public.get_host_payroll_summary('96000000-0000-0000-0000-0000000000a1','96000000-0000-0000-0000-0000000000f1','96000000-0000-0000-0000-0000000000e1')),'23.000','due totals both live PER_HOUR rows (11.000 + 12.000)');
-select is((select advances_total::text from public.get_host_payroll_summary('96000000-0000-0000-0000-0000000000a1','96000000-0000-0000-0000-0000000000f1','96000000-0000-0000-0000-0000000000e1')),'50.000','advances total 50.000');
-select is((select paid_total::text from public.get_host_payroll_summary('96000000-0000-0000-0000-0000000000a1','96000000-0000-0000-0000-0000000000f1','96000000-0000-0000-0000-0000000000e1')),'80.000','paid = advance 50 + payout 30');
-select is((select late_total::text from public.get_host_payroll_summary('96000000-0000-0000-0000-0000000000a1','96000000-0000-0000-0000-0000000000f1','96000000-0000-0000-0000-0000000000e1')),'-57.000','late = due 23 - paid 80');
+select is((select advances_total::text from public.get_host_payroll_summary('96000000-0000-0000-0000-0000000000a1','96000000-0000-0000-0000-0000000000f1','96000000-0000-0000-0000-0000000000e1')),'0.000','event-scoped payroll does not allocate the global advance');
+select is((select paid_total::text from public.get_host_payroll_summary('96000000-0000-0000-0000-0000000000a1','96000000-0000-0000-0000-0000000000f1','96000000-0000-0000-0000-0000000000e1')),'30.000','event-scoped paid total includes only the event payout');
+select is((select late_total::text from public.get_host_payroll_summary('96000000-0000-0000-0000-0000000000a1','96000000-0000-0000-0000-0000000000f1','96000000-0000-0000-0000-0000000000e1')),'-7.000','event balance = due 23 - event payout 30');
 
 -- Void transitions.
 set local "request.jwt.claims"='{"sub":"96000000-0000-0000-0000-0000000000a1","role":"authenticated"}';
