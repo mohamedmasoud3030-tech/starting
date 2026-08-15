@@ -85,6 +85,11 @@ jobs:
           DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
         run: node scripts/native-db/payments_concurrency.mjs
 
+      - name: Run staff payroll concurrency proof
+        env:
+          DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: node scripts/native-db/staff_payroll_concurrency.mjs
+
       - name: Generate types from the replayed schema
         run: supabase gen types typescript --local --schema public > /tmp/database.types.ts
 
