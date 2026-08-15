@@ -1,19 +1,19 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase as typedSupabase } from "@/lib/supabase";
+import { supabase as db } from "@/lib/supabase";
 import { fromDbAmount, toDbNumeric, type MilliOMR } from "@/lib/money";
 import { paymentError } from "./payments.api";
 
 /**
- * S6+ invoicing data layer. The invoice artifact (deposit + installment
- * schedule) is owned here; the authoritative money stays in the S6
- * customer_payments ledger. Reads go through the stable read models; writes
- * are server-authoritative SECURITY DEFINER commands. (Forward-compat untyped
- * boundary — migrations 0041-0043 are not yet in the generated types.)
+ * S6+ invoicing data layer.
+ *
+ * The accepted quotation remains the authoritative commercial amount, while
+ * customer_payments remains the authoritative collected-cash ledger. Reads use
+ * generated database types and stable read models; writes go through the
+ * server-authoritative SECURITY DEFINER commands.
  */
-const db = typedSupabase as unknown as SupabaseClient;
-
 async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
+  // Keep dynamic dispatch local to this helper. The Supabase client itself is
+  // fully generated/typed; only the generic wrapper erases the per-RPC overload.
   const caller = db.rpc as unknown as (
     fn: string,
     a?: Record<string, unknown>,
@@ -25,7 +25,7 @@ async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
 
 export type InvoiceStatus = "ISSUED" | "CANCELLED";
 export type InstallmentKind = "DEPOSIT" | "INSTALLMENT" | "FINAL";
-export type InstallmentEffective = "PAID" | "PENDING";
+export type InstallmentEffective = "PAID" | "PENDING" | "CANCELLED";
 
 export interface InvoiceSummary {
   invoiceId: string;
@@ -94,6 +94,7 @@ function mapInstallment(row: Record<string, unknown>): InstallmentSummary {
   };
 }
 
+/** Return only the current live invoice. Cancelled history remains in the DB. */
 export function useEventInvoice(orgId: string | null, eventId: string) {
   return useQuery({
     queryKey: ["event-invoice", orgId, eventId],
@@ -104,6 +105,7 @@ export function useEventInvoice(orgId: string | null, eventId: string) {
         .select("*")
         .eq("organization_id", orgId!)
         .eq("event_id", eventId)
+        .eq("invoice_status", "ISSUED")
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
@@ -112,6 +114,7 @@ export function useEventInvoice(orgId: string | null, eventId: string) {
   });
 }
 
+/** Return the schedule for the current live invoice only. */
 export function useEventInstallments(orgId: string | null, eventId: string) {
   return useQuery({
     queryKey: ["event-installments", orgId, eventId],
@@ -122,9 +125,10 @@ export function useEventInstallments(orgId: string | null, eventId: string) {
         .select("*")
         .eq("organization_id", orgId!)
         .eq("event_id", eventId)
+        .eq("plan_status", "PENDING")
         .order("seq", { ascending: true });
       if (error) throw error;
-      return (data ?? []).map(mapInstallment);
+      return (data ?? []).map((row) => mapInstallment(row as Record<string, unknown>));
     },
   });
 }
@@ -192,7 +196,12 @@ export function buildInstallmentSchedule(
   const count = Math.max(1, installmentsCount);
   const base = Math.floor(remaining / count);
   const out: InstallmentInput[] = [
-    { seq: 0, kind: "DEPOSIT", dueDate: new Date().toISOString().slice(0, 10), amountMilli: depositMilli },
+    {
+      seq: 0,
+      kind: "DEPOSIT",
+      dueDate: new Date().toISOString().slice(0, 10),
+      amountMilli: depositMilli,
+    },
   ];
   let sum = 0;
   for (let k = 0; k < count; k += 1) {
@@ -216,11 +225,17 @@ export function invoiceError(error: unknown): string {
   if (message.includes("NOT_AUTHORIZED")) return "ليس لديك صلاحية لإصدار فاتورة";
   if (message.includes("INVOICE_NUMBER_REQUIRED")) return "يرجى إدخال رقم الفاتورة";
   if (message.includes("INVOICE_ALREADY_EXISTS")) return "توجد فاتورة صادرة لهذه المناسبة بالفعل";
-  if (message.includes("INVOICE_INSTALLMENTS_REQUIRED")) return "يرجى تحديد جدول الدفعات";
+  if (message.includes("INVOICE_REQUIRES_ACCEPTED_QUOTATION")) return "يجب اعتماد عرض سعر للمناسبة قبل إصدار الفاتورة";
+  if (message.includes("INVOICE_TOTAL_MISMATCH")) return "قيمة الفاتورة يجب أن تطابق إجمالي عرض السعر المعتمد";
+  if (message.includes("INVOICE_INSTALLMENTS_REQUIRED")) return "يرجى تحديد العربون وجدول الدفعات";
   if (message.includes("INSTALLMENT_TOTAL_MISMATCH")) return "مجموع الدفعات يجب أن يساوي قيمة الفاتورة بالضبط";
+  if (message.includes("INVALID_INSTALLMENT_SEQUENCE")) return "ترتيب الدفعات غير صالح";
   if (message.includes("INVALID_INSTALLMENT_KIND")) return "نوع دفعة غير صالح";
+  if (message.includes("INSTALLMENT_DATES_OUT_OF_ORDER")) return "تواريخ الدفعات يجب أن تكون مرتبة زمنياً";
   if (message.includes("INSTALLMENT_DUE_DATE_REQUIRED")) return "يرجى تحديد تاريخ استحقاق لكل دفعة";
+  if (message.includes("INVALID_INSTALLMENT_AMOUNT")) return "قيمة إحدى الدفعات غير صالحة";
   if (message.includes("INVOICE_ALREADY_CANCELLED")) return "الفاتورة ملغاة بالفعل";
   if (message.includes("VOID_REASON_REQUIRED")) return "يرجى ذكر سبب الإلغاء";
+  if (message.includes("IDEMPOTENCY_KEY_PAYLOAD_MISMATCH")) return "تعارض في إعادة إرسال الطلب — أعد المحاولة من الشاشة";
   return paymentError(error);
 }
