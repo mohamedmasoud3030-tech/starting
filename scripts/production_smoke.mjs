@@ -5,11 +5,19 @@ import process from "node:process";
 const HOST = "127.0.0.1";
 const PORT = 4173;
 const BASE_URL = `http://${HOST}:${PORT}`;
+const REQUEST_TIMEOUT_MS = 5_000;
 
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function request(pathname, options = {}) {
+  return fetch(`${BASE_URL}${pathname}`, {
+    ...options,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
 }
 
 async function waitForServer() {
@@ -18,7 +26,7 @@ async function waitForServer() {
 
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`${BASE_URL}/login`, { redirect: "manual" });
+      const response = await request("/login", { redirect: "manual" });
       if (response.ok) return;
     } catch (error) {
       lastError = error;
@@ -30,7 +38,7 @@ async function waitForServer() {
 }
 
 async function assertSpaRoute(pathname) {
-  const response = await fetch(`${BASE_URL}${pathname}`, { redirect: "manual" });
+  const response = await request(pathname, { redirect: "manual" });
   const body = await response.text();
 
   assert(response.status === 200, `${pathname} returned HTTP ${response.status}`);
@@ -42,14 +50,14 @@ async function assertSpaRoute(pathname) {
 }
 
 async function assertPwaFiles() {
-  const manifestResponse = await fetch(`${BASE_URL}/manifest.webmanifest`);
+  const manifestResponse = await request("/manifest.webmanifest");
   assert(manifestResponse.status === 200, "manifest.webmanifest is not served");
   const manifest = await manifestResponse.json();
   assert(manifest.lang === "ar", "PWA manifest language must be Arabic");
   assert(manifest.dir === "rtl", "PWA manifest direction must be RTL");
   assert(manifest.start_url === "/home", "PWA manifest start_url must be /home");
 
-  const workerResponse = await fetch(`${BASE_URL}/sw.js`);
+  const workerResponse = await request("/sw.js");
   assert(workerResponse.status === 200, "sw.js is not served");
   const workerSource = await workerResponse.text();
   assert(workerSource.includes("cacheableDestinations"), "Service worker lost static-only cache guard");
@@ -70,6 +78,13 @@ async function assertBuildIsSplit() {
   );
   sizes.sort((a, b) => b.size - a.size);
 
+  const largest = sizes[0];
+  assert(largest, "No JavaScript chunks were emitted");
+  assert(
+    largest.size <= 500 * 1024,
+    `Largest production JS chunk is ${(largest.size / 1024).toFixed(1)} KiB; expected <= 500 KiB`,
+  );
+
   console.log("Production JS chunks:");
   for (const item of sizes) {
     console.log(`  ${item.file}: ${(item.size / 1024).toFixed(1)} KiB`);
@@ -89,14 +104,11 @@ async function assertVercelContract() {
   assert(serializedHeaders.includes("Referrer-Policy"), "Missing referrer deployment header");
 }
 
-const preview = spawn(
-  process.platform === "win32" ? "npm.cmd" : "npm",
-  ["run", "preview", "--", "--host", HOST, "--port", String(PORT)],
-  {
-    env: process.env,
-    stdio: ["ignore", "pipe", "pipe"],
-  },
-);
+const viteBinary = process.platform === "win32" ? "node_modules/.bin/vite.cmd" : "node_modules/.bin/vite";
+const preview = spawn(viteBinary, ["preview", "--host", HOST, "--port", String(PORT)], {
+  env: process.env,
+  stdio: ["ignore", "pipe", "pipe"],
+});
 
 let previewOutput = "";
 preview.stdout.on("data", (chunk) => {
@@ -136,12 +148,17 @@ try {
   }
   throw error;
 } finally {
-  preview.kill("SIGTERM");
-  await new Promise((resolve) => {
-    const timer = setTimeout(resolve, 2_000);
-    preview.once("exit", () => {
-      clearTimeout(timer);
-      resolve();
+  if (preview.exitCode === null) {
+    preview.kill("SIGTERM");
+  }
+
+  if (preview.exitCode === null) {
+    await new Promise((resolve) => {
+      const timer = setTimeout(resolve, 2_000);
+      preview.once("exit", () => {
+        clearTimeout(timer);
+        resolve();
+      });
     });
-  });
+  }
 }
