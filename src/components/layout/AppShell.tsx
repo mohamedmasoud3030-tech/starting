@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   CalendarDays,
@@ -69,6 +69,27 @@ export function AppShell({ children }: { children: ReactNode }) {
   const mobilePrimary = ["/home", "/events", "/customers"]
     .map((target) => visibleItems.find((item) => item.to === target))
     .filter((item): item is (typeof visibleItems)[number] => Boolean(item));
+  const mobilePrimaryTargets = new Set(mobilePrimary.map((item) => item.to));
+  const secondaryActive = visibleItems.some(
+    (item) =>
+      !mobilePrimaryTargets.has(item.to) && isActivePath(pathname, item.to),
+  );
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [menuOpen]);
 
   return (
     <div className="min-h-dvh bg-slate-50">
@@ -226,7 +247,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             onClick={() => setMenuOpen((v) => !v)}
             className={cn(
               "flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-bold",
-              menuOpen ? "bg-brand-50 text-brand-800" : "text-slate-500",
+              menuOpen || secondaryActive
+                ? "bg-brand-50 text-brand-800"
+                : "text-slate-500",
             )}
             aria-expanded={menuOpen}
           >
