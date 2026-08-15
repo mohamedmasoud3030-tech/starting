@@ -56,6 +56,35 @@ async function assertPwaFiles() {
   assert(manifest.lang === "ar", "PWA manifest language must be Arabic");
   assert(manifest.dir === "rtl", "PWA manifest direction must be RTL");
   assert(manifest.start_url === "/home", "PWA manifest start_url must be /home");
+  assert(
+    manifest.icons?.some((icon) => icon.src === "/pwa-192.png" && icon.sizes === "192x192"),
+    "PWA manifest must include the 192px PNG icon",
+  );
+  assert(
+    manifest.icons?.some((icon) => icon.src === "/pwa-512.png" && icon.sizes === "512x512"),
+    "PWA manifest must include the 512px PNG icon",
+  );
+
+  for (const iconPath of ["/apple-touch-icon.png", "/pwa-192.png", "/pwa-512.png"]) {
+    const iconResponse = await request(iconPath);
+    assert(iconResponse.status === 200, `${iconPath} is not served`);
+    assert(
+      iconResponse.headers.get("content-type")?.includes("image/png"),
+      `${iconPath} must be served as PNG`,
+    );
+  }
+
+  const indexResponse = await request("/");
+  const indexSource = await indexResponse.text();
+  assert(
+    indexSource.includes('rel="apple-touch-icon"') &&
+      indexSource.includes('/apple-touch-icon.png'),
+    "index.html must expose the iOS apple-touch-icon",
+  );
+  assert(
+    indexSource.includes("viewport-fit=cover"),
+    "index.html viewport must enable iOS safe-area layout",
+  );
 
   const workerResponse = await request("/sw.js");
   assert(workerResponse.status === 200, "sw.js is not served");
