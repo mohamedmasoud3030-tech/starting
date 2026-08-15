@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -42,11 +42,7 @@ export function HostPayrollPanel({
   const [reason, setReason] = useState("");
 
   const rows = payroll.data ?? [];
-
-  const assignedHostOptions = useMemo(
-    () => rows.map((r) => ({ id: r.staffMemberId, name: r.staffName })),
-    [rows],
-  );
+  const assignedHostOptions = rows.map((r) => ({ id: r.staffMemberId, name: r.staffName }));
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -101,7 +97,9 @@ export function HostPayrollPanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 id="payroll-heading" className="text-xl font-black">أجور المضيفين</h2>
-          <p className="mt-1 text-slate-600">المستحق والمدفوع والمتأخر لكل مضيف في هذه المناسبة.</p>
+          <p className="mt-1 text-slate-600">
+            المستحق والمدفوع والمتبقي لهذه المناسبة. السلف تُسجّل على رصيد المضيف العام ولا تُكرر على كل مناسبة.
+          </p>
         </div>
         <Button onClick={() => setOpen(true)} disabled={recordPayout.isPending || recordAdvance.isPending}>
           سلفة / صرف
@@ -126,21 +124,17 @@ export function HostPayrollPanel({
                       {r.attendanceCount} وردية · {r.eventNumber ?? "—"}
                     </p>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="mt-3 grid grid-cols-3 gap-3">
                     <div>
-                      <p className="text-sm text-slate-500">المستحق</p>
+                      <p className="text-sm text-slate-500">المستحق للمناسبة</p>
                       <p className="text-lg font-black" dir="ltr">{formatOMR(r.dueMilli)}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-slate-500">السلف</p>
-                      <p className="text-lg font-black" dir="ltr">{formatOMR(r.advancesMilli)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-slate-500">المدفوع</p>
+                      <p className="text-sm text-slate-500">المدفوع للمناسبة</p>
                       <p className="text-lg font-black" dir="ltr">{formatOMR(r.payoutsMilli)}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-slate-500">المتأخر</p>
+                      <p className="text-sm text-slate-500">المتبقي للمناسبة</p>
                       <Badge tone={r.lateMilli > 0 ? "warning" : "success"}>
                         <span dir="ltr">{formatOMR(r.lateMilli)}</span>
                       </Badge>
@@ -157,13 +151,17 @@ export function HostPayrollPanel({
         open={open}
         onOpenChange={setOpen}
         title={mode === "ADVANCE" ? "سلفة مضيف" : "صرف لمضيف"}
-        description={mode === "ADVANCE" ? "سلفة تُخصم لاحقاً من مستحقاته." : "مبلغ يُسدَّد فعلياً للمضيف عن هذه المناسبة."}
+        description={
+          mode === "ADVANCE"
+            ? "السلفة تخص رصيد المضيف العام وتُخصم مرة واحدة من إجمالي مستحقاته، وليست من هذه المناسبة وحدها."
+            : "مبلغ يُسدَّد فعلياً للمضيف عن هذه المناسبة."
+        }
       >
         <form className="space-y-3" onSubmit={submit}>
           <Field label="نوع العملية" htmlFor="pay-mode">
             <Select id="pay-mode" value={mode} onChange={(e) => setMode(e.target.value as "ADVANCE" | "PAYOUT")}>
-              <option value="PAYOUT">صرف (مدفوع)</option>
-              <option value="ADVANCE">سلفة</option>
+              <option value="PAYOUT">صرف للمناسبة (مدفوع)</option>
+              <option value="ADVANCE">سلفة عامة للمضيف</option>
             </Select>
           </Field>
           <Field label="المضيف" htmlFor="pay-staff" required>
