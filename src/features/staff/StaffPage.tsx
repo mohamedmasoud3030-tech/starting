@@ -27,15 +27,6 @@ import {
 import { STAFF_TYPE_LABELS } from "./labels";
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_OPTIONS } from "@/features/payments/presentation";
 
-interface Totals {
-  dueMilli: MilliOMR;
-  paidMilli: MilliOMR;
-  lateMilli: MilliOMR;
-  advancesMilli: MilliOMR;
-  payoutsMilli: MilliOMR;
-  events: number;
-}
-
 function HostDetail({ orgId, staff }: { orgId: string | null; staff: StaffMemberRow }) {
   const canMutate = useCanMutate();
   const advances = useStaffAdvances(orgId, staff.id);
@@ -95,13 +86,13 @@ function HostDetail({ orgId, staff }: { orgId: string | null; staff: StaffMember
     <div className="space-y-3">
       <div className="flex justify-end">
         <Button size="sm" onClick={() => setOpen(true)} disabled={recordAdvance.isPending || recordPayout.isPending}>
-          سلفة / صرف
+          سلفة / صرف عام
         </Button>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
         <Card>
           <CardBody>
-            <p className="font-black">السلف</p>
+            <p className="font-black">السلف العامة</p>
             {advances.data?.length ? (
               <ul className="mt-2 space-y-1">
                 {advances.data.map((a) => (
@@ -120,12 +111,15 @@ function HostDetail({ orgId, staff }: { orgId: string | null; staff: StaffMember
         </Card>
         <Card>
           <CardBody>
-            <p className="font-black">الصرف</p>
+            <p className="font-black">كل عمليات الصرف</p>
             {payouts.data?.length ? (
               <ul className="mt-2 space-y-1">
                 {payouts.data.map((p) => (
                   <li key={p.id} className="flex justify-between text-sm">
-                    <span>{p.payoutDate} · {PAYMENT_METHOD_LABELS[p.method]}</span>
+                    <span>
+                      {p.payoutDate} · {PAYMENT_METHOD_LABELS[p.method]}
+                      {p.eventNumber ? ` · ${p.eventNumber}` : " · عام"}
+                    </span>
                     <span className={p.status === "VOIDED" ? "line-through opacity-60" : ""} dir="ltr">
                       {formatOMR(p.amountMilli)}
                     </span>
@@ -139,12 +133,17 @@ function HostDetail({ orgId, staff }: { orgId: string | null; staff: StaffMember
         </Card>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen} title={mode === "ADVANCE" ? "سلفة مضيف" : "صرف لمضيف"}>
+      <Dialog
+        open={open}
+        onOpenChange={setOpen}
+        title={mode === "ADVANCE" ? "سلفة مضيف" : "صرف عام لمضيف"}
+        description="هذه العملية تخص الرصيد العام للمضيف. الصرف المرتبط بمناسبة محددة يُسجّل من مساحة عمل المناسبة."
+      >
         <form className="space-y-3" onSubmit={submit}>
           <Field label="نوع العملية" htmlFor="d-mode">
             <Select id="d-mode" value={mode} onChange={(e) => setMode(e.target.value as "ADVANCE" | "PAYOUT")}>
-              <option value="PAYOUT">صرف (مدفوع)</option>
-              <option value="ADVANCE">سلفة</option>
+              <option value="PAYOUT">صرف عام (مدفوع)</option>
+              <option value="ADVANCE">سلفة عامة</option>
             </Select>
           </Field>
           <MoneyInput id="d-amount" label="المبلغ (ر.ع.)" value={amountMilli} onChange={(m) => setAmountMilli(m ?? 0)} required />
@@ -184,6 +183,87 @@ function useCanMutate(): boolean {
   return !!currentRole && PAYMENT_WRITE_ROLES.includes(currentRole);
 }
 
+function StaffSummaryCard({
+  orgId,
+  staff,
+  rows,
+  open,
+  onToggle,
+}: {
+  orgId: string | null;
+  staff: StaffMemberRow;
+  rows: PayrollRow[];
+  open: boolean;
+  onToggle: () => void;
+}) {
+  // Event rows are intentionally event-scoped. Staff advances are a global
+  // ledger and global payouts may have event_id=NULL, so aggregate those ledgers
+  // exactly once here instead of summing them once per event.
+  const advances = useStaffAdvances(orgId, staff.id);
+  const payouts = useHostPayouts(orgId, staff.id);
+
+  const dueMilli = rows.reduce((sum, row) => sum + row.dueMilli, 0 as MilliOMR);
+  const advancesMilli = (advances.data ?? [])
+    .filter((row) => row.status === "RECORDED")
+    .reduce((sum, row) => sum + row.amountMilli, 0 as MilliOMR);
+  const payoutsMilli = (payouts.data ?? [])
+    .filter((row) => row.status === "RECORDED")
+    .reduce((sum, row) => sum + row.amountMilli, 0 as MilliOMR);
+  const paidMilli = (advancesMilli + payoutsMilli) as MilliOMR;
+  const lateMilli = (dueMilli - paidMilli) as MilliOMR;
+  const ledgersLoading = advances.isLoading || payouts.isLoading;
+
+  return (
+    <Card>
+      <CardBody>
+        <button
+          type="button"
+          className="flex w-full flex-wrap items-center justify-between gap-3 text-right"
+          onClick={onToggle}
+          aria-expanded={open}
+        >
+          <div>
+            <p className="text-lg font-black">{staff.name}</p>
+            <p className="text-sm text-slate-500">{STAFF_TYPE_LABELS[staff.staffType] ?? staff.staffType}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span>مستحق <b dir="ltr">{formatOMR(dueMilli)}</b></span>
+            <span>سلف <b dir="ltr">{ledgersLoading ? "…" : formatOMR(advancesMilli)}</b></span>
+            <span>صرف <b dir="ltr">{ledgersLoading ? "…" : formatOMR(payoutsMilli)}</b></span>
+            <Badge tone={!ledgersLoading && lateMilli > 0 ? "warning" : "success"}>
+              متبقي <span dir="ltr">{ledgersLoading ? "…" : formatOMR(lateMilli)}</span>
+            </Badge>
+          </div>
+        </button>
+
+        {open && (
+          <div className="mt-4 space-y-3 border-t pt-4">
+            <div>
+              <p className="font-black">الأجور لكل مناسبة</p>
+              {rows.length ? (
+                <ul className="mt-2 space-y-1">
+                  {rows.map((r) => (
+                    <li key={`${r.staffMemberId}-${r.eventId}`} className="flex flex-wrap justify-between gap-2 text-sm">
+                      <span>{r.eventTitle ?? r.eventNumber ?? "—"}</span>
+                      <span className="text-slate-500">{r.attendanceCount} وردية</span>
+                      <span dir="ltr">
+                        مستحق {formatOMR(r.dueMilli)} · مدفوع للمناسبة {formatOMR(r.payoutsMilli)} · متبقي {formatOMR(r.lateMilli)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-sm text-slate-500">لا أوراق حضور بعد.</p>
+              )}
+            </div>
+            <HostDetail orgId={orgId} staff={staff} />
+          </div>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
 export function StaffPage() {
   const { currentOrganization, currentRole } = useAuth();
   const orgId = currentOrganization?.id ?? null;
@@ -193,20 +273,11 @@ export function StaffPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const byStaff = useMemo(() => {
-    const map = new Map<string, { rows: PayrollRow[]; totals: Totals }>();
-    for (const r of archive.data ?? []) {
-      const cur = map.get(r.staffMemberId) ?? {
-        rows: [],
-        totals: { dueMilli: 0, paidMilli: 0, lateMilli: 0, advancesMilli: 0, payoutsMilli: 0, events: 0 },
-      };
-      cur.rows.push(r);
-      cur.totals.dueMilli += r.dueMilli;
-      cur.totals.paidMilli += r.paidMilli;
-      cur.totals.lateMilli += r.lateMilli;
-      cur.totals.advancesMilli += r.advancesMilli;
-      cur.totals.payoutsMilli += r.payoutsMilli;
-      cur.totals.events += 1;
-      map.set(r.staffMemberId, cur);
+    const map = new Map<string, PayrollRow[]>();
+    for (const row of archive.data ?? []) {
+      const rows = map.get(row.staffMemberId) ?? [];
+      rows.push(row);
+      map.set(row.staffMemberId, rows);
     }
     return map;
   }, [archive.data]);
@@ -222,68 +293,27 @@ export function StaffPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="المضيفون والأجور" description="أرشيف كامل لكل مضيف: المستحق والمدفوع والمتأخر والسلف." />
-      {staff.isLoading ? (
+      <PageHeader
+        title="المضيفون والأجور"
+        description="أرشيف كامل لكل مضيف: المستحق، السلف العامة، كل عمليات الصرف، والمتبقي الحقيقي."
+      />
+      {staff.isLoading || archive.isLoading ? (
         <p>جارٍ التحميل…</p>
       ) : (staff.data ?? []).length === 0 ? (
         <EmptyState title="لا يوجد مضيفون" description="أضف المضيفين من تبويب الفريق في المناسبة." />
       ) : (
         <ul className="space-y-2">
-          {(staff.data ?? []).map((s) => {
-            const agg = byStaff.get(s.id);
-            const t = agg?.totals;
-            const open = expanded === s.id;
-            return (
-              <li key={s.id}>
-                <Card>
-                  <CardBody>
-                    <button
-                      type="button"
-                      className="flex w-full flex-wrap items-center justify-between gap-3 text-right"
-                      onClick={() => setExpanded(open ? null : s.id)}
-                      aria-expanded={open}
-                    >
-                      <div>
-                        <p className="text-lg font-black">{s.name}</p>
-                        <p className="text-sm text-slate-500">{STAFF_TYPE_LABELS[s.staffType] ?? s.staffType}</p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-3 text-sm">
-                        <span>مستحق <b dir="ltr">{formatOMR(t?.dueMilli ?? 0)}</b></span>
-                        <span>سلف <b dir="ltr">{formatOMR(t?.advancesMilli ?? 0)}</b></span>
-                        <span>مدفوع <b dir="ltr">{formatOMR(t?.payoutsMilli ?? 0)}</b></span>
-                        <Badge tone={(t?.lateMilli ?? 0) > 0 ? "warning" : "success"}>
-                          متأخر <span dir="ltr">{formatOMR(t?.lateMilli ?? 0)}</span>
-                        </Badge>
-                      </div>
-                    </button>
-                    {open && agg && (
-                      <div className="mt-4 space-y-3 border-t pt-4">
-                        <div>
-                          <p className="font-black">الأجور لكل مناسبة</p>
-                          {agg.rows.length ? (
-                            <ul className="mt-2 space-y-1">
-                              {agg.rows.map((r) => (
-                                <li key={`${r.staffMemberId}-${r.eventId}`} className="flex flex-wrap justify-between gap-2 text-sm">
-                                  <span>{r.eventTitle ?? r.eventNumber ?? "—"}</span>
-                                  <span className="text-slate-500">
-                                    {r.attendanceCount} وردية
-                                  </span>
-                                  <span dir="ltr">مستحق {formatOMR(r.dueMilli)} · متأخر {formatOMR(r.lateMilli)}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="mt-2 text-sm text-slate-500">لا أوراق حضور بعد.</p>
-                          )}
-                        </div>
-                        <HostDetail orgId={orgId} staff={s} />
-                      </div>
-                    )}
-                  </CardBody>
-                </Card>
-              </li>
-            );
-          })}
+          {(staff.data ?? []).map((member) => (
+            <li key={member.id}>
+              <StaffSummaryCard
+                orgId={orgId}
+                staff={member}
+                rows={byStaff.get(member.id) ?? []}
+                open={expanded === member.id}
+                onToggle={() => setExpanded(expanded === member.id ? null : member.id)}
+              />
+            </li>
+          ))}
         </ul>
       )}
     </div>
