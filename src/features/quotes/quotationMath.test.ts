@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { parseOMR, parseQuantityMilli, toOMRString } from "@/lib/money";
 import {
-  computeQuickLineTotalMilli,
-  sumQuickLineTotals,
+  computeQuotationLineTotalMilli,
+  sumQuotationLineTotals,
   type QuickPricingMethod,
-} from "./quoteMath";
+} from "./quotationMath";
 
 function total(
   method: QuickPricingMethod,
@@ -12,7 +12,7 @@ function total(
   qty: string | number,
   guests: number | null,
 ) {
-  const milli = computeQuickLineTotalMilli(
+  const milli = computeQuotationLineTotalMilli(
     method,
     parseOMR(unitOmr),
     typeof qty === "number" ? qty * 1000 : parseQuantityMilli(qty),
@@ -21,7 +21,7 @@ function total(
   return milli === null ? null : toOMRString(milli);
 }
 
-describe("computeQuickLineTotalMilli (mirrors DB commercial_total)", () => {
+describe("computeQuotationLineTotalMilli (mirrors DB commercial_total)", () => {
   it("FIXED ignores quantity (850.000)", () => {
     expect(total("FIXED", "850.000", 99, null)).toBe("850.000");
   });
@@ -58,10 +58,10 @@ describe("computeQuickLineTotalMilli (mirrors DB commercial_total)", () => {
 
   it("sums line totals in integer milli (no float drift)", () => {
     const milli =
-      computeQuickLineTotalMilli("PER_UNIT", parseOMR("12.500"), parseQuantityMilli("3"), null) ?? 0;
+      computeQuotationLineTotalMilli("PER_UNIT", parseOMR("12.500"), parseQuantityMilli("3"), null) ?? 0;
     const milli2 =
-      computeQuickLineTotalMilli("FIXED", parseOMR("100.000"), 1000, null) ?? 0;
-    expect(toOMRString(sumQuickLineTotals([milli, milli2]))).toBe("137.500");
-    expect(toOMRString(sumQuickLineTotals([milli, null, milli2]))).toBe("137.500");
+      computeQuotationLineTotalMilli("FIXED", parseOMR("100.000"), 1000, null) ?? 0;
+    expect(toOMRString(sumQuotationLineTotals([milli, milli2]))).toBe("137.500");
+    expect(toOMRString(sumQuotationLineTotals([milli, null, milli2]))).toBe("137.500");
   });
 });

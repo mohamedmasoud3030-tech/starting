@@ -10,7 +10,7 @@ import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
-import { buildQuickQuoteVoiceSummary } from "@/features/ownerVoice/screenSummary";
+import { buildQuotationVoiceSummary } from "@/features/ownerVoice/screenSummary";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import { PRICING_METHOD_LABELS } from "@/lib/domain";
 import {
@@ -116,7 +116,7 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
     return <p>تعذر العثور على عرض السعر.</p>;
   }
 
-  const voiceSummary = buildQuickQuoteVoiceSummary({
+  const voiceSummary = buildQuotationVoiceSummary({
     totalSellingOmr: q.total_selling,
     guestCount: q.guest_count_snapshot,
     status: q.status,

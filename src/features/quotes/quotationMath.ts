@@ -1,5 +1,5 @@
 /**
- * Quick Quote — exact client-side line totals.
+ * Quotation — exact client-side line totals.
  *
  * These helpers MIRROR the server's `commercial_total()` (numeric, round half
  * away from zero to 3 decimals) so the live total shown to the owner before
@@ -42,7 +42,7 @@ function roundHalfAwayFromZero(product: bigint, divisor: bigint): number {
 }
 
 /**
- * Compute the total of one quick-quote line in milli-OMR.
+ * Compute the total of one quotation line in milli-OMR.
  *
  * Matches the DB formula:
  *   FIXED          → unit_selling_price            (quantity ignored)
@@ -52,7 +52,7 @@ function roundHalfAwayFromZero(product: bigint, divisor: bigint): number {
  * Returns null when the line cannot be priced yet (PER_GUEST without a known
  * guest count) — the UI must then ask for the guest count, like the DB does.
  */
-export function computeQuickLineTotalMilli(
+export function computeQuotationLineTotalMilli(
   method: QuickPricingMethod,
   unitSellingMilli: MilliOMR,
   quantityMilli: MilliOMR,
@@ -73,7 +73,7 @@ export function computeQuickLineTotalMilli(
 }
 
 /** Sum of all line totals; a line with an unpriceable total is skipped. */
-export function sumQuickLineTotals(
+export function sumQuotationLineTotals(
   totals: ReadonlyArray<MilliOMR | null>,
 ): MilliOMR {
   return totals.reduce<MilliOMR>(

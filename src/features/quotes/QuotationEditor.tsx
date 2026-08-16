@@ -34,7 +34,7 @@ import {
   useSaveQuotationLine,
   type QuotationDraftValues,
 } from "./quotes.api";
-import { computeQuickLineTotalMilli, sumQuickLineTotals } from "./quoteMath";
+import { computeQuotationLineTotalMilli, sumQuotationLineTotals } from "./quotationMath";
 
 const ITEM_TYPES = Object.keys(ITEM_TYPE_LABELS) as CatalogItemType[];
 const PRICING_METHODS = Object.keys(PRICING_METHOD_LABELS) as PricingMethod[];
@@ -169,7 +169,7 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
   const lineTotals = useMemo<Array<MilliOMR | null>>(
     () =>
       lines.map((l) =>
-        computeQuickLineTotalMilli(
+        computeQuotationLineTotalMilli(
           l.pricingMethod,
           parseOMR(l.unitSellingPrice),
           parseQuantityMilli(l.quantity),
@@ -178,7 +178,7 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
       ),
     [lines, guestCountNum],
   );
-  const grandTotalMilli = useMemo(() => sumQuickLineTotals(lineTotals), [lineTotals]);
+  const grandTotalMilli = useMemo(() => sumQuotationLineTotals(lineTotals), [lineTotals]);
   const pricingBlocked = useMemo(
     () => lines.some((l, i) => l.pricingMethod === "PER_GUEST" && lineTotals[i] === null),
     [lines, lineTotals],
@@ -670,7 +670,7 @@ function ScratchCalculator({ guestCount }: { guestCount: number | null }) {
 
   let result: MilliOMR | null = null;
   try {
-    result = computeQuickLineTotalMilli(
+    result = computeQuotationLineTotalMilli(
       method,
       parseOMR(price === "" ? "0" : price),
       parseQuantityMilli(qty === "" ? "1" : qty),

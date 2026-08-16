@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { FileText, Plus, Trash2 } from "lucide-react";
+import { FileText, Plus, Search, XCircle } from "lucide-react";
 import { useAuth } from "@/app/AuthContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -46,6 +46,14 @@ export function QuotesPage() {
     name: string;
   } | null>(null);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<QuotationStatus | "ALL">("ALL");
+  const visibleQuotes = (quotes.data ?? []).filter((quote) => {
+    const term = search.trim().toLocaleLowerCase("ar");
+    const matchesStatus = statusFilter === "ALL" || quote.status === statusFilter;
+    const haystack = `${quote.quotation_number ?? ""} ${quote.customer_name_snapshot} ${quote.prospect_company ?? ""} ${quote.venue_snapshot ?? ""}`.toLocaleLowerCase("ar");
+    return matchesStatus && (!term || haystack.includes(term));
+  });
 
   if (!canManageCommercial) {
     return (
@@ -85,6 +93,19 @@ export function QuotesPage() {
         </p>
       )}
 
+      <div className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 md:grid-cols-[minmax(0,1fr)_auto]">
+        <label className="relative">
+          <span className="sr-only">البحث في عروض الأسعار</span>
+          <Search className="pointer-events-none absolute right-3 top-3.5 h-5 w-5 text-slate-400" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ابحث بالرقم، العميل أو الموقع" className="min-h-12 w-full rounded-xl border border-slate-200 bg-white pr-10 pl-3 text-base outline-none focus:border-brand-500" />
+        </label>
+        <div className="flex gap-1 overflow-x-auto" aria-label="تصفية حالة العرض">
+          {([['ALL','الكل'],['DRAFT','المسودات'],['ISSUED','الصادرة'],['ACCEPTED','المعتمدة'],['CONVERTED','المحوّلة']] as const).map(([value, label]) => (
+            <button key={value} type="button" onClick={() => setStatusFilter(value)} aria-pressed={statusFilter === value} className={`min-h-12 shrink-0 rounded-xl px-3 text-sm font-bold ${statusFilter === value ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>{label}</button>
+          ))}
+        </div>
+      </div>
+
       {quotes.isLoading ? (
         <p>جارٍ التحميل…</p>
       ) : !quotes.data?.length ? (
@@ -97,9 +118,11 @@ export function QuotesPage() {
             </Button>
           }
         />
+      ) : visibleQuotes.length === 0 ? (
+        <EmptyState title="لا توجد نتائج مطابقة" description="غيّر عبارة البحث أو حالة العرض." />
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
-          {quotes.data.map((q) => (
+          {visibleQuotes.map((q) => (
             <div key={q.id}>
               <Link
                 to="/quotes/$quoteId"
@@ -149,8 +172,8 @@ export function QuotesPage() {
                     size="sm"
                     onClick={() => setDiscarding({ id: q.id, name: q.customer_name_snapshot })}
                   >
-                    <Trash2 className="h-4 w-4" />
-                    حذف المسودة
+                    <XCircle className="h-4 w-4" />
+                    إلغاء المسودة
                   </Button>
                 </div>
               )}
@@ -164,8 +187,8 @@ export function QuotesPage() {
         onOpenChange={(open) => {
           if (!open) setDiscarding(null);
         }}
-        title="حذف المسودة"
-        description={`سيتم حذف مسودة عرض السعر للعميل «${discarding?.name ?? ""}». لن يتم إنشاء عميل أو مناسبة.`}
+        title="إلغاء المسودة"
+        description={`سيتم إلغاء مسودة عرض السعر للعميل «${discarding?.name ?? ""}». لن يتم إنشاء عميل أو مناسبة.`}
       >
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDiscarding(null)}>

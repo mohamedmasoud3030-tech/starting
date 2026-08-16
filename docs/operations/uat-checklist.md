@@ -92,9 +92,9 @@ Before UAT, confirm:
 | Verify quotation lines are immutable | No edits to issued lines | ✅ Automated | `commercial_invariants.test.sql` (pgTAP) |
 | Accept quotation | Status → `ACCEPTED`, acceptance recorded | ✅ Automated | `acceptance_repairs` tests |
 | Verify accepted revenue is from snapshot | Revenue = quotation `total_selling` | ✅ Automated | `customer_payments.test.sql` (pgTAP) |
-| Quick Quote: create from scratch | Draft created without Customer/Event | ✅ Automated | `quick_quote.test.sql` (pgTAP) |
-| Quick Quote: issue → normal quotation | Creates immutable quotation with `event_id NULL` | ✅ Automated | `quick_quote.test.sql` (pgTAP) |
-| Quick Quote: accept → convert | Creates Customer + Event transactionally | ✅ Automated | `quick_quote.test.sql` (pgTAP) |
+| Quotation: create draft | Draft created without Customer/Event | ✅ Automated | `canonical_quotation_lifecycle.test.sql` (pgTAP) |
+| Quotation: issue immutable snapshot | Creates immutable quotation with `event_id NULL` | ✅ Automated | `canonical_quotation_lifecycle.test.sql` (pgTAP) |
+| Quotation: accept → convert | Creates Customer + Event transactionally | ✅ Automated | `canonical_quotation_lifecycle.test.sql` (pgTAP) |
 
 ---
 
