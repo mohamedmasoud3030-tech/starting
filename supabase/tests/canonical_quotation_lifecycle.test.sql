@@ -67,11 +67,11 @@ select is((select status::text from public.quotations where idempotency_key='510
 select is((select count(*)::int from public.events where accepted_quotation_id=(select id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000101')),1,'exactly one event created');
 select is((select count(*)::int from public.event_commercial_lines where event_id=(select converted_event_id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000101')),2,'commercial snapshots copied to event');
 select lives_ok($$select public.convert_quotation_to_event('51000000-0000-0000-0000-0000000000a1',(select id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000101'),'51000000-0000-0000-0000-000000000104',null,null,null,null,null)$$,'conversion replay returns safely');
-select lives_ok($$select public.create_event_invoice('51000000-0000-0000-0000-0000000000a1',(select converted_event_id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000101'),'INV-R11-1',null,340.000,'[{"seq":0,"kind":"FINAL","due_date":"2026-09-02","amount":"340.000"}]'::jsonb,null,'51000000-0000-0000-0000-000000000105')$$,'converted quotation remains invoice authority');
+select lives_ok($$select public.create_event_invoice('51000000-0000-0000-0000-0000000000a1',(select converted_event_id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000101'),'INV-R11-1',null,340.000,'[{"seq":0,"kind":"DEPOSIT","due_date":"2026-09-02","amount":"100.000"},{"seq":1,"kind":"FINAL","due_date":"2026-09-10","amount":"240.000"}]'::jsonb,null,'51000000-0000-0000-0000-000000000105')$$,'converted quotation remains invoice authority');
 
 set local "request.jwt.claims"='{"sub":"51000000-0000-0000-0000-000000000002","role":"authenticated"}';
 select throws_ok($$select public.create_quotation_draft('51000000-0000-0000-0000-0000000000a1','غير مصرح')$$,'42501',null,'supervisor cannot create commercial draft');
-select is((select count(*)::int from public.command_idempotency),0,'raw replay register inaccessible to authenticated user');
+select throws_ok($$select count(*) from public.command_idempotency$$,'42501',null,'raw replay register inaccessible to authenticated user');
 set local "request.jwt.claims"='{"sub":"51000000-0000-0000-0000-000000000003","role":"authenticated"}';
 select throws_ok($$select public.accept_quotation('51000000-0000-0000-0000-0000000000a1',(select id from public.quotations where organization_id='51000000-0000-0000-0000-0000000000a1' limit 1))$$,'42501',null,'cross-organization acceptance rejected');
 
