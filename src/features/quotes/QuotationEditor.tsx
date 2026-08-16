@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Calculator, Package, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/app/AuthContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Dialog } from "@/components/ui/Dialog";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -23,17 +24,15 @@ import {
   type MilliOMR,
 } from "@/lib/money";
 import {
-  arabicQuickQuoteError,
-  useCreateQuickQuote,
-  useDiscardQuickQuote,
-  useIssueQuickQuote,
-  useQuickQuote,
-  useQuickQuoteLines,
-  useResetQuickQuoteLines,
-  useSaveQuickQuoteLine,
-  type QuickQuoteDraftValues,
+  arabicQuotationError,
+  usePersistQuotationDraft,
+  useCancelQuotationDraft,
+  useIssueQuotation,
+  useQuotation,
+  useQuotationLines,
+  type QuotationDraftValues,
 } from "./quotes.api";
-import { computeQuickLineTotalMilli, sumQuickLineTotals } from "./quoteMath";
+import { computeQuotationLineTotalMilli, sumQuotationLineTotals } from "./quotationMath";
 
 const ITEM_TYPES = Object.keys(ITEM_TYPE_LABELS) as CatalogItemType[];
 const PRICING_METHODS = Object.keys(PRICING_METHOD_LABELS) as PricingMethod[];
@@ -48,6 +47,9 @@ interface DraftLine {
   quantity: string;
   unitSellingPrice: string;
   isCustom: boolean;
+  expectedUnitCost: string;
+  sourceCatalogItemId: string | null;
+  sourcePackageId: string | null;
 }
 
 interface DraftForm {
@@ -78,7 +80,7 @@ function emptyForm(): DraftForm {
   };
 }
 
-function toDraftValues(form: DraftForm, guestCount: number | null): QuickQuoteDraftValues {
+function toDraftValues(form: DraftForm, guestCount: number | null): QuotationDraftValues {
   return { ...form, guestCount };
 }
 
@@ -94,21 +96,19 @@ function isoToLocalInput(iso: string | null | undefined): string {
 
 let lineCounter = 0;
 
-export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
+export function QuotationEditor({ draftId }: { draftId?: string }) {
   const { currentOrganization, canManageCommercial } = useAuth();
   const orgId = currentOrganization?.id ?? null;
   const navigate = useNavigate();
 
-  const existing = useQuickQuote(orgId, draftId ?? "");
-  const existingLines = useQuickQuoteLines(orgId, draftId ?? "");
+  const existing = useQuotation(orgId, draftId ?? "");
+  const existingLines = useQuotationLines(orgId, draftId ?? "");
   const packages = usePackages(orgId);
-  const catalog = useCatalogItems(orgId);
+  const catalog = useCatalogItems(orgId, true);
 
-  const createDraft = useCreateQuickQuote(orgId);
-  const saveLine = useSaveQuickQuoteLine(orgId);
-  const resetLines = useResetQuickQuoteLines(orgId);
-  const issue = useIssueQuickQuote(orgId);
-  const discard = useDiscardQuickQuote(orgId);
+  const persistDraftMutation = usePersistQuotationDraft(orgId);
+  const issue = useIssueQuotation(orgId);
+  const discard = useCancelQuotationDraft(orgId);
 
   const [form, setForm] = useState<DraftForm>(emptyForm);
   const [guestCount, setGuestCount] = useState("");
@@ -117,23 +117,25 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
   const [selectedPackage, setSelectedPackage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [issueConfirmationOpen, setIssueConfirmationOpen] = useState(false);
+  const saveIntentRef = useRef<{ fingerprint: string; idempotencyKey: string } | null>(null);
 
   // Edit mode: hydrate from the persisted draft.
   useEffect(() => {
     if (draftId && existing.data) {
       setForm({
-        prospectName: existing.data.prospect_name,
-        prospectPhone: existing.data.prospect_phone ?? "",
+        prospectName: existing.data.customer_name_snapshot,
+        prospectPhone: existing.data.customer_phone_snapshot ?? "",
         prospectWhatsapp: existing.data.prospect_whatsapp ?? "",
         prospectCompany: existing.data.prospect_company ?? "",
-        eventTitle: existing.data.event_title ?? "",
-        eventType: existing.data.event_type ?? "",
-        startAt: isoToLocalInput(existing.data.start_at),
-        endAt: isoToLocalInput(existing.data.end_at),
-        venueName: existing.data.venue_name ?? "",
+        eventTitle: existing.data.event_title_snapshot ?? "",
+        eventType: existing.data.event_type_snapshot ?? "",
+        startAt: isoToLocalInput(existing.data.start_at_snapshot),
+        endAt: isoToLocalInput(existing.data.end_at_snapshot),
+        venueName: existing.data.venue_snapshot ?? "",
         notes: existing.data.notes ?? "",
       });
-      setGuestCount(existing.data.guest_count != null ? String(existing.data.guest_count) : "");
+      setGuestCount(existing.data.guest_count_snapshot != null ? String(existing.data.guest_count_snapshot) : "");
     }
   }, [draftId, existing.data]);
 
@@ -150,6 +152,9 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
           quantity: l.quantity,
           unitSellingPrice: l.unit_selling_price,
           isCustom: l.is_custom,
+          expectedUnitCost: l.expected_unit_cost ?? "0.000",
+          sourceCatalogItemId: l.source_catalog_item_id,
+          sourcePackageId: l.source_package_id,
         })),
       );
     }
@@ -160,20 +165,24 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
   // Hooks must run unconditionally, before any early return.
   const lineTotals = useMemo<Array<MilliOMR | null>>(
     () =>
-      lines.map((l) =>
-        computeQuickLineTotalMilli(
-          l.pricingMethod,
-          parseOMR(l.unitSellingPrice),
-          parseQuantityMilli(l.quantity),
-          guestCountNum,
-        ),
-      ),
+      lines.map((line) => {
+        try {
+          return computeQuotationLineTotalMilli(
+            line.pricingMethod,
+            parseOMR(line.unitSellingPrice),
+            parseQuantityMilli(line.quantity),
+            guestCountNum,
+          );
+        } catch {
+          return null;
+        }
+      }),
     [lines, guestCountNum],
   );
-  const grandTotalMilli = useMemo(() => sumQuickLineTotals(lineTotals), [lineTotals]);
+  const grandTotalMilli = useMemo(() => sumQuotationLineTotals(lineTotals), [lineTotals]);
   const pricingBlocked = useMemo(
-    () => lines.some((l, i) => l.pricingMethod === "PER_GUEST" && lineTotals[i] === null),
-    [lines, lineTotals],
+    () => lineTotals.some((total) => total === null),
+    [lineTotals],
   );
 
   if (!canManageCommercial) {
@@ -184,11 +193,37 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
     );
   }
 
-  async function ensureDraft(): Promise<string> {
-    if (savedDraftId) return savedDraftId;
-    const draft = await createDraft.mutateAsync(toDraftValues(form, guestCountNum));
-    setSavedDraftId(draft.id);
-    return draft.id;
+  async function persistDraft(): Promise<string> {
+    const values = toDraftValues(form, guestCountNum);
+    const draftLines = lines.map((line) => ({
+      id: line.id,
+      description: line.description,
+      itemType: line.itemType,
+      unit: line.unit,
+      pricingMethod: line.pricingMethod,
+      quantity: line.quantity,
+      unitSellingPrice: line.unitSellingPrice,
+      expectedUnitCost: line.expectedUnitCost,
+      isCustom: line.isCustom,
+      sourceCatalogItemId: line.sourceCatalogItemId,
+      sourcePackageId: line.sourcePackageId,
+    }));
+    const fingerprint = JSON.stringify({ quotationId: savedDraftId, values, lines: draftLines });
+    if (!saveIntentRef.current || saveIntentRef.current.fingerprint !== fingerprint) {
+      saveIntentRef.current = { fingerprint, idempotencyKey: crypto.randomUUID() };
+    }
+
+    // Keep the key after an error: a lost response retries the exact command.
+    // Rotate only after a confirmed response or when the payload changes.
+    const quote = await persistDraftMutation.mutateAsync({
+      quotationId: savedDraftId,
+      idempotencyKey: saveIntentRef.current.idempotencyKey,
+      values,
+      lines: draftLines,
+    });
+    setSavedDraftId(quote.id);
+    saveIntentRef.current = null;
+    return quote.id;
   }
 
   function setField<K extends keyof DraftForm>(key: K, value: string) {
@@ -219,6 +254,9 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
         quantity,
         unitSellingPrice: price,
         isCustom: true,
+        expectedUnitCost: "0.000",
+        sourceCatalogItemId: null,
+        sourcePackageId: null,
       },
     ]);
     e.currentTarget.reset();
@@ -258,10 +296,22 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
         quantity: toOMRString(fromDbAmount(l.quantity)),
         unitSellingPrice: toOMRString(fromDbAmount(item.selling_price)),
         isCustom: false,
+        expectedUnitCost: item.cost_price == null ? "0.000" : toOMRString(fromDbAmount(item.cost_price)),
+        sourceCatalogItemId: item.id,
+        sourcePackageId: selectedPackage,
       };
     });
     setLines((ls) => [...ls, ...added]);
     setSelectedPackage("");
+  }
+
+  function updateLine(
+    clientKey: string,
+    patch: Partial<Pick<DraftLine, "description" | "quantity" | "unitSellingPrice">>,
+  ) {
+    setLines((current) =>
+      current.map((line) => line.clientKey === clientKey ? { ...line, ...patch } : line),
+    );
   }
 
   function removeLine(clientKey: string) {
@@ -276,12 +326,26 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
       await discard.mutateAsync(savedDraftId);
       await navigate({ to: "/quotes" });
     } catch (x) {
-      setError(arabicQuickQuoteError(x));
+      setError(arabicQuotationError(x));
+      setBusy("");
+    }
+  }
+
+  async function onSaveDraft() {
+    setError("");
+    setBusy("الحفظ");
+    try {
+      const id = await persistDraft();
+      if (!draftId) await navigate({ to: "/quotes/$quoteId", params: { quoteId: id } });
+      setBusy("");
+    } catch (cause) {
+      setError(arabicQuotationError(cause));
       setBusy("");
     }
   }
 
   async function onIssue() {
+    setIssueConfirmationOpen(false);
     setError("");
     if (lines.length === 0) {
       setError("أضف خدمة واحدة على الأقل قبل الإصدار");
@@ -289,28 +353,12 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
     }
     setBusy("الإصدار");
     try {
-      const id = await ensureDraft();
-      // Replace any previously persisted draft lines with the current set
-      // (a no-op on a brand-new draft). Keeps retries duplicate-free.
-      await resetLines.mutateAsync(id);
-      for (const line of lines) {
-        await saveLine.mutateAsync({
-          quickQuoteId: id,
-          lineId: null,
-          description: line.description,
-          itemType: line.itemType,
-          unit: line.unit,
-          pricingMethod: line.pricingMethod,
-          quantity: line.quantity,
-          unitSellingPrice: line.unitSellingPrice,
-          isCustom: line.isCustom,
-        });
-      }
+      const id = await persistDraft();
       const quote = await issue.mutateAsync(id);
       await navigate({ to: "/quotes/$quoteId", params: { quoteId: id } });
       void quote;
     } catch (x) {
-      setError(arabicQuickQuoteError(x));
+      setError(arabicQuotationError(x));
       setBusy("");
     }
   }
@@ -432,7 +480,7 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
           </Card>
 
           {/* -------------------------------------------------- Step 2 */}
-          <Card id="quick-quote-services" className="scroll-mt-24 p-5">
+          <Card id="quotation-services" className="scroll-mt-24 p-5">
             <h2 className="mb-1 text-xl font-black">
               <span className="text-brand-700">٢.</span> الخدمات والسعر
             </h2>
@@ -527,25 +575,48 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
                   return (
                     <div
                       key={line.clientKey}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 p-3"
+                      className="grid gap-3 rounded-xl border border-slate-200 p-3 sm:grid-cols-[minmax(0,1fr)_7rem_9rem_auto] sm:items-end"
                     >
-                      <div className="min-w-0">
-                        <p className="font-bold">
-                          {line.description}
+                      <Field label="الخدمة" htmlFor={`draft-description-${line.clientKey}`}>
+                        <div className="relative">
+                          <Input
+                            id={`draft-description-${line.clientKey}`}
+                            aria-label={`وصف خدمة ${line.description}`}
+                            value={line.description}
+                            onChange={(event) => updateLine(line.clientKey, { description: event.target.value })}
+                          />
                           {!line.isCustom && (
-                            <Badge tone="neutral" className="ms-2">
+                            <Badge tone="neutral" className="absolute top-3 left-2">
                               من باقة
                             </Badge>
                           )}
-                        </p>
-                        <p className="text-sm text-slate-500">
-                          {line.quantity} {line.unit} · {PRICING_METHOD_LABELS[line.pricingMethod]}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <p className="font-black">
-                          {total != null ? formatOMR(total) : "يُحدد بعد معرفة عدد الضيوف"}
-                        </p>
+                        </div>
+                      </Field>
+                      <Field label={`الكمية (${line.unit})`} htmlFor={`draft-quantity-${line.clientKey}`}>
+                        <Input
+                          id={`draft-quantity-${line.clientKey}`}
+                          aria-label={`كمية خدمة ${line.description}`}
+                          inputMode="decimal"
+                          value={line.quantity}
+                          onChange={(event) => updateLine(line.clientKey, { quantity: event.target.value })}
+                        />
+                      </Field>
+                      <Field label="سعر الوحدة (ر.ع.)" htmlFor={`draft-price-${line.clientKey}`}>
+                        <Input
+                          id={`draft-price-${line.clientKey}`}
+                          aria-label={`سعر خدمة ${line.description}`}
+                          inputMode="decimal"
+                          value={line.unitSellingPrice}
+                          onChange={(event) => updateLine(line.clientKey, { unitSellingPrice: event.target.value })}
+                        />
+                      </Field>
+                      <div className="flex min-h-12 items-center justify-between gap-2 sm:justify-end">
+                        <div className="text-left">
+                          <p className="text-xs text-slate-500">{PRICING_METHOD_LABELS[line.pricingMethod]}</p>
+                          <p className="font-black">
+                            {total != null ? formatOMR(total) : "حدد الضيوف"}
+                          </p>
+                        </div>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -598,16 +669,19 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
                 <p className="text-sm text-slate-500">الإجمالي</p>
                 <p className="text-3xl font-black text-brand-800">{formatOMR(grandTotalMilli)}</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {savedDraftId && draftId && (
                   <Button variant="danger" onClick={() => void onDiscard()} disabled={busy !== ""}>
-                    حذف المسودة
+                    إلغاء المسودة
                   </Button>
                 )}
+                <Button variant="secondary" onClick={() => void onSaveDraft()} disabled={busy !== "" || !form.prospectName.trim() || pricingBlocked}>
+                  {busy === "الحفظ" ? "جارٍ الحفظ…" : "حفظ المسودة"}
+                </Button>
                 <Button
                   size="lg"
-                  onClick={() => void onIssue()}
-                  disabled={busy !== "" || lines.length === 0}
+                  onClick={() => setIssueConfirmationOpen(true)}
+                  disabled={busy !== "" || lines.length === 0 || pricingBlocked}
                 >
                   {busy === "الإصدار" ? "جارٍ الإصدار…" : "إصدار عرض السعر"}
                 </Button>
@@ -639,6 +713,24 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
           )}
         </div>
       </div>
+
+      <Dialog
+        open={issueConfirmationOpen}
+        onOpenChange={setIssueConfirmationOpen}
+        title="تأكيد إصدار عرض السعر"
+        description="سيُنشأ رقم رسمي وتصبح الأسعار والخدمات لقطة تجارية غير قابلة للتعديل. راجع الإجمالي قبل المتابعة."
+      >
+        <div className="space-y-5">
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className="text-sm font-bold text-slate-500">الإجمالي النهائي</p>
+            <p className="mt-1 text-3xl font-black text-slate-900">{formatOMR(grandTotalMilli)}</p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setIssueConfirmationOpen(false)}>العودة للمراجعة</Button>
+            <Button onClick={() => void onIssue()} disabled={busy !== ""}>تأكيد الإصدار</Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }
@@ -650,7 +742,7 @@ function ScratchCalculator({ guestCount }: { guestCount: number | null }) {
 
   let result: MilliOMR | null = null;
   try {
-    result = computeQuickLineTotalMilli(
+    result = computeQuotationLineTotalMilli(
       method,
       parseOMR(price === "" ? "0" : price),
       parseQuantityMilli(qty === "" ? "1" : qty),

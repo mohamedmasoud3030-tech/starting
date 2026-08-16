@@ -55,11 +55,11 @@ The following are deliberately separate and must not be collapsed merely because
 
 This separation is canonical: master identity/pricing is not the same fact as stock or reusable capacity.
 
-### Quick Quote versus issued quotation
+### Canonical quotation lifecycle (R11)
 
-`quick_quotes`, `quick_quote_lines`, and `quick_quote_applied_packages` are **not declared canonical long-term storage by this foundation**. They currently provide an editable pre-booking workspace, while `quotations` / `quotation_lines` are issued immutable commercial snapshots.
+R11 completed the deferred consolidation. `quotations` / `quotation_lines` are the only physical quotation aggregate and line storage for both editable drafts and issued snapshots. The lifecycle is `DRAFT -> ISSUED -> ACCEPTED -> CONVERTED`, with `CANCELLED` and the established event-revision `SUPERSEDED` terminal paths.
 
-A later consolidation may replace the draft subsystem with a single quotation lifecycle (`DRAFT -> ISSUED -> ACCEPTED -> CONVERTED/CANCELLED`), but only after the complete RPC, frontend, test, and conversion dependency map is migrated together. Do not create any additional quotation/draft subsystem in the meantime.
+The former `quick_quotes`, `quick_quote_lines`, and `quick_quote_applied_packages` relations and RPCs are retired after transactional row migration and count assertions. Package provenance is represented on quote-owned snapshot lines rather than a second workspace marker. See `09-quick-quote.md` and `19-r11-domain-audit.md`.
 
 ## 3. Information architecture
 

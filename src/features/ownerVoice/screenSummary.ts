@@ -70,8 +70,8 @@ export interface QuoteSummaryInput {
   remainingOmr?: string | number | null;
 }
 
-/** Quick Quote review: total, guests (when known), and accept status. */
-export interface QuickQuoteVoiceSummaryInput {
+/** Quotation review: total, guests (when known), and accept status. */
+export interface QuotationVoiceSummaryInput {
   totalSellingOmr: string | number | null;
   guestCount: number | null;
   status: string;
@@ -620,14 +620,14 @@ export function buildPaymentsVoiceSummary(
 }
 
 /**
- * Quick Quote review summary. No cost/profit ever (quick quotes carry no
+ * Quotation review summary. No cost/profit ever (quick quotes carry no
  * internal cost model). Returns null when there is no total to speak, so the
  * OwnerVoiceButton renders nothing.
  *
  * Example: "عرض السعر الإجمالي ٨٥٠ ريال. عدد الضيوف ١٢٠. العرض لم يتم اعتماده بعد."
  */
-export function buildQuickQuoteVoiceSummary(
-  input: QuickQuoteVoiceSummaryInput,
+export function buildQuotationVoiceSummary(
+  input: QuotationVoiceSummaryInput,
 ): string | null {
   const total = omrToSpoken(input.totalSellingOmr);
   if (total === null) return null;

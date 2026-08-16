@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { QuoteReviewPage } from "./QuoteReviewPage";
+import { QuotationReview } from "./QuotationReview";
 
 // ---------------------------------------------------------------------------
 // Mocks: no real Supabase, no router, controllable auth (role swap per test).
@@ -26,9 +26,9 @@ const rpcMock = vi.hoisted(() =>
   vi.fn(async (name: string, args: Record<string, unknown>) => {
     state.rpcCalls.push({ name, args });
     const data =
-      name === "accept_quick_quote"
+      name === "accept_quotation"
         ? { id: "qt-1", status: "ACCEPTED" }
-        : name === "convert_quick_quote"
+        : name === "convert_quotation_to_event"
           ? { id: "ev-1" }
           : null;
     return { data, error: null };
@@ -38,88 +38,37 @@ const rpcMock = vi.hoisted(() =>
 const navigateMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/supabase", () => {
-  const quickQuoteRow = {
-    id: "qq-1",
-    organization_id: "org",
-    quotation_id: "qt-1",
-    quotation_number: "QT-2026-00001",
-    status: "ISSUED",
-    prospect_name: "محمد",
-    prospect_phone: "91234567",
-    prospect_whatsapp: null,
-    prospect_company: null,
-    event_title: "زفاف",
-    event_type: "WEDDING",
-    start_at: "2026-09-01T10:00:00+04:00",
-    end_at: "2026-09-01T14:00:00+04:00",
-    guest_count: 120,
-    venue_name: "قاعة الريان",
-    notes: null,
-    created_at: "2026-08-14T00:00:00Z",
-    updated_at: "2026-08-14T00:00:00Z",
-  };
   const quotationRow = (status: string) => ({
-    id: "qt-1",
-    organization_id: "org",
-    event_id: null,
-    quotation_number: "QT-2026-00001",
-    revision: 1,
-    status,
-    customer_name_snapshot: "محمد",
-    customer_phone_snapshot: "91234567",
-    event_number_snapshot: "QT-2026-00001",
-    event_title_snapshot: "زفاف",
-    guest_count_snapshot: 120,
-    start_at_snapshot: "2026-09-01T10:00:00+04:00",
-    end_at_snapshot: "2026-09-01T14:00:00+04:00",
-    venue_snapshot: "قاعة الريان",
-    location_snapshot: null,
-    terms: null,
-    notes: null,
-    total_selling: "850.000",
-    issued_at: "2026-08-14T00:00:00Z",
-    accepted_at: null,
+    id: "qt-1", organization_id: "org", event_id: null,
+    quotation_number: "QT-2026-00001", revision: 1, status,
+    customer_id: null, customer_name_snapshot: "محمد", customer_phone_snapshot: "91234567",
+    prospect_whatsapp: null, prospect_company: null, event_number_snapshot: null,
+    event_title_snapshot: "زفاف", event_type_snapshot: "WEDDING", guest_count_snapshot: 120,
+    start_at_snapshot: "2026-09-01T10:00:00+04:00", end_at_snapshot: "2026-09-01T14:00:00+04:00",
+    venue_snapshot: "قاعة الريان", location_snapshot: null, terms: null, notes: null,
+    total_selling: "850.000", issued_at: "2026-08-14T00:00:00Z", accepted_at: null,
+    converted_event_id: null, created_at: "2026-08-14T00:00:00Z", updated_at: "2026-08-14T00:00:00Z",
   });
-
   function builderFor(table: string) {
-    const data: Record<string, unknown[]> = {
-      quick_quotes: [quickQuoteRow],
-      quotations_customer: [quotationRow(state.quotationStatus)],
-      quotation_lines_customer: [
-        {
-          id: "l1",
-          quotation_id: "qt-1",
-          description: "بوفيه",
-          item_type: "SERVICE",
-          unit: "ضيف",
-          pricing_method: "PER_GUEST",
-          quantity: "1",
-          unit_selling_price: "7.083",
-          total_selling: "850.000",
-          is_custom: true,
-          sort_order: 0,
-        },
-      ],
-    };
-    const rows = data[table] ?? [];
+    const rows: unknown[] = table === "quotations_customer"
+      ? [quotationRow(state.quotationStatus)]
+      : table === "quotation_lines_customer" ? [{
+          id: "l1", organization_id: "org", quotation_id: "qt-1",
+          source_catalog_item_id: null, source_package_id: null, description: "بوفيه",
+          item_type: "SERVICE", unit: "ضيف", pricing_method: "PER_GUEST", quantity: "1",
+          unit_selling_price: "7.083", expected_unit_cost: null, total_selling: "850.000", total_expected_cost: null, is_custom: true, notes: null, sort_order: 0,
+        }] : [];
     const chain = {
-      select: () => chain,
-      eq: () => chain,
-      order: () => chain,
+      select: () => chain, eq: () => chain, order: () => chain,
       single: async () => ({ data: rows[0] ?? null, error: null }),
-      then: (resolve: (v: { data: unknown; error: null }) => void) =>
-        resolve({ data: rows, error: null }),
+      then: (resolve: (v: { data: unknown; error: null }) => void) => resolve({ data: rows, error: null }),
     };
     return chain;
   }
-
-  return {
-    isSupabaseConfigured: true,
-    supabase: {
-      rpc: (name: string, args: Record<string, unknown>) => rpcMock(name, args),
-      from: (table: string) => builderFor(table),
-    },
-  };
+  return { isSupabaseConfigured: true, supabase: {
+    rpc: (name: string, args: Record<string, unknown>) => rpcMock(name, args),
+    from: (table: string) => builderFor(table),
+  }};
 });
 
 vi.mock("@/app/AuthContext", () => ({
@@ -137,7 +86,7 @@ function renderReview() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <QuoteReviewPage quoteId="qq-1" />
+      <QuotationReview quoteId="qt-1" />
     </QueryClientProvider>,
   );
 }
@@ -156,7 +105,7 @@ beforeEach(() => {
   });
 });
 
-describe("QuoteReviewPage", () => {
+describe("QuotationReview", () => {
   it("shows the immutable quotation (snapshot + lines + exact total)", async () => {
     renderReview();
     expect(await screen.findByText("QT-2026-00001 · مراجعة 1")).toBeInTheDocument();
@@ -182,7 +131,7 @@ describe("QuoteReviewPage", () => {
     renderReview();
     await user.click(await screen.findByRole("button", { name: "اعتماد العرض" }));
     await waitFor(() =>
-      expect(state.rpcCalls.some((c) => c.name === "accept_quick_quote")).toBe(true),
+      expect(state.rpcCalls.some((c) => c.name === "accept_quotation")).toBe(true),
     );
   });
 
@@ -201,9 +150,9 @@ describe("QuoteReviewPage", () => {
 
     await user.click(screen.getByRole("button", { name: "تأكيد التحويل" }));
     await waitFor(() =>
-      expect(state.rpcCalls.some((c) => c.name === "convert_quick_quote")).toBe(true),
+      expect(state.rpcCalls.some((c) => c.name === "convert_quotation_to_event")).toBe(true),
     );
-    const convertCall = state.rpcCalls.find((c) => c.name === "convert_quick_quote");
+    const convertCall = state.rpcCalls.find((c) => c.name === "convert_quotation_to_event");
     expect(convertCall?.args.p_quotation_id).toBe("qt-1");
     expect(convertCall?.args.p_venue_name).toBe("قاعة الريان");
     expect(convertCall?.args.p_guest_count).toBe(120);

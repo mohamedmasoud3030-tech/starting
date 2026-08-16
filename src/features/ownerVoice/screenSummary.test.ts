@@ -6,7 +6,7 @@ import {
   buildHomeVoiceSummary,
   buildPaymentsVoiceSummary,
   buildProcurementVoiceSummary,
-  buildQuickQuoteVoiceSummary,
+  buildQuotationVoiceSummary,
   buildQuoteVoiceSummary,
   isSameLocalDay,
   omrToSpoken,
@@ -374,10 +374,10 @@ describe("buildEventVoiceSummary", () => {
   });
 });
 
-describe("buildQuickQuoteVoiceSummary", () => {
+describe("buildQuotationVoiceSummary", () => {
   it("speaks total, guests and unaccepted status (mission example)", () => {
     expect(
-      buildQuickQuoteVoiceSummary({
+      buildQuotationVoiceSummary({
         totalSellingOmr: "850.000",
         guestCount: 120,
         status: "ISSUED",
@@ -387,7 +387,7 @@ describe("buildQuickQuoteVoiceSummary", () => {
 
   it("omits the guest sentence when the guest count is unknown", () => {
     expect(
-      buildQuickQuoteVoiceSummary({
+      buildQuotationVoiceSummary({
         totalSellingOmr: "850.000",
         guestCount: null,
         status: "ISSUED",
@@ -397,16 +397,16 @@ describe("buildQuickQuoteVoiceSummary", () => {
 
   it("reflects accepted and converted status", () => {
     expect(
-      buildQuickQuoteVoiceSummary({ totalSellingOmr: "850.000", guestCount: null, status: "ACCEPTED" }),
+      buildQuotationVoiceSummary({ totalSellingOmr: "850.000", guestCount: null, status: "ACCEPTED" }),
     ).toBe("عرض السعر الإجمالي ٨٥٠ ريال. العرض معتمد.");
     expect(
-      buildQuickQuoteVoiceSummary({ totalSellingOmr: "850.000", guestCount: null, status: "CONVERTED" }),
+      buildQuotationVoiceSummary({ totalSellingOmr: "850.000", guestCount: null, status: "CONVERTED" }),
     ).toBe("عرض السعر الإجمالي ٨٥٠ ريال. تم تحويل العرض إلى مناسبة.");
   });
 
   it("returns null (button hidden) when there is no total to speak", () => {
     expect(
-      buildQuickQuoteVoiceSummary({ totalSellingOmr: null, guestCount: null, status: "ISSUED" }),
+      buildQuotationVoiceSummary({ totalSellingOmr: null, guestCount: null, status: "ISSUED" }),
     ).toBeNull();
   });
 });

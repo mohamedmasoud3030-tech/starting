@@ -10,16 +10,15 @@ import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
-import { buildQuickQuoteVoiceSummary } from "@/features/ownerVoice/screenSummary";
+import { buildQuotationVoiceSummary } from "@/features/ownerVoice/screenSummary";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import { PRICING_METHOD_LABELS } from "@/lib/domain";
 import {
-  arabicQuickQuoteError,
-  useAcceptQuickQuote,
-  useConvertQuickQuote,
-  useQuickQuote,
-  useQuickQuoteQuotation,
-  useQuickQuoteQuotationLines,
+  arabicQuotationError,
+  useAcceptQuotation,
+  useConvertQuotation,
+  useQuotation,
+  useQuotationLines,
 } from "./quotes.api";
 
 function isoToLocalInput(iso: string | null | undefined): string {
@@ -32,17 +31,16 @@ function isoToLocalInput(iso: string | null | undefined): string {
   )}:${pad(date.getMinutes())}`;
 }
 
-export function QuoteReviewPage({ quoteId }: { quoteId: string }) {
+export function QuotationReview({ quoteId }: { quoteId: string }) {
   const { currentOrganization, canManageCommercial } = useAuth();
   const orgId = currentOrganization?.id ?? null;
   const navigate = useNavigate();
 
-  const quote = useQuickQuote(orgId, quoteId);
-  const quotation = useQuickQuoteQuotation(orgId, quote.data?.quotation_id ?? "");
-  const lines = useQuickQuoteQuotationLines(orgId, quote.data?.quotation_id ?? "");
+  const quote = useQuotation(orgId, quoteId);
+  const lines = useQuotationLines(orgId, quoteId);
 
-  const accept = useAcceptQuickQuote(orgId);
-  const convert = useConvertQuickQuote(orgId);
+  const accept = useAcceptQuotation(orgId);
+  const convert = useConvertQuotation(orgId);
 
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertForm, setConvertForm] = useState({
@@ -55,7 +53,7 @@ export function QuoteReviewPage({ quoteId }: { quoteId: string }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
 
-  const q = quotation.data;
+  const q = quote.data;
 
   function openConvert() {
     setError("");
@@ -76,7 +74,7 @@ export function QuoteReviewPage({ quoteId }: { quoteId: string }) {
     try {
       await accept.mutateAsync(q.id);
     } catch (x) {
-      setError(arabicQuickQuoteError(x));
+      setError(arabicQuotationError(x));
     } finally {
       setBusy("");
     }
@@ -98,7 +96,7 @@ export function QuoteReviewPage({ quoteId }: { quoteId: string }) {
       setConvertOpen(false);
       await navigate({ to: "/events/$eventId", params: { eventId: event.id } });
     } catch (x) {
-      setError(arabicQuickQuoteError(x));
+      setError(arabicQuotationError(x));
     } finally {
       setBusy("");
     }
@@ -111,14 +109,14 @@ export function QuoteReviewPage({ quoteId }: { quoteId: string }) {
     CONVERTED: "محوّل لمناسبة",
   };
 
-  if (quote.isLoading || quotation.isLoading || lines.isLoading) {
+  if (quote.isLoading || lines.isLoading) {
     return <p>جارٍ التحميل…</p>;
   }
-  if (!q || !quote.data) {
+  if (!q) {
     return <p>تعذر العثور على عرض السعر.</p>;
   }
 
-  const voiceSummary = buildQuickQuoteVoiceSummary({
+  const voiceSummary = buildQuotationVoiceSummary({
     totalSellingOmr: q.total_selling,
     guestCount: q.guest_count_snapshot,
     status: q.status,
@@ -132,20 +130,20 @@ export function QuoteReviewPage({ quoteId }: { quoteId: string }) {
 
       <PageHeader
         title="عرض السعر"
-        description={`${q.quotation_number} · مراجعة ${q.revision}`}
+        description={`${q.quotation_number ?? ""} · مراجعة ${q.revision}`}
         actions={
           <>
             <OwnerVoiceButton summary={voiceSummary} />
             <Badge
               tone={
-                quote.data.status === "ACCEPTED"
+                q.status === "ACCEPTED"
                   ? "success"
-                  : quote.data.status === "CONVERTED"
+                  : q.status === "CONVERTED"
                     ? "brand"
                     : "warning"
               }
             >
-              {statusLabel[quote.data.status] ?? q.status}
+              {statusLabel[q.status] ?? q.status}
             </Badge>
           </>
         }
@@ -246,7 +244,7 @@ export function QuoteReviewPage({ quoteId }: { quoteId: string }) {
         </div>
       )}
 
-      {quote.data.status === "CONVERTED" && (
+      {q.status === "CONVERTED" && (
         <p className="rounded-xl bg-brand-50 p-3 font-bold text-brand-800">
           تم تحويل هذا العرض إلى مناسبة.
         </p>

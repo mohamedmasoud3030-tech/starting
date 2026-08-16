@@ -79,7 +79,6 @@ export type SupplierStatus = DbEnum<"supplier_status">;
 export type MembershipStatus = DbEnum<"membership_status">;
 export type PackageStatus = DbEnum<"package_status">;
 export type PricingMethod = DbEnum<"pricing_method">;
-export type QuickQuoteStatus = DbEnum<"quick_quote_status">;
 export type QuotationStatus = DbEnum<"quotation_status">;
 export type ReservationStatus = DbEnum<"reservation_status">;
 export type StaffType = DbEnum<"staff_type">;
