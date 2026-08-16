@@ -1,78 +1,156 @@
-import { useState, useMemo, type FormEvent } from "react";
-import { Link, useParams } from "@tanstack/react-router";
-import { useAuth } from "@/app/authContext";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Field } from "@/components/ui/Field";
-import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
-import { usePackages } from "@/features/packages/packages.api";
-import { useCustomers } from "@/features/customers/customers.api";
-import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
-import { buildEventVoiceSummary, buildPaymentsVoiceSummary, buildQuoteVoiceSummary, buildAttendanceVoiceSummary, buildPayrollVoiceSummary, buildInvoiceVoiceSummary } from "@/features/ownerVoice/screenSummary";
-import { fromDbAmount, toOMRString } from "@/lib/money";
-import { COST_READER_ROLES, PAYMENT_WRITE_ROLES } from "@/lib/domain";
-import { EventPaymentsPanel, useEventFinance } from "@/features/payments";
-import { InvoicesPanel } from "@/features/payments/InvoicesPanel";
-import { useEventInvoice, useEventInstallments } from "@/features/payments/invoices.api";
+import { InlineError } from "@/components/ui/ErrorState";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { AttendancePanel } from "@/features/staff/AttendancePanel";
 import { HostPayrollPanel } from "@/features/staff/HostPayrollPanel";
-import { useEventAttendance, useEventPayroll } from "@/features/staff/staff.api";
 import { WarehousePanel } from "@/features/warehouse/WarehousePanel";
 import { EventConsumablesPanel } from "@/features/consumables/EventConsumablesPanel";
-import { EventProcurementPanel, createSupabaseProcurementDataSource } from "@/features/procurement";
-import { arabicError,useEvent,useEventCommand,useWorkspaceData } from "./events.api";
+import { EventPaymentsPanel } from "@/features/payments/EventPaymentsPanel";
+import { InvoicesPanel } from "@/features/payments/InvoicesPanel";
+import { EventProcurementPanel } from "@/features/procurement/EventProcurementPanel";
+import { EquipmentTab } from "./workspace/EquipmentTab";
+import { EventWorkspaceHeader } from "./workspace/EventWorkspaceHeader";
+import { HistoryTab } from "./workspace/HistoryTab";
+import { OverviewTab } from "./workspace/OverviewTab";
+import { PricingTab } from "./workspace/PricingTab";
+import { ReadinessBanner } from "./workspace/ReadinessBanner";
+import { TeamTab } from "./workspace/TeamTab";
+import { WorkspaceTabs } from "./workspace/WorkspaceTabs";
+import { useEventWorkspace } from "./useEventWorkspace";
 
-const tabs=["ملخص","التسعير","الفريق","المعدات","المخزن","المواد","المشتريات","المدفوعات","الفواتير","الحضور","الأجور","السجل"] as const;type Tab=typeof tabs[number];
-const eventStatusLabels:Record<string,string>={DRAFT:"مسودة",QUOTED:"تم التسعير",CONFIRMED:"مؤكدة",PREPARING:"قيد التجهيز",DISPATCHED:"تم الإرسال",IN_PROGRESS:"جارية",RETURNING:"قيد الإرجاع",CLOSED:"مغلقة",CANCELLED:"ملغاة"};
-const readinessText=(r:{status:string;staff_missing:number;equipment_shortage:number})=>r.status==="READY"?"المناسبة جاهزة":r.status==="STAFF_MISSING"?`ناقص ${r.staff_missing} من الفريق`:r.status==="EQUIPMENT_SHORTAGE"?`ناقص ${r.equipment_shortage} من المعدات`:`مشكلات متعددة: فريق ${r.staff_missing}، معدات ${r.equipment_shortage}`;
-export function EventWorkspace(){const {eventId}=useParams({from:"/app/events/$eventId"});const {currentOrganization,currentRole}=useAuth();const orgId=currentOrganization?.id??null;const canCost=!!currentRole&&COST_READER_ROLES.includes(currentRole);const canCommercial=currentRole==="OWNER"||currentRole==="MANAGER";const canFinance=!!currentRole&&PAYMENT_WRITE_ROLES.includes(currentRole);
-const canAttendance=!!currentRole&&["OWNER","MANAGER","SUPERVISOR"].includes(currentRole);const procurementDataSource=useMemo(()=>orgId?createSupabaseProcurementDataSource(orgId,currentRole):null,[orgId,currentRole]);const procurementAccess=useMemo(()=>({canViewCommercialAmounts:canCost,canCreateSupplier:canCommercial,canCreateOrder:canCommercial}),[canCost,canCommercial]);const event=useEvent(orgId,eventId);const data=useWorkspaceData(orgId,eventId,canCost);const finance=useEventFinance(orgId,eventId);
-const attendance=useEventAttendance(orgId,eventId);
-const payroll=useEventPayroll(orgId,eventId);
-const invoice=useEventInvoice(orgId,eventId);
-const invoiceRows=useEventInstallments(orgId,eventId);
-const attList=attendance.data??[];
-const attEarnedMilli=attList.filter(a=>a.recordStatus==="RECORDED").reduce((n,a)=>n+a.earnedMilli,0);
-const attPresent=attList.filter(a=>a.recordStatus==="RECORDED"&&a.status!=="ABSENT").length;
-const attTotal=attList.filter(a=>a.recordStatus==="RECORDED").length;
-const attendanceVoiceSummary=buildAttendanceVoiceSummary({earnedOmr:toOMRString(attEarnedMilli),presentCount:attPresent,totalCount:attTotal});
-const payRows=payroll.data??[];
-const payDue=payRows.reduce((n,r)=>n+r.dueMilli,0);
-const payPaid=payRows.reduce((n,r)=>n+r.paidMilli,0);
-const payLate=payRows.reduce((n,r)=>n+r.lateMilli,0);
-const payAdv=payRows.reduce((n,r)=>n+r.advancesMilli,0);
-const payrollVoiceSummary=buildPayrollVoiceSummary({dueOmr:toOMRString(payDue),paidOmr:toOMRString(payPaid),lateOmr:toOMRString(payLate),advancesOmr:toOMRString(payAdv),hostCount:payRows.length});
-const inv=invoice.data;
-const invoiceVoiceSummary=buildInvoiceVoiceSummary({
-  totalOmr:inv?toOMRString(inv.totalMilli):null,
-  paidOmr:inv?toOMRString(inv.paidMilli):null,
-  remainingOmr:inv?toOMRString(inv.remainingMilli):null,
-  installmentCount:inv?(invoiceRows.data??[]).length:0,
-  paidInstallments:inv?(invoiceRows.data??[]).filter(r=>r.effectiveStatus==="PAID").length:0,
-});const packages=usePackages(orgId);const customers=useCustomers(orgId);const command=useEventCommand(orgId,eventId);const [tab,setTab]=useState<Tab>("ملخص");const [error,setError]=useState("");
-async function run(name:string,args:Record<string,unknown>,includeEvent=true){setError("");try{await command.mutateAsync({name,args,includeEvent})}catch(x){setError(arabicError(x))}}
-if(event.isLoading||data.isLoading)return <p>جارٍ تحميل المناسبة…</p>;if(!event.data||!data.data)return <p>تعذر العثور على المناسبة.</p>;const ev=event.data;const d=data.data;
-const totalSell=d.lines.reduce((n,l)=>n+Number(l.total_selling),0);const totalCost=d.lines.reduce((n,l)=>n+Number(l.total_expected_cost??0),0);
-const customerName=customers.data?.find(c=>c.id===ev.customer_id)?.name??null;
-const totalSellMilli=d.lines.reduce((n,l)=>n+fromDbAmount(l.total_selling),0);const totalCostMilli=d.lines.reduce((n,l)=>n+fromDbAmount(l.total_expected_cost),0);
-const latestQuote=d.quotes[0]??null;
-const overviewVoiceSummary=buildEventVoiceSummary({event:{...ev,customer_name:customerName},readiness:d.readiness});
-const quoteVoiceSummary=buildQuoteVoiceSummary({totalSellingOmr:toOMRString(totalSellMilli),expectedCostOmr:canCost?toOMRString(totalCostMilli):null,expectedProfitOmr:canCost?toOMRString(totalSellMilli-totalCostMilli):null,canReadCost:canCost,quotationNumber:latestQuote?.quotation_number??null,quotationStatus:latestQuote?.status??null});
-const paymentsVoiceSummary=buildPaymentsVoiceSummary({acceptedRevenueOmr:finance.data?toOMRString(finance.data.acceptedRevenueMilli):null,paidOmr:finance.data?toOMRString(finance.data.amountPaidMilli):null,outstandingOmr:finance.data?toOMRString(finance.data.outstandingMilli):null,committedCostOmr:canCost&&finance.data?toOMRString(finance.data.committedCostMilli):null,grossMarginOmr:canCost&&finance.data?toOMRString(finance.data.grossMarginMilli):null,canReadCost:canCost});const voiceSummary=tab==="التسعير"?quoteVoiceSummary:tab==="المدفوعات"?paymentsVoiceSummary:tab==="الفواتير"?invoiceVoiceSummary:tab==="الحضور"?attendanceVoiceSummary:tab==="الأجور"?payrollVoiceSummary:overviewVoiceSummary;
-return <div className="space-y-5"><Link to="/events" className="font-bold text-brand-700">→ العودة إلى المناسبات</Link><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-mono text-sm text-slate-500" dir="ltr">{ev.event_number}</p><h1 className="text-2xl font-black">{ev.title}</h1><p className="text-slate-600">{new Date(ev.start_at).toLocaleString("ar-OM",{timeZone:"Asia/Muscat"})} · {ev.venue_name}</p></div><div className="flex flex-wrap items-center gap-3"><Badge tone={ev.status==="CANCELLED"?"danger":"brand"}>{eventStatusLabels[ev.status]}</Badge><OwnerVoiceButton summary={voiceSummary}/></div></div><Card className={d.readiness.status==="READY"?"border-emerald-300 bg-emerald-50":"border-amber-300 bg-amber-50"}><p className="font-black">{readinessText(d.readiness)}</p></Card><div className="flex gap-2 overflow-x-auto border-b" role="tablist">{tabs.map(x=><button key={x} role="tab" aria-selected={tab===x} onClick={()=>setTab(x)} className={`min-h-12 whitespace-nowrap border-b-2 px-4 font-bold ${tab===x?"border-brand-700 text-brand-800":"border-transparent text-slate-500"}`}>{x}</button>)}</div>{error&&<p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{error}</p>}
-{tab==="ملخص"&&<div className="grid gap-4 md:grid-cols-2"><Card><h2 className="font-black">بيانات المناسبة</h2><dl className="mt-3 space-y-2"><div><dt className="text-sm text-slate-500">العميل</dt><dd>{customerName??ev.customer_id}</dd></div><div><dt className="text-sm text-slate-500">الضيوف</dt><dd>{ev.guest_count}</dd></div><div><dt className="text-sm text-slate-500">الفترة</dt><dd>{new Date(ev.start_at).toLocaleString("ar-OM")} — {new Date(ev.end_at).toLocaleString("ar-OM")}</dd></div></dl></Card><Card><h2 className="font-black">الإجراءات التشغيلية</h2><div className="mt-3 flex flex-wrap gap-2">{ev.status==="CONFIRMED"&&<Button onClick={()=>void run("transition_event_status",{p_to:"PREPARING",p_reason:null})}>بدء التجهيز</Button>}{ev.status==="PREPARING"&&<Button onClick={()=>void run("transition_event_status",{p_to:"DISPATCHED",p_reason:null})}>تأكيد الإرسال</Button>}{["DRAFT","QUOTED","CONFIRMED","PREPARING"].includes(ev.status)&&canCommercial&&<Button variant="danger" onClick={()=>{const reason=window.prompt("سبب الإلغاء");if(reason)void run("cancel_event",{p_reason:reason,p_idempotency_key:crypto.randomUUID()})}}>إلغاء المناسبة</Button>}</div></Card></div>}
-{tab==="التسعير"&&<div className="space-y-4"><div className="grid gap-3 sm:grid-cols-3"><Card><p className="text-sm text-slate-500">الإيراد المتوقع</p><p className="text-xl font-black">{totalSell.toFixed(3)} ر.ع.</p></Card>{canCost&&<><Card><p className="text-sm text-slate-500">التكلفة المتوقعة</p><p className="text-xl font-black">{totalCost.toFixed(3)} ر.ع.</p></Card><Card><p className="text-sm text-slate-500">الربح المتوقع</p><p className="text-xl font-black">{(totalSell-totalCost).toFixed(3)} ر.ع.</p></Card></>}</div>{canCommercial&&ev.accepted_quotation_id===null&&<><Card><h2 className="mb-3 font-black">تطبيق باقة</h2><form className="flex gap-2" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void run("apply_package_to_event",{p_package_id:String(f.get("package"))})}}><Select name="package" required><option value="">اختر باقة</option>{packages.data?.map(p=><option key={p.package.id} value={p.package.id}>{p.package.name}</option>)}</Select><Button type="submit">تطبيق</Button></form></Card><CommercialForm submit={v=>run("save_event_commercial_line",v)}/></>}
-<div className="space-y-2">{d.lines.map(l=><Card key={l.id}><div className="flex justify-between gap-3"><div><h3 className="font-bold">{l.description}</h3><p className="text-sm text-slate-500">{l.quantity} {l.unit} · {l.pricing_method}</p></div><div className="text-left"><p className="font-black">{Number(l.total_selling).toFixed(3)} ر.ع.</p>{canCost&&<p className="text-sm text-slate-500">تكلفة {Number(l.total_expected_cost).toFixed(3)}</p>}{canCommercial&&ev.accepted_quotation_id===null&&<Button variant="secondary" className="mt-2" onClick={()=>{const quantity=window.prompt("الكمية",l.quantity);const sell=window.prompt("سعر البيع",l.unit_selling_price);const cost=window.prompt("التكلفة المتوقعة",l.expected_unit_cost??"0.000");if(quantity&&sell&&cost)void run("save_event_commercial_line",{p_line_id:l.id,p_description:l.description,p_item_type:l.item_type,p_unit:l.unit,p_pricing_method:l.pricing_method,p_quantity:quantity,p_unit_selling_price:sell,p_expected_unit_cost:cost,p_notes:null})}}>تعديل</Button>}</div></div></Card>)}</div>{canCommercial&&d.lines.length>0&&<Button onClick={()=>void run("issue_event_quotation",{p_terms:"",p_notes:"",p_idempotency_key:crypto.randomUUID()})}>إصدار مراجعة عرض سعر</Button>}<div className="space-y-2">{d.quotes.map(q=><Card key={q.id}><div className="flex items-center justify-between"><div><p className="font-bold">{q.quotation_number} · مراجعة {q.revision}</p><p>{Number(q.total_selling).toFixed(3)} ر.ع.</p></div><div className="flex items-center gap-2"><Badge>{q.status}</Badge>{q.status==="ISSUED"&&canCommercial&&<Button onClick={()=>void run("accept_event_quotation",{p_quotation_id:q.id,p_idempotency_key:crypto.randomUUID()},false)}>اعتماد</Button>}</div></div></Card>)}</div></div>}
-{tab==="الفريق"&&<div className="space-y-4"><Card><h2 className="mb-3 font-black">إسناد موظف</h2><form className="grid gap-3 sm:grid-cols-4" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);const s=d.staff.find(x=>x.id===f.get("staff"));void run("assign_event_staff",{p_staff_member_id:s?.id,p_assignment_role:s?.staff_type,p_compensation_method:s?.default_compensation_method??"PER_EVENT",p_rate:s?.default_rate??"0.000",p_expected_compensation:s?.default_rate??"0.000",p_notes:null,p_idempotency_key:crypto.randomUUID()})}}><Select name="staff" required><option value="">اختر الموظف</option>{d.staff.map(s=><option key={s.id} value={s.id}>{s.name} · {s.staff_type}</option>)}</Select><Button type="submit">إسناد</Button></form></Card>{d.assignments.map(a=><Card key={a.id}><p className="font-bold">{d.staff.find(s=>s.id===a.staff_member_id)?.name??a.staff_member_id}</p><p className="text-sm text-slate-500">{a.assignment_role} · {a.status}</p></Card>)}</div>}
-{tab==="المعدات"&&<div className="space-y-4"><Card><h2 className="mb-3 font-black">حجز معدات</h2><form className="flex flex-wrap gap-2" onSubmit={e=>{e.preventDefault();const f=new FormData(e.currentTarget);void run("reserve_event_equipment",{p_capacity_id:String(f.get("capacity")),p_quantity:Number(f.get("quantity")),p_idempotency_key:crypto.randomUUID()})}}><Select name="capacity" required><option value="">اختر المعدة</option>{d.capacities.map(c=><option key={c.id} value={c.id}>{c.catalog_items?.name??c.catalog_item_id} · المتاح الكلي {c.total_quantity}</option>)}</Select><Input name="quantity" type="number" min="1" placeholder="الكمية" required className="w-32"/><Button type="submit">حجز</Button></form></Card>{d.reservations.map(r=><Card key={r.id}><p className="font-bold">{d.capacities.find(c=>c.id===r.equipment_capacity_id)?.catalog_item_id}</p><p>{r.quantity} · {r.status}</p></Card>)}</div>}
-{tab==="المخزن"&&<WarehousePanel orgId={orgId} eventId={eventId} eventStatus={ev.status} role={currentRole} canReadCost={canCost}/>}
-{tab==="المواد"&&<EventConsumablesPanel orgId={orgId} eventId={eventId} eventStatus={ev.status} role={currentRole}/>}
-{tab==="المشتريات"&&procurementDataSource&&<EventProcurementPanel eventId={eventId} dataSource={procurementDataSource} access={procurementAccess}/>}
-{tab==="المدفوعات"&&<EventPaymentsPanel orgId={orgId} eventId={eventId} canReadCost={canCost} canMutate={canFinance}/>}
-{tab==="الفواتير"&&<InvoicesPanel orgId={orgId} eventId={eventId} eventNumber={ev.event_number} canReadCost={canCost} canMutate={canFinance} acceptedRevenueMilli={finance.data?finance.data.acceptedRevenueMilli:0}/>}
-{tab==="الحضور"&&<AttendancePanel orgId={orgId} eventId={eventId} canMutate={canAttendance} assignments={d.assignments.map(a=>({id:a.id,staffMemberId:a.staff_member_id,assignmentRole:a.assignment_role,scheduledStart:a.scheduled_start,scheduledEnd:a.scheduled_end}))} staffList={d.staff.map(s=>({id:s.id,name:s.name,staffType:s.staff_type,defaultCompensationMethod:s.default_compensation_method,defaultRate:s.default_rate}))}/>}
-{tab==="الأجور"&&<HostPayrollPanel orgId={orgId} eventId={eventId} canMutate={canFinance}/>}
-{tab==="السجل"&&<ol className="space-y-3">{d.history.map(h=><li key={h.id}><Card><p className="font-bold">{h.from_status?`${h.from_status} ← `:""}{h.to_status}</p><p className="text-sm text-slate-500">{new Date(h.created_at).toLocaleString("ar-OM")} {h.reason&&`· ${h.reason}`}</p></Card></li>)}</ol>}</div>}
-function CommercialForm({submit}:{submit:(v:Record<string,unknown>)=>Promise<unknown>}){function go(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);void submit({p_line_id:null,p_description:String(f.get("description")),p_item_type:String(f.get("type")),p_unit:String(f.get("unit")),p_pricing_method:String(f.get("method")),p_quantity:String(f.get("quantity")),p_unit_selling_price:String(f.get("sell")),p_expected_unit_cost:String(f.get("cost")),p_notes:null})}return <Card><h2 className="mb-3 font-black">إضافة خدمة مخصصة</h2><form className="grid gap-3 sm:grid-cols-4" onSubmit={go}><Field label="الوصف"><Input name="description" required/></Field><Field label="النوع"><Select name="type"><option value="SERVICE">خدمة</option><option value="STAFF">طاقم</option><option value="REUSABLE_EQUIPMENT">معدات</option><option value="OTHER">أخرى</option></Select></Field><Field label="الوحدة"><Input name="unit" required/></Field><Field label="طريقة التسعير"><Select name="method"><option value="PER_UNIT">لكل وحدة</option><option value="FIXED">ثابت</option><option value="PER_GUEST">لكل ضيف</option><option value="PER_HOUR">لكل ساعة</option><option value="PER_DAY">لكل يوم</option><option value="MANUAL">يدوي</option></Select></Field><Field label="الكمية"><Input name="quantity" type="number" min="0.001" step="0.001" required/></Field><Field label="سعر البيع"><Input name="sell" type="number" min="0" step="0.001" required/></Field><Field label="التكلفة المتوقعة"><Input name="cost" type="number" min="0" step="0.001" required/></Field><div className="flex items-end"><Button type="submit">إضافة</Button></div></form></Card>}
+export function EventWorkspace() {
+  const ws = useEventWorkspace();
+
+  if (ws.isLoading) {
+    return <LoadingState label="جارٍ تحميل المناسبة…" />;
+  }
+  if (ws.isMissing) {
+    return <p>تعذر العثور على المناسبة.</p>;
+  }
+
+  const ev = ws.event.data!;
+  const d = ws.data.data!;
+  const customerName =
+    ws.customers.data?.find((c) => c.id === ev.customer_id)?.name ?? null;
+
+  return (
+    <div className="space-y-5">
+      <EventWorkspaceHeader event={ev} voiceSummary={ws.voiceSummary} />
+      <ReadinessBanner readiness={d.readiness} />
+      <WorkspaceTabs tab={ws.tab} onChange={ws.setTab} />
+      {ws.error && <InlineError message={ws.error} />}
+
+      {ws.tab === "ملخص" && (
+        <OverviewTab
+          event={ev}
+          customerName={customerName}
+          canCommercial={ws.canCommercial}
+          run={ws.run}
+        />
+      )}
+
+      {ws.tab === "التسعير" && (
+        <PricingTab
+          event={ev}
+          lines={d.lines}
+          quotes={d.quotes}
+          canCost={ws.canCost}
+          canCommercial={ws.canCommercial}
+          deps={{ packages: ws.packages.data ?? [], run: ws.run }}
+        />
+      )}
+
+      {ws.tab === "الفريق" && (
+        <TeamTab staff={d.staff} assignments={d.assignments} run={ws.run} />
+      )}
+
+      {ws.tab === "المعدات" && (
+        <EquipmentTab
+          capacities={d.capacities}
+          reservations={d.reservations}
+          run={ws.run}
+        />
+      )}
+
+      {ws.tab === "المخزن" && (
+        <WarehousePanel
+          orgId={ws.orgId}
+          eventId={ws.eventId}
+          eventStatus={ev.status}
+          role={ws.currentRole}
+          canReadCost={ws.canCost}
+        />
+      )}
+
+      {ws.tab === "المواد" && (
+        <EventConsumablesPanel
+          orgId={ws.orgId}
+          eventId={ws.eventId}
+          eventStatus={ev.status}
+          role={ws.currentRole}
+        />
+      )}
+
+      {ws.tab === "المشتريات" && ws.procurementDataSource && (
+        <EventProcurementPanel
+          eventId={ws.eventId}
+          dataSource={ws.procurementDataSource}
+          access={ws.procurementAccess}
+        />
+      )}
+
+      {ws.tab === "المدفوعات" && (
+        <EventPaymentsPanel
+          orgId={ws.orgId}
+          eventId={ws.eventId}
+          canReadCost={ws.canCost}
+          canMutate={ws.canFinance}
+        />
+      )}
+
+      {ws.tab === "الفواتير" && (
+        <InvoicesPanel
+          orgId={ws.orgId}
+          eventId={ws.eventId}
+          eventNumber={ev.event_number}
+          canReadCost={ws.canCost}
+          canMutate={ws.canFinance}
+          acceptedRevenueMilli={
+            ws.finance.data ? ws.finance.data.acceptedRevenueMilli : 0
+          }
+        />
+      )}
+
+      {ws.tab === "الحضور" && (
+        <AttendancePanel
+          orgId={ws.orgId}
+          eventId={ws.eventId}
+          canMutate={ws.canAttendance}
+          assignments={d.assignments.map((a) => ({
+            id: a.id,
+            staffMemberId: a.staff_member_id,
+            assignmentRole: a.assignment_role,
+            scheduledStart: a.scheduled_start,
+            scheduledEnd: a.scheduled_end,
+          }))}
+          staffList={d.staff.map((s) => ({
+            id: s.id,
+            name: s.name,
+            staffType: s.staff_type,
+            defaultCompensationMethod: s.default_compensation_method,
+            defaultRate: s.default_rate,
+          }))}
+        />
+      )}
+
+      {ws.tab === "الأجور" && (
+        <HostPayrollPanel
+          orgId={ws.orgId}
+          eventId={ws.eventId}
+          canMutate={ws.canFinance}
+        />
+      )}
+
+      {ws.tab === "السجل" && <HistoryTab history={d.history} />}
+    </div>
+  );
+}
