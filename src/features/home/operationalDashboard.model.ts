@@ -53,6 +53,22 @@ export interface OperationalDashboard {
   alerts: OperationalAlert[];
 }
 
+/**
+ * A metric that is only a number once its underlying query has actually
+ * resolved. `null` means "not established yet" and MUST render as "—", never
+ * as 0: AGENTS.md forbids presenting an invented statistic as fact, and a
+ * confident "0 events need attention" on an unresolved query is exactly that.
+ */
+export type PendingCount = number | null;
+
+/** Resolves a count only when its source has loaded. */
+export function settledCount(
+  loaded: boolean,
+  value: number | undefined,
+): PendingCount {
+  return loaded ? (value ?? 0) : null;
+}
+
 function readinessDetail(readiness: OperationalReadiness): string {
   switch (readiness.status) {
     case "STAFF_MISSING":

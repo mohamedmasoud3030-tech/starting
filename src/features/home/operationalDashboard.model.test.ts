@@ -3,6 +3,7 @@ import {
   buildEventWhatsAppUrl,
   buildOperationalDashboard,
   normalizeWhatsAppPhone,
+  settledCount,
 } from "./operationalDashboard.model";
 
 const now = new Date("2026-08-15T10:00:00.000Z");
@@ -96,5 +97,22 @@ describe("WhatsApp sharing", () => {
 
   it("returns null when no valid contact number exists", () => {
     expect(buildEventWhatsAppUrl(event({ contact_phone: null }))).toBeNull();
+  });
+});
+
+describe("settledCount — no fabricated statistics", () => {
+  it("reports null (rendered as —) while the source has not settled", () => {
+    // A dashboard must not claim "0 events need attention" before it knows.
+    expect(settledCount(false, undefined)).toBeNull();
+    expect(settledCount(false, 7)).toBeNull();
+  });
+
+  it("reports a real zero once the source has settled", () => {
+    expect(settledCount(true, 0)).toBe(0);
+    expect(settledCount(true, undefined)).toBe(0);
+  });
+
+  it("passes through a settled non-zero count", () => {
+    expect(settledCount(true, 3)).toBe(3);
   });
 });
