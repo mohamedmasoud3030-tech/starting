@@ -1,0 +1,53 @@
+name: R10 one-shot database type sync
+
+on:
+  push:
+    branches:
+      - chatgpt/r10-product-consolidation-foundation
+    paths:
+      - .github/workflows/r10-sync-types-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/r10-product-consolidation-foundation
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.114.0
+
+      - name: Replay canonical schema and generate types
+        run: |
+          supabase start
+          supabase db reset
+          supabase gen types typescript --local --schema public > src/lib/database.types.ts
+          supabase stop
+
+      - name: Remove one-shot workflow and commit generated types
+        run: |
+          rm .github/workflows/r10-sync-types-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/database.types.ts .github/workflows/r10-sync-types-once.yml
+          if git diff --cached --quiet; then
+            echo "No generated type changes"
+            exit 0
+          fi
+          git commit -m "chore: sync generated database types after R10 schema consolidation"
+          git push origin HEAD:chatgpt/r10-product-consolidation-foundation
