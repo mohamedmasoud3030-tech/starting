@@ -6,6 +6,7 @@ import {
   redirect,
 } from "@tanstack/react-router";
 import { AuthGate } from "@/app/AuthGate";
+import { PUBLIC_DEMO_MODE } from "@/app/publicDemo";
 import { LoginPage } from "@/features/auth/LoginPage";
 import {
   CatalogPage,
@@ -36,6 +37,11 @@ const indexRoute = createRoute({
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
+  beforeLoad: () => {
+    if (PUBLIC_DEMO_MODE) {
+      throw redirect({ to: "/home" });
+    }
+  },
   component: LoginPage,
 });
 

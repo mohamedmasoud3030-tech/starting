@@ -3,14 +3,11 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   CalendarDays,
   Home,
-  LogOut,
   MoreHorizontal,
   Users,
   X,
 } from "lucide-react";
 import { useAuth } from "@/app/AuthContext";
-import { Badge } from "@/components/ui/Badge";
-import { ROLE_LABELS } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
 type NavTarget =
@@ -78,18 +75,13 @@ function isActivePath(pathname: string, target: NavTarget) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const {
-    user,
-    profile,
     currentOrganization,
-    currentRole,
-    logout,
     canManageCommercial,
     canReadCost,
   } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  const fullName = profile?.full_name || user?.email?.split("@")[0] || "مستخدم";
   const visibleGroups = NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter(
@@ -132,38 +124,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-slate-50">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
-        <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-3 px-4 md:px-6">
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 md:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-brand-700 text-base font-bold text-white sm:h-11 sm:w-11 sm:text-lg">
               ض
             </div>
             <div className="min-w-0 leading-tight">
               <p className="truncate text-sm font-bold text-slate-900 sm:text-base">
-                {currentOrganization?.name ?? "إدارة الضيافة"}
+                {currentOrganization?.display_name ?? currentOrganization?.name ?? "إدارة الضيافة"}
               </p>
               <p className="hidden text-sm text-slate-500 sm:block">
                 عمليات الضيافة والمناسبات
               </p>
             </div>
-          </div>
-
-          <div className="hidden items-center gap-2 rounded-xl border border-slate-200 py-1 pr-3 pl-1 md:flex">
-            <div className="leading-tight">
-              <p className="text-sm font-bold text-slate-800">{fullName}</p>
-              {currentRole && (
-                <Badge tone="brand" className="text-xs">
-                  {ROLE_LABELS[currentRole]}
-                </Badge>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => void logout()}
-              aria-label="تسجيل الخروج"
-              className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600"
-            >
-              <LogOut className="h-5 w-5" />
-            </button>
           </div>
         </div>
       </header>
@@ -220,10 +193,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <div className="mb-3 flex items-center justify-between gap-3 px-2 py-1">
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-slate-900">{fullName}</p>
-                {currentRole && (
-                  <p className="text-xs text-slate-500">{ROLE_LABELS[currentRole]}</p>
-                )}
+                <p className="truncate text-sm font-bold text-slate-900">
+                  {currentOrganization?.display_name ?? currentOrganization?.name ?? "إدارة الضيافة"}
+                </p>
               </div>
               <button
                 type="button"
@@ -263,15 +235,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </section>
               ))}
             </div>
-
-            <button
-              type="button"
-              onClick={() => void logout()}
-              className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-base font-bold text-red-600 hover:bg-red-50"
-            >
-              <LogOut className="h-5 w-5" />
-              تسجيل الخروج
-            </button>
           </nav>
         </>
       )}
