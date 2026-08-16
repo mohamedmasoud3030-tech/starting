@@ -115,7 +115,12 @@ export function EventWorkspace() {
           canReadCost={ws.canCost}
           canMutate={ws.canFinance}
           acceptedRevenueMilli={
-            ws.finance.data ? ws.finance.data.acceptedRevenueMilli : 0
+            // null while the finance read model is unresolved: unknown must
+            // render as loading, never as a fabricated 0 that claims
+            // "no accepted quotation".
+            ws.finance.data !== undefined
+              ? (ws.finance.data?.acceptedRevenueMilli ?? 0)
+              : null
           }
         />
       )}
