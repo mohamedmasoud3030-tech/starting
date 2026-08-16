@@ -39,9 +39,6 @@ vi.mock("./supabaseDataSource", () => ({
   })),
 }));
 
-// The page participates in cross-feature cache sync (useProcurementDataSource
-// → useQueryClient), so it must render inside a QueryClientProvider — exactly
-// as it does in the real app tree.
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -80,7 +77,7 @@ describe("ProcurementPage", () => {
     expect(await screen.findByRole("heading", { name: "الموردون والمشتريات" })).toBeInTheDocument();
   });
 
-  it("shows fallback message when no organization is active", () => {
+  it("uses canonical organization terminology when no organization is active", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: { id: "u1" } as any,
       session: null,
@@ -106,6 +103,7 @@ describe("ProcurementPage", () => {
 
     render(<ProcurementPage />, { wrapper });
 
-    expect(screen.getByText("اختر منظمة لعرض المشتريات والموردين.")).toBeInTheDocument();
+    expect(screen.getByText("اختر المنشأة لعرض المشتريات والموردين.")).toBeInTheDocument();
+    expect(screen.queryByText(/اختر منظمة/)).not.toBeInTheDocument();
   });
 });
