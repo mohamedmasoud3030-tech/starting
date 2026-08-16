@@ -1,0 +1,61 @@
+name: One-shot stale branch cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/branch-cleanup-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete every non-default branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const repository = await github.rest.repos.get({ owner, repo });
+            const keep = repository.data.default_branch;
+            const branches = await github.paginate(github.rest.repos.listBranches, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+
+            const targets = branches
+              .map((branch) => branch.name)
+              .filter((name) => name !== keep);
+
+            core.info(`Keeping default branch: ${keep}`);
+            core.info(`Deleting ${targets.length} stale branches`);
+
+            const failures = [];
+            for (const name of targets) {
+              try {
+                await github.rest.git.deleteRef({ owner, repo, ref: `heads/${name}` });
+                core.info(`Deleted ${name}`);
+              } catch (error) {
+                failures.push(`${name}: ${error.message}`);
+              }
+            }
+
+            const remaining = await github.paginate(github.rest.repos.listBranches, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+            const unexpected = remaining
+              .map((branch) => branch.name)
+              .filter((name) => name !== keep);
+
+            if (failures.length || unexpected.length) {
+              core.setFailed(
+                `Branch cleanup incomplete. Failures: ${failures.join(' | ') || 'none'}. Remaining: ${unexpected.join(', ') || 'none'}`,
+              );
+            } else {
+              core.info(`Cleanup complete. Only ${keep} remains.`);
+            }
