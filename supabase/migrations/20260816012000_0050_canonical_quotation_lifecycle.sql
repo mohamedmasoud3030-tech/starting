@@ -6,10 +6,24 @@
 -- snapshots now share one identity; PostgreSQL remains the money authority.
 -- ============================================================================
 
--- New values are used only by this forward migration and later commands.
-alter type public.quotation_status add value if not exists 'DRAFT' before 'ISSUED';
-alter type public.quotation_status add value if not exists 'CONVERTED' after 'ACCEPTED';
-alter type public.quotation_status add value if not exists 'CANCELLED' after 'CONVERTED';
+-- The R10 view hardening wrapped these projections in fixed-return helpers.
+-- Remove them before rebuilding the enum/canonical shape.
+drop view if exists public.quotation_lines_customer;
+drop function if exists public._view_quotation_lines_customer();
+drop view if exists public.quotations_customer;
+drop function if exists public._view_quotations_customer();
+
+-- Rebuild rather than ALTER ... ADD VALUE: native replay harnesses execute each
+-- migration file as one transaction, where newly-added enum labels are unsafe
+-- to use until commit.
+alter table public.quotations alter column status drop default;
+alter type public.quotation_status rename to quotation_status_r10;
+create type public.quotation_status as enum
+  ('DRAFT','ISSUED','ACCEPTED','CONVERTED','CANCELLED','SUPERSEDED');
+alter table public.quotations alter column status type public.quotation_status
+  using status::text::public.quotation_status;
+alter table public.quotations alter column status set default 'ISSUED';
+drop type public.quotation_status_r10;
 
 -- R10's one replay register remains canonical; quotations become a namespace.
 alter table public.command_idempotency
@@ -65,13 +79,6 @@ returns text language sql immutable set search_path='' as $$
   select encode(sha256(convert_to(coalesce(p_payload,'{}'::jsonb)::text,'UTF8')),'hex')
 $$;
 revoke all on function public.quotation_fingerprint(jsonb) from public,anon,authenticated;
-
--- The R10 view hardening wrapped these projections in fixed-return helpers.
--- Recreate them after the canonical shape is complete.
-drop view if exists public.quotation_lines_customer;
-drop function if exists public._view_quotation_lines_customer();
-drop view if exists public.quotations_customer;
-drop function if exists public._view_quotations_customer();
 
 -- Draft-capable canonical aggregate.
 alter table public.quotations alter column quotation_number drop not null;
