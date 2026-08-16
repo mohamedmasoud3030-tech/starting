@@ -15,6 +15,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import pg from "pg";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -190,6 +191,16 @@ async function main() {
     process.exit(1);
   }
   console.log("\nPAYMENTS CONCURRENCY PROOF: PASSED");
+
+  // R11 adds a separate quotation race harness. The protected repository
+  // workflow already invokes this native-db stage, so run the adjacent proof
+  // here without weakening or replacing the established payment scenarios.
+  const quotationProof = spawnSync(
+    process.execPath,
+    [join(__dirname, "quotation_concurrency.mjs")],
+    { stdio: "inherit", env: process.env },
+  );
+  if (quotationProof.status !== 0) process.exit(quotationProof.status ?? 1);
 }
 
 main().catch((error) => {
