@@ -30,7 +30,7 @@ After the production migration:
 - Domain replay helpers remain internal-only.
 - Canonical and compatibility replay relations currently contain zero rows, so the consolidation did not discard stored replay facts.
 
-## Final CI evidence
+## CI evidence for the implementation head
 
 GitHub Actions run: `31919536086`
 
@@ -55,6 +55,8 @@ Database job:
 - backup -> reset -> restore -> verify proof: PASS
 - generated database types: PASS
 - committed/generated type drift: **0**
+
+The closeout document itself was added after this implementation run and does not change runtime or schema behaviour. Repository CI still validates the final branch head before merge.
 
 ## Intentionally deferred
 
