@@ -6,6 +6,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { InlineError } from "@/components/ui/ErrorState";
 import type {
   ProcurementDataSource,
   ProcurementOrderDetail,
@@ -237,7 +238,7 @@ export function ReceivingDialog({
               );
             })}
           </div>
-          {errors._form && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{errors._form}</p>}
+          {errors._form && <InlineError message={errors._form} />}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="مرجع الاستلام (اختياري)" htmlFor="receipt-reference">
               <Input id="receipt-reference" value={reference} onChange={(event) => updateReference(event.target.value)} placeholder="مثال: DN-102" />

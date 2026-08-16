@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { formatOMR } from "@/lib/money";
+import { InlineError } from "@/components/ui/ErrorState";
 import type {
   ProcurementAccess,
   ProcurementConsumableOption,
@@ -274,13 +275,13 @@ export function OrderCreateDialog({
                 </div>
               );
             })}
-            {errors.lines && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{errors.lines}</p>}
+            {errors.lines && <InlineError message={errors.lines} />}
           </section>
 
           <Field label="ملاحظات الطلب (اختياري)" htmlFor="order-notes">
             <Textarea id="order-notes" rows={3} value={draft.notes} onChange={(event) => update({ notes: event.target.value })} placeholder="تعليمات التوصيل أو تفاصيل يحتاجها المورد" />
           </Field>
-          {submitError && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{submitError}</p>}
+          {submitError && <InlineError message={submitError} />}
           <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
             <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>إلغاء</Button>
             <Button type="submit" disabled={busy || activeSuppliers.length === 0 || !access.canViewCommercialAmounts}>{busy ? "جارٍ إنشاء المسودة…" : "إنشاء المسودة"}</Button>

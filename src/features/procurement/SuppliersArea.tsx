@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
 import { Textarea } from "@/components/ui/Textarea";
+import { InlineError } from "@/components/ui/ErrorState";
 import type {
   ProcurementAccess,
   ProcurementDataSource,
@@ -183,9 +184,7 @@ function SupplierForm({
         />
       </Field>
       {submitError && (
-        <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">
-          {submitError}
-        </p>
+        <InlineError message={submitError} />
       )}
       <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={onCancel} disabled={busy}>إلغاء</Button>
@@ -362,7 +361,7 @@ function SupplierDetailDialog({
         <div className="space-y-4">
           <p className="text-lg font-bold">هل تريد إيقاف «{detail.name}»؟</p>
           <p className="text-slate-600">لن يظهر المورد ضمن خيارات الطلبات الجديدة. الطلبات السابقة ستبقى محفوظة.</p>
-          {actionError && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{actionError}</p>}
+          {actionError && <InlineError message={actionError} />}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button variant="outline" disabled={busy} onClick={() => setMode("details")}>العودة</Button>
             <Button variant="danger" disabled={busy} onClick={() => void deactivate()}>{busy ? "جارٍ الإيقاف…" : "نعم، أوقف المورد"}</Button>
@@ -388,7 +387,7 @@ function SupplierDetailDialog({
             {detail.openOrderCount != null && <DetailRow label="الطلبات المفتوحة">{detail.openOrderCount}</DetailRow>}
           </dl>
           {detail.notes && <div><h4 className="font-bold">ملاحظات</h4><p className="mt-1 whitespace-pre-wrap text-slate-600">{detail.notes}</p></div>}
-          {actionError && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{actionError}</p>}
+          {actionError && <InlineError message={actionError} />}
           <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row">
             <div>
               <Button variant="secondary" disabled={!detail.capabilities.edit.allowed} onClick={() => { setActionError(""); setMode("edit"); }}>تعديل البيانات</Button>
