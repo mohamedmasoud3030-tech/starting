@@ -12,7 +12,7 @@ import {
   PackageSearch,
   Users,
 } from "lucide-react";
-import { useAuth } from "@/app/AuthContext";
+import { useAuth } from "@/app/authContext";
 import { COST_READER_ROLES } from "@/lib/domain";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";

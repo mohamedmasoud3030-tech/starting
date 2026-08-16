@@ -104,7 +104,7 @@ vi.mock("@/lib/supabase", () => ({
     from: (table: string) => builderFor(table),
   },
 }));
-vi.mock("@/app/AuthContext", () => ({
+vi.mock("@/app/authContext", () => ({
   useAuth: () => ({
     currentOrganization: { id: "org", name: "Org A" }, currentRole: "OWNER",
     canManageCommercial: true, canReadCost: true,

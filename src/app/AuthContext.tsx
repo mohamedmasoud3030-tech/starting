@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -9,12 +7,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import type {
-  AppRole,
-  MembershipRow,
-  OrganizationRow,
-  ProfileRow,
-} from "@/lib/dbTypes";
+import type { AppRole, ProfileRow } from "@/lib/dbTypes";
 import {
   canManageCommercialFor,
   canReadCostFor,
@@ -22,39 +15,7 @@ import {
   selectCurrentMembership,
 } from "./authRoles";
 import { PUBLIC_DEMO_MODE, PUBLIC_DEMO_ORG_ID } from "./publicDemo";
-
-export interface ActiveMembership {
-  membership: MembershipRow;
-  organization: OrganizationRow;
-}
-
-interface AuthContextValue {
-  user: User | null;
-  session: Session | null;
-  profile: ProfileRow | null;
-  memberships: ActiveMembership[];
-  /**
-   * The organization the user is currently operating within. Deterministically
-   * selected as the first ACTIVE membership (sorted by organization name).
-   * A multi-org switcher is deferred; authorization is already org-scoped.
-   */
-  currentOrganization: OrganizationRow | null;
-  currentMembership: MembershipRow | null;
-  /** The single role the user holds INSIDE the current organization. */
-  currentRole: AppRole | null;
-  /** OWNER or MANAGER within the CURRENT organization only. */
-  canManageCommercial: boolean;
-  /** OWNER, MANAGER, or ACCOUNTANT within the CURRENT organization only. */
-  canReadCost: boolean;
-  /** OWNER, MANAGER, or SUPERVISOR within the CURRENT organization only. */
-  canWriteCustomers: boolean;
-  loading: boolean;
-  error: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+import { AuthContext, type ActiveMembership, type AuthContextValue } from "./authContext";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -311,10 +272,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
-  return ctx;
 }

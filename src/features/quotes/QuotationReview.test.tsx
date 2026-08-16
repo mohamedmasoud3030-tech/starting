@@ -71,7 +71,7 @@ vi.mock("@/lib/supabase", () => {
   }};
 });
 
-vi.mock("@/app/AuthContext", () => ({
+vi.mock("@/app/authContext", () => ({
   useAuth: () => authMock(),
 }));
 

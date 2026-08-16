@@ -18,6 +18,7 @@ import {
   useVoidPayment,
 } from "./payments.api";
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_OPTIONS } from "./presentation";
+import { InlineError } from "@/components/ui/ErrorState";
 
 /**
  * S6 Event Workspace integration seam: the customer financial layer for one
@@ -140,7 +141,7 @@ export function EventPaymentsPanel({
         </div>
       )}
 
-      {error && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{error}</p>}
+      {error && <InlineError message={error} />}
 
       {canMutate && (
         <Card>

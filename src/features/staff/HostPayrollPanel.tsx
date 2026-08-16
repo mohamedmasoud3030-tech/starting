@@ -17,6 +17,8 @@ import {
   useRecordPayout,
 } from "./staff.api";
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_OPTIONS } from "@/features/payments/presentation";
+import { InlineError } from "@/components/ui/ErrorState";
+import { LoadingState } from "@/components/ui/LoadingState";
 
 export function HostPayrollPanel({
   orgId,
@@ -106,10 +108,10 @@ export function HostPayrollPanel({
         </Button>
       </div>
 
-      {error && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{error}</p>}
+      {error && <InlineError message={error} />}
 
       {payroll.isLoading ? (
-        <p>جارٍ تحميل الأجور…</p>
+        <LoadingState label="جارٍ تحميل الأجور…" />
       ) : rows.length === 0 ? (
         <EmptyState title="لا يوجد مضيفون مسجّلون حضوراً" description="سجّل حضور المضيفين أولاً لعرض أجورهم." />
       ) : (

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ProcurementPage } from "./ProcurementPage";
-import { useAuth } from "@/app/AuthContext";
+import { useAuth } from "@/app/authContext";
 import { useEvents } from "@/features/events/events.api";
 
-vi.mock("@/app/AuthContext", () => ({
+vi.mock("@/app/authContext", () => ({
   useAuth: vi.fn(),
 }));
 

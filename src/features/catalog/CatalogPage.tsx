@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pencil, Plus, Search } from "lucide-react";
-import { useAuth } from "@/app/AuthContext";
+import { useAuth } from "@/app/authContext";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";

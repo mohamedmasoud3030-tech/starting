@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { FileText, Plus, Search, XCircle } from "lucide-react";
-import { useAuth } from "@/app/AuthContext";
+import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { InlineError } from "@/components/ui/ErrorState";
 import {
   arabicQuotationError,
   useCancelQuotationDraft,
@@ -88,9 +89,7 @@ export function QuotesPage() {
       />
 
       {error && (
-        <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 font-bold text-red-700">
-          {error}
-        </p>
+        <InlineError message={error} className="mb-4" />
       )}
 
       <div className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 md:grid-cols-[minmax(0,1fr)_auto]">

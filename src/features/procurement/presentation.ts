@@ -56,3 +56,41 @@ export function formatProcurementDateTime(value: string | null): string {
     timeZone: "Asia/Muscat",
   }).format(date);
 }
+
+/** Order lifecycle actions surfaced in the detail dialog. */
+export type LifecycleAction = "approve" | "send" | "confirm" | "cancel";
+
+export const ACTION_LABELS: Record<LifecycleAction, string> = {
+  approve: "اعتماد الطلب",
+  send: "إرسال للمورد",
+  confirm: "تأكيد موافقة المورد",
+  cancel: "إلغاء الطلب",
+};
+
+export const ACTION_CONFIRM_LABELS: Record<LifecycleAction, string> = {
+  approve: "نعم، اعتماد الطلب",
+  send: "نعم، إرسال الطلب",
+  confirm: "نعم، تأكيد موافقة المورد",
+  cancel: "نعم، إلغاء الطلب",
+};
+
+export const ACTION_QUESTION: Record<LifecycleAction, string> = {
+  approve: "هل تريد اعتماد هذا الطلب؟",
+  send: "هل تم إرسال الطلب فعلياً للمورد؟",
+  confirm: "هل أكد المورد هذا الطلب؟",
+  cancel: "هل تريد إلغاء هذا الطلب؟",
+};
+
+export const ACTION_EXPLANATION: Record<LifecycleAction, string> = {
+  approve: "بعد الاعتماد تصبح البيانات التجارية لقطة تاريخية غير قابلة للتعديل.",
+  send: "سجّل الإرسال فقط بعد إرسال الطلب للمورد فعلياً.",
+  confirm: "التأكيد يفتح الطلب للاستلام الفعلي حسب الصلاحيات.",
+  cancel: "لن تُحذف بيانات الطلب أو أي استلام سابق.",
+};
+
+export const ACTION_SUCCESS: Record<LifecycleAction, string> = {
+  approve: "تم اعتماد الطلب بنجاح.",
+  send: "تم تسجيل إرسال الطلب للمورد.",
+  confirm: "تم تسجيل تأكيد المورد.",
+  cancel: "تم إلغاء الطلب.",
+};

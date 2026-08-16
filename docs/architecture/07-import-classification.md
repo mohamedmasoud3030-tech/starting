@@ -1,6 +1,6 @@
 # S1–S3 preserved snapshot classification
 
-The snapshot remains intact under `imports/hospitality-platform-development-mission/`. It is never imported by the production bundle. “Reuse” means documentation/domain semantics were retained; “Adapt” means UX ideas were rebuilt with the Foundation design system; “Port to server” means prototype behavior became PostgreSQL/RPC logic.
+The S1/S2/S3 snapshot previously lived under `imports/hospitality-platform-development-mission/`. It was reference/reconstruction material only: nothing in `src/`, `supabase/`, `scripts/`, `.github/`, tests, or the build depended on it, and the production bundle never imported it. On 2026-08-16 the physical snapshot was **removed from the production repository** (its ZIP SHA-256 was `a98a011a879edcafa9683227279b0d24061d3b09e5ee7e14437b8bf2ff4e756c`, base commit `9d37da5b843ede51c8b139a4991ce7f32ad29491`). This table is the durable classification record of what was reused, adapted, or ported. “Reuse” means documentation/domain semantics were retained; “Adapt” means UX ideas were rebuilt with the Foundation design system; “Port to server” means prototype behavior became PostgreSQL/RPC logic.
 
 | Imported file | Classification | Production disposition |
 |---|---|---|
@@ -24,4 +24,4 @@ The snapshot remains intact under `imports/hospitality-platform-development-miss
 | `src/lib/domain.ts` | REUSE | Labels/status concepts reused where consistent with Foundation authority. |
 | `src/lib/errors.ts` | ADAPT | Machine codes retained at DB boundary and mapped to Arabic UI messages. |
 
-No snapshot source is compiled into production, and no `localStorage` or fake session path was ported.
+No snapshot source is compiled into production, and no `localStorage` or fake session path was ported. Removal of the physical snapshot is safe: the classification above plus the `docs/architecture/` series capture every concept the snapshot contributed.
