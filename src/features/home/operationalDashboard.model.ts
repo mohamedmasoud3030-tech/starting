@@ -1,4 +1,5 @@
 import {
+  buildAttentionVoiceSummary,
   DEFAULT_TIME_ZONE,
   isSameLocalDay,
   toArabicDigits,
@@ -67,6 +68,36 @@ export function settledCount(
   value: number | undefined,
 ): PendingCount {
   return loaded ? (value ?? 0) : null;
+}
+
+/**
+ * The dashboard voice summary — or `null` (voice button hidden) while any
+ * source is still unresolved.
+ *
+ * A spoken summary is a statement of fact; building it from zeroed
+ * placeholders while queries load made the owner hear a confident
+ * "لا توجد مناسبات اليوم" for an unresolved dashboard — the same
+ * fabricated-zero class the visual metrics guard against with
+ * `settledCount`.
+ */
+export function attentionSummaryWhenLoaded(input: {
+  loaded: boolean;
+  dashboard: Pick<
+    OperationalDashboard,
+    "todayEvents" | "readyCount" | "eventAttentionCount" | "lowStockCount"
+  >;
+  attendanceGapCount: PendingCount;
+  canReadFinance: boolean;
+}): string | null {
+  if (!input.loaded || input.attendanceGapCount === null) return null;
+  return buildAttentionVoiceSummary({
+    todayEventCount: input.dashboard.todayEvents.length,
+    readyCount: input.dashboard.readyCount,
+    attentionCount: input.dashboard.eventAttentionCount,
+    lowStockCount: input.dashboard.lowStockCount,
+    attendanceGapCount: input.attendanceGapCount,
+    canReadFinance: input.canReadFinance,
+  });
 }
 
 function readinessDetail(readiness: OperationalReadiness): string {

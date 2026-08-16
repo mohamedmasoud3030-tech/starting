@@ -8,12 +8,12 @@ import { useCustomers } from "@/features/customers/customers.api";
 import { eventReadinessQuery, useEvents } from "@/features/events/events.api";
 import { usePackages } from "@/features/packages/packages.api";
 import {
-  buildAttentionVoiceSummary,
   DEFAULT_TIME_ZONE,
   isSameLocalDay,
 } from "@/features/ownerVoice/screenSummary";
 import { useAttendanceGaps } from "@/features/staff/staff.api";
 import {
+  attentionSummaryWhenLoaded,
   buildOperationalDashboard,
   settledCount,
   type OperationalReadiness,
@@ -93,12 +93,12 @@ export function useOperationalDashboard() {
 
   const canReadFinance = !!currentRole && COST_READER_ROLES.includes(currentRole);
 
-  const attentionSummary = buildAttentionVoiceSummary({
-    todayEventCount: dashboardLoaded ? dashboard.todayEvents.length : 0,
-    readyCount: dashboardLoaded ? dashboard.readyCount : 0,
-    attentionCount: dashboardLoaded ? dashboard.eventAttentionCount : 0,
-    lowStockCount: dashboardLoaded ? dashboard.lowStockCount : 0,
-    attendanceGapCount: attendanceGapCount ?? 0,
+  // Spoken facts only when the facts exist; null hides the voice button
+  // while any source is still loading (see attentionSummaryWhenLoaded).
+  const attentionSummary = attentionSummaryWhenLoaded({
+    loaded: dashboardLoaded,
+    dashboard,
+    attendanceGapCount,
     canReadFinance,
   });
 

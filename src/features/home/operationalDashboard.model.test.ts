@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  attentionSummaryWhenLoaded,
   buildEventWhatsAppUrl,
   buildOperationalDashboard,
   normalizeWhatsAppPhone,
@@ -114,5 +115,66 @@ describe("settledCount — no fabricated statistics", () => {
 
   it("passes through a settled non-zero count", () => {
     expect(settledCount(true, 3)).toBe(3);
+  });
+});
+
+describe("attentionSummaryWhenLoaded", () => {
+  const dashboard = {
+    todayEvents: [],
+    readyCount: 0,
+    eventAttentionCount: 0,
+    lowStockCount: 0,
+  };
+
+  it("returns null while the dashboard is still loading (no spoken fabricated zeros)", () => {
+    // REGRESSION: the hook used to build the summary from zeroed
+    // placeholders during loading, speaking a confident
+    // "لا توجد مناسبات اليوم" for an unresolved dashboard.
+    expect(
+      attentionSummaryWhenLoaded({
+        loaded: false,
+        dashboard,
+        attendanceGapCount: 0,
+        canReadFinance: true,
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null while the attendance-gap count is unresolved", () => {
+    expect(
+      attentionSummaryWhenLoaded({
+        loaded: true,
+        dashboard,
+        attendanceGapCount: null,
+        canReadFinance: true,
+      }),
+    ).toBeNull();
+  });
+
+  it("speaks the true empty state only once everything settled", () => {
+    expect(
+      attentionSummaryWhenLoaded({
+        loaded: true,
+        dashboard,
+        attendanceGapCount: 0,
+        canReadFinance: true,
+      }),
+    ).toBe("لا توجد مناسبات اليوم.");
+  });
+
+  it("speaks real settled counts", () => {
+    const summary = attentionSummaryWhenLoaded({
+      loaded: true,
+      dashboard: {
+        todayEvents: [{ id: "e1" } as never],
+        readyCount: 1,
+        eventAttentionCount: 0,
+        lowStockCount: 0,
+      },
+      attendanceGapCount: 1,
+      canReadFinance: false,
+    });
+    expect(summary).toContain("مناسبة واحدة");
+    expect(summary).toContain("لم يُسجَّل حضورها بعد");
   });
 });
