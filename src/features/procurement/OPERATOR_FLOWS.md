@@ -49,7 +49,7 @@
 
 لا تعديل في `EventWorkspace.tsx` أو routes/navigation داخل S5B لتجنب تعارض parallel work. بعد دمج S5A/S5B، يلزم integration slice صريح:
 
-1. بناء production `ProcurementDataSource` فوق `src/lib/procurement.api.ts` وread models المصرحة فقط.
+1. بناء production `ProcurementDataSource` فوق `src/features/procurement/procurement.api.ts` وread models المصرحة فقط.
 2. تحويل PostgreSQL exact numeric إلى milli-units/milli-OMR عند boundary دون float أو silent rounding.
 3. اشتقاق capabilities والـcost-filtered reads من backend؛ لا تعِد إنشاء مصفوفة أدوار في React.
 4. توفير consumable options من read model S4B المصرح وبهوية catalog/stock صحيحة.

@@ -56,7 +56,7 @@ live and used by the frontend:
   `event_staff_assignments_operational`, `event_warehouse_lines[_valued]`,
   `consumable_stock_summary`, `event_consumable_lines`, plus the
   `*_summaries`, `supplier_*`, `procurement_*` read models consumed by
-  `src/features/*/*.api.ts` and `src/lib/procurement.api.ts`.
+  `src/features/*/*.api.ts` and `src/features/procurement/procurement.api.ts`.
 - `_view_*` security-definer RPCs backing `security_invoker=true` views
   (quotation read models).
 
