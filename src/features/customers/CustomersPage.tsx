@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { MessageCircle, Phone, Plus, Search } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -33,17 +33,15 @@ export function CustomersPage() {
   const [statusFilter, setStatusFilter] = useState<CustomerStatusFilter>("ACTIVE");
 
   const customers = customersQuery.data ?? [];
-  const visibleCustomers = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase("ar");
-    return customers.filter((customer) => {
-      const matchesStatus =
-        statusFilter === "ALL" ||
-        (statusFilter === "ACTIVE" && customer.is_active) ||
-        (statusFilter === "INACTIVE" && !customer.is_active);
-      const haystack = `${customer.name} ${customer.phone ?? ""} ${customer.whatsapp ?? ""}`.toLocaleLowerCase("ar");
-      return matchesStatus && (!term || haystack.includes(term));
-    });
-  }, [customers, search, statusFilter]);
+  const term = search.trim().toLocaleLowerCase("ar");
+  const visibleCustomers = customers.filter((customer) => {
+    const matchesStatus =
+      statusFilter === "ALL" ||
+      (statusFilter === "ACTIVE" && customer.is_active) ||
+      (statusFilter === "INACTIVE" && !customer.is_active);
+    const haystack = `${customer.name} ${customer.phone ?? ""} ${customer.whatsapp ?? ""}`.toLocaleLowerCase("ar");
+    return matchesStatus && (!term || haystack.includes(term));
+  });
 
   if (customersQuery.isLoading) {
     return (
