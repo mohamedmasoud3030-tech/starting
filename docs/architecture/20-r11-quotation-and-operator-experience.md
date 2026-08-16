@@ -12,7 +12,7 @@ DRAFT → ISSUED → ACCEPTED → CONVERTED
 ISSUED → SUPERSEDED (existing event-first revision rule)
 ```
 
-A draft supports prospect details or an existing customer link, optional event facts, quote-owned lines, exact selling/cost snapshots, package provenance, save/reopen, and cancellation. It has no official number. `save_quotation_draft` replaces the header and complete line collection in one database transaction; both Save Draft and Issue use this shared persistence path. Full replacement is restricted to a locked `DRAFT`, so new/edited/deleted lines cannot be partially persisted or duplicated by retry. Issue is an explicit confirmed transition that locks the quote, validates/recomputes lines, allocates the document number, snapshots totals, and makes commercial facts immutable.
+A draft supports prospect details or an existing customer link, optional event facts, quote-owned lines, exact selling/cost snapshots, package provenance, save/reopen, and cancellation. It has no official number. `persist_quotation_draft` creates a brand-new identity or replaces an existing draft together with the complete line collection in one database transaction; both Save Draft and Issue use this shared command. New identity creation, line validation/insertion, server totals, audit, and canonical replay commit or roll back together—there is no header-only intermediate draft. Exact lost-response retries use the same `QUOTATIONS` idempotency key and return the original quotation ID; conflicting payload reuse is rejected. Full replacement is restricted to `DRAFT`, so new/edited/deleted lines cannot be partially persisted or duplicated by retry. Issue is an explicit confirmed transition that locks the quote, validates/recomputes lines, allocates the document number, snapshots totals, and makes commercial facts immutable.
 
 Acceptance and conversion are separate transactional commands. Conversion creates one customer only when needed, creates one confirmed Event, copies commercial lines to the Event, and records audit/replay state. The converted quotation remains the revenue authority for invoices and payments.
 
@@ -26,7 +26,7 @@ The browser uses integer milli-OMR helpers only for responsive previews. Postgre
 
 ### Replay and concurrency
 
-R10 `command_idempotency` remains the only physical replay register and now includes the `QUOTATIONS` namespace. Create, issue, accept, and conversion use canonical request fingerprints. Quote row locks serialize competing lifecycle transitions; the unique converted Event relationship is a second structural guard. `scripts/native-db/quotation_concurrency.mjs` provides the separate-session issue/conversion race proof.
+R10 `command_idempotency` remains the only physical replay register and now includes the `QUOTATIONS` namespace. Aggregate draft save, issue, accept, and conversion use canonical request fingerprints. Quote row locks serialize competing lifecycle transitions; the unique converted Event relationship is a second structural guard. `scripts/native-db/quotation_concurrency.mjs` provides the separate-session issue/conversion race proof and is an explicit permanent database CI step.
 
 ### Security
 

@@ -9,6 +9,7 @@ const testState = vi.hoisted(() => ({
   rpcCalls: [] as Array<{ name: string; args: Record<string, unknown> }>,
   quote: null as Record<string, unknown> | null,
   lines: [] as Array<Record<string, unknown>>,
+  failNextPersistResponse: false,
 }));
 
 function draftRow(overrides: Record<string, unknown> = {}) {
@@ -39,11 +40,7 @@ function persistedLine(overrides: Record<string, unknown> = {}) {
 
 const rpcMock = vi.fn(async (name: string, args: Record<string, unknown>) => {
   testState.rpcCalls.push({ name, args });
-  if (name === "create_quotation_draft") {
-    testState.quote = draftRow({ customer_name_snapshot: args.p_prospect_name });
-    return { data: testState.quote, error: null };
-  }
-  if (name === "save_quotation_draft") {
+  if (name === "persist_quotation_draft") {
     const input = args.p_lines as Array<Record<string, unknown>>;
     testState.quote = draftRow({
       customer_name_snapshot: args.p_prospect_name,
@@ -64,6 +61,10 @@ const rpcMock = vi.fn(async (name: string, args: Record<string, unknown>) => {
       source_package_id: line.source_package_id,
       sort_order: index,
     }));
+    if (testState.failNextPersistResponse) {
+      testState.failNextPersistResponse = false;
+      throw new Error("NETWORK_RESPONSE_LOST");
+    }
     return { data: testState.quote, error: null };
   }
   if (name === "issue_quotation") {
@@ -134,6 +135,7 @@ beforeEach(() => {
   testState.rpcCalls.length = 0;
   testState.quote = null;
   testState.lines = [];
+  testState.failNextPersistResponse = false;
   rpcMock.mockClear();
 });
 
@@ -157,10 +159,10 @@ describe("QuotationEditor", () => {
     await user.type(screen.getByLabelText(/اسم العميل \/ المتوقع/), "مريم");
     await addCustomLine(user);
     await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
-    await waitFor(() => expect(testState.rpcCalls.some((call) => call.name === "save_quotation_draft")).toBe(true));
-    expect(testState.rpcCalls[0]?.name).toBe("create_quotation_draft");
+    await waitFor(() => expect(testState.rpcCalls.some((call) => call.name === "persist_quotation_draft")).toBe(true));
+    expect(testState.rpcCalls[0]?.name).toBe("persist_quotation_draft");
     expect(testState.rpcCalls.some((call) => call.name === "issue_quotation")).toBe(false);
-    expect((testState.rpcCalls.find((call) => call.name === "save_quotation_draft")?.args.p_lines as unknown[])).toHaveLength(1);
+    expect((testState.rpcCalls.find((call) => call.name === "persist_quotation_draft")?.args.p_lines as unknown[])).toHaveLength(1);
     expect(testState.lines).toHaveLength(1);
   });
 
@@ -185,7 +187,7 @@ describe("QuotationEditor", () => {
     await user.click(await screen.findByRole("button", { name: "حذف خدمة خدمة محفوظة" }));
     await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
     await waitFor(() => expect(testState.lines).toHaveLength(0));
-    const save = testState.rpcCalls.find((call) => call.name === "save_quotation_draft");
+    const save = testState.rpcCalls.find((call) => call.name === "persist_quotation_draft");
     expect(save?.args.p_lines).toEqual([]);
   });
 
@@ -214,8 +216,26 @@ describe("QuotationEditor", () => {
     await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
     await waitFor(() => expect(testState.lines).toHaveLength(1));
     await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
-    await waitFor(() => expect(testState.rpcCalls.filter((call) => call.name === "save_quotation_draft")).toHaveLength(2));
+    await waitFor(() => expect(testState.rpcCalls.filter((call) => call.name === "persist_quotation_draft")).toHaveLength(2));
     expect(testState.lines).toHaveLength(1);
+  });
+
+  it("retries a lost new-draft response with the same stable idempotency key", async () => {
+    const user = userEvent.setup();
+    testState.failNextPersistResponse = true;
+    renderEditor();
+    await user.type(screen.getByLabelText(/اسم العميل \/ المتوقع/), "مريم");
+    await addCustomLine(user);
+    await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("NETWORK_RESPONSE_LOST");
+    await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
+    await waitFor(() => expect(testState.rpcCalls.filter((call) => call.name === "persist_quotation_draft")).toHaveLength(2));
+    const saves = testState.rpcCalls.filter((call) => call.name === "persist_quotation_draft");
+    expect(saves[0]?.args.p_idempotency_key).toBe(saves[1]?.args.p_idempotency_key);
+    expect(saves[0]?.args.p_quotation_id).toBeNull();
+    expect(saves[1]?.args.p_quotation_id).toBeNull();
+    expect(testState.lines).toHaveLength(1);
+    expect(testState.rpcCalls.some((call) => call.name === "create_quotation_draft")).toBe(false);
   });
 
   it("persists package provenance and expected cost", async () => {
@@ -242,7 +262,7 @@ describe("QuotationEditor", () => {
     await user.click(await screen.findByRole("button", { name: "تأكيد الإصدار" }));
     await waitFor(() => expect(testState.rpcCalls.some((call) => call.name === "issue_quotation")).toBe(true));
     expect(testState.rpcCalls.map((call) => call.name)).toEqual([
-      "create_quotation_draft", "save_quotation_draft", "issue_quotation",
+      "persist_quotation_draft", "issue_quotation",
     ]);
   });
 

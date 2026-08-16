@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Calculator, Package, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/app/AuthContext";
@@ -25,7 +25,6 @@ import {
 } from "@/lib/money";
 import {
   arabicQuotationError,
-  useCreateQuotationDraft,
   usePersistQuotationDraft,
   useCancelQuotationDraft,
   useIssueQuotation,
@@ -107,7 +106,6 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
   const packages = usePackages(orgId);
   const catalog = useCatalogItems(orgId, true);
 
-  const createDraft = useCreateQuotationDraft(orgId);
   const persistDraftMutation = usePersistQuotationDraft(orgId);
   const issue = useIssueQuotation(orgId);
   const discard = useCancelQuotationDraft(orgId);
@@ -120,6 +118,7 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const [issueConfirmationOpen, setIssueConfirmationOpen] = useState(false);
+  const saveIntentRef = useRef<{ fingerprint: string; idempotencyKey: string } | null>(null);
 
   // Edit mode: hydrate from the persisted draft.
   useEffect(() => {
@@ -194,33 +193,37 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
     );
   }
 
-  async function ensureDraft(): Promise<string> {
-    if (savedDraftId) return savedDraftId;
-    const draft = await createDraft.mutateAsync(toDraftValues(form, guestCountNum));
-    setSavedDraftId(draft.id);
-    return draft.id;
-  }
-
   async function persistDraft(): Promise<string> {
-    const quotationId = await ensureDraft();
-    await persistDraftMutation.mutateAsync({
-      quotationId,
-      values: toDraftValues(form, guestCountNum),
-      lines: lines.map((line) => ({
-        id: line.id,
-        description: line.description,
-        itemType: line.itemType,
-        unit: line.unit,
-        pricingMethod: line.pricingMethod,
-        quantity: line.quantity,
-        unitSellingPrice: line.unitSellingPrice,
-        expectedUnitCost: line.expectedUnitCost,
-        isCustom: line.isCustom,
-        sourceCatalogItemId: line.sourceCatalogItemId,
-        sourcePackageId: line.sourcePackageId,
-      })),
+    const values = toDraftValues(form, guestCountNum);
+    const draftLines = lines.map((line) => ({
+      id: line.id,
+      description: line.description,
+      itemType: line.itemType,
+      unit: line.unit,
+      pricingMethod: line.pricingMethod,
+      quantity: line.quantity,
+      unitSellingPrice: line.unitSellingPrice,
+      expectedUnitCost: line.expectedUnitCost,
+      isCustom: line.isCustom,
+      sourceCatalogItemId: line.sourceCatalogItemId,
+      sourcePackageId: line.sourcePackageId,
+    }));
+    const fingerprint = JSON.stringify({ quotationId: savedDraftId, values, lines: draftLines });
+    if (!saveIntentRef.current || saveIntentRef.current.fingerprint !== fingerprint) {
+      saveIntentRef.current = { fingerprint, idempotencyKey: crypto.randomUUID() };
+    }
+
+    // Keep the key after an error: a lost response retries the exact command.
+    // Rotate only after a confirmed response or when the payload changes.
+    const quote = await persistDraftMutation.mutateAsync({
+      quotationId: savedDraftId,
+      idempotencyKey: saveIntentRef.current.idempotencyKey,
+      values,
+      lines: draftLines,
     });
-    return quotationId;
+    setSavedDraftId(quote.id);
+    saveIntentRef.current = null;
+    return quote.id;
   }
 
   function setField<K extends keyof DraftForm>(key: K, value: string) {

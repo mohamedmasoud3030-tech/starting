@@ -194,32 +194,23 @@ function invalidateQuotation(qc: ReturnType<typeof useQueryClient>, orgId: strin
   }
 }
 
-export function useCreateQuotationDraft(orgId: string | null) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (values: QuotationDraftValues) => rpc<QuotationRow>("create_quotation_draft", {
-      p_org_id: orgId,
-      ...normalizeDraft(values),
-      p_idempotency_key: crypto.randomUUID(),
-    }),
-    onSuccess: (quote) => invalidateQuotation(qc, orgId, quote.id),
-  });
-}
-
 export function usePersistQuotationDraft(orgId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
       quotationId,
+      idempotencyKey,
       values,
       lines,
     }: {
-      quotationId: string;
+      quotationId: string | null;
+      idempotencyKey: string;
       values: QuotationDraftValues;
       lines: QuotationDraftLineValues[];
-    }) => rpc<QuotationRow>("save_quotation_draft", {
+    }) => rpc<QuotationRow>("persist_quotation_draft", {
       p_org_id: orgId,
       p_quotation_id: quotationId,
+      p_idempotency_key: idempotencyKey,
       ...normalizeDraft(values),
       p_lines: lines.map((line) => ({
         id: line.id,
