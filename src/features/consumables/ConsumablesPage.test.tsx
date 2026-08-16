@@ -11,7 +11,7 @@ import { ConsumablesPage } from "./ConsumablesPage";
 // ---------------------------------------------------------------------------
 const authState: { role: AppRole } = { role: "WAREHOUSE" };
 
-vi.mock("@/app/AuthContext", () => ({
+vi.mock("@/app/authContext", () => ({
   useAuth: () => ({
     currentOrganization: { id: "org-1", name: "Org" },
     currentRole: authState.role,

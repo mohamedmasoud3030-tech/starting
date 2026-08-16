@@ -1,5 +1,5 @@
 import { useParams } from "@tanstack/react-router";
-import { useAuth } from "@/app/AuthContext";
+import { useAuth } from "@/app/authContext";
 import { useQuotation } from "./quotes.api";
 import { QuotationEditor } from "./QuotationEditor";
 import { QuotationReview } from "./QuotationReview";

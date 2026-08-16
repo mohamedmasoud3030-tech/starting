@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useAuth } from "@/app/AuthContext";
+import { useAuth } from "@/app/authContext";
 import { useEvents } from "@/features/events/events.api";
 import { createSupabaseProcurementDataSource } from "./supabaseDataSource";
 import { ProcurementWorkspace } from "./ProcurementWorkspace";

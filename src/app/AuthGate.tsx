@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { Navigate, Outlet } from "@tanstack/react-router";
-import { useAuth } from "@/app/AuthContext";
+import { useAuth } from "@/app/authContext";
 import { AppShell } from "@/components/layout/AppShell";
 import { Spinner } from "@/components/ui/Spinner";
 
