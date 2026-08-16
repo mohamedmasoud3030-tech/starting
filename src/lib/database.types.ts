@@ -44,6 +44,7 @@ export type Database = {
           {
             foreignKeyName: "audit_events_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -84,6 +85,7 @@ export type Database = {
           {
             foreignKeyName: "catalog_categories_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -151,12 +153,14 @@ export type Database = {
           {
             foreignKeyName: "catalog_items_org_category_fk"
             columns: ["category_id", "organization_id"]
+            isOneToOne: false
             referencedRelation: "catalog_categories"
             referencedColumns: ["id", "organization_id"]
           },
           {
             foreignKeyName: "catalog_items_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -203,6 +207,7 @@ export type Database = {
           {
             foreignKeyName: "command_idempotency_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -261,12 +266,14 @@ export type Database = {
           {
             foreignKeyName: "consumable_movements_event_fk"
             columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "consumable_movements_stock_item_fk"
             columns: ["organization_id", "stock_item_id"]
+            isOneToOne: false
             referencedRelation: "consumable_stock_items"
             referencedColumns: ["organization_id", "id"]
           },
@@ -307,6 +314,7 @@ export type Database = {
           {
             foreignKeyName: "consumable_stock_items_catalog_fk"
             columns: ["organization_id", "catalog_item_id"]
+            isOneToOne: true
             referencedRelation: "catalog_items"
             referencedColumns: ["organization_id", "id"]
           },
@@ -371,6 +379,7 @@ export type Database = {
           {
             foreignKeyName: "customer_payments_org_event_fk"
             columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -417,6 +426,7 @@ export type Database = {
           {
             foreignKeyName: "customers_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -445,6 +455,7 @@ export type Database = {
           {
             foreignKeyName: "document_sequences_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -482,6 +493,7 @@ export type Database = {
           {
             foreignKeyName: "equipment_capacity_organization_id_catalog_item_id_fkey"
             columns: ["organization_id", "catalog_item_id"]
+            isOneToOne: true
             referencedRelation: "catalog_items"
             referencedColumns: ["organization_id", "id"]
           },
@@ -555,18 +567,21 @@ export type Database = {
           {
             foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "event_commercial_lines_organization_id_source_catalog_item_fkey"
             columns: ["organization_id", "source_catalog_item_id"]
+            isOneToOne: false
             referencedRelation: "catalog_items"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "event_commercial_lines_organization_id_source_package_id_fkey"
             columns: ["organization_id", "source_package_id"]
+            isOneToOne: false
             referencedRelation: "packages"
             referencedColumns: ["organization_id", "id"]
           },
@@ -619,6 +634,7 @@ export type Database = {
           {
             foreignKeyName: "consumable_reconciliations_event_fk"
             columns: ["organization_id", "event_id"]
+            isOneToOne: true
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -698,18 +714,21 @@ export type Database = {
           {
             foreignKeyName: "movements_capacity_fk"
             columns: ["organization_id", "equipment_capacity_id"]
+            isOneToOne: false
             referencedRelation: "equipment_capacity"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "movements_event_fk"
             columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "movements_reservation_fk"
             columns: ["organization_id", "reservation_id"]
+            isOneToOne: false
             referencedRelation: "event_equipment_reservations"
             referencedColumns: ["organization_id", "id"]
           },
@@ -759,12 +778,14 @@ export type Database = {
           {
             foreignKeyName: "event_equipment_reservations_organization_id_equipment_cap_fkey"
             columns: ["organization_id", "equipment_capacity_id"]
+            isOneToOne: false
             referencedRelation: "equipment_capacity"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -826,12 +847,14 @@ export type Database = {
           {
             foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "event_staff_assignments_organization_id_staff_member_id_fkey"
             columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
             referencedRelation: "staff_members"
             referencedColumns: ["organization_id", "id"]
           },
@@ -872,6 +895,7 @@ export type Database = {
           {
             foreignKeyName: "event_status_history_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -930,6 +954,7 @@ export type Database = {
           {
             foreignKeyName: "reconciliations_event_fk"
             columns: ["organization_id", "event_id"]
+            isOneToOne: true
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1012,18 +1037,21 @@ export type Database = {
           {
             foreignKeyName: "events_accepted_quote_fk"
             columns: ["organization_id", "accepted_quotation_id"]
+            isOneToOne: false
             referencedRelation: "quotations"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "events_customer_org_fk"
             columns: ["organization_id", "customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "events_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -1091,12 +1119,14 @@ export type Database = {
           {
             foreignKeyName: "host_payouts_org_event_fk"
             columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "host_payouts_org_staff_fk"
             columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
             referencedRelation: "staff_members"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1140,6 +1170,7 @@ export type Database = {
           {
             foreignKeyName: "invoice_installments_org_fk"
             columns: ["organization_id", "invoice_id"]
+            isOneToOne: false
             referencedRelation: "invoices"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1204,12 +1235,14 @@ export type Database = {
           {
             foreignKeyName: "invoices_org_event_fk"
             columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "invoices_org_quotation_fk"
             columns: ["organization_id", "quotation_id"]
+            isOneToOne: false
             referencedRelation: "quotations"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1247,6 +1280,7 @@ export type Database = {
           {
             foreignKeyName: "organization_memberships_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -1320,12 +1354,14 @@ export type Database = {
           {
             foreignKeyName: "package_items_catalog_org_fk"
             columns: ["catalog_item_id", "organization_id"]
+            isOneToOne: false
             referencedRelation: "catalog_items"
             referencedColumns: ["id", "organization_id"]
           },
           {
             foreignKeyName: "package_items_package_org_fk"
             columns: ["package_id", "organization_id"]
+            isOneToOne: false
             referencedRelation: "packages"
             referencedColumns: ["id", "organization_id"]
           },
@@ -1369,6 +1405,7 @@ export type Database = {
           {
             foreignKeyName: "packages_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -1424,18 +1461,21 @@ export type Database = {
           {
             foreignKeyName: "procurement_order_lines_catalog_fk"
             columns: ["organization_id", "catalog_item_id"]
+            isOneToOne: false
             referencedRelation: "catalog_items"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "procurement_order_lines_order_fk"
             columns: ["organization_id", "order_id"]
+            isOneToOne: false
             referencedRelation: "procurement_orders"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "procurement_order_lines_stock_item_fk"
             columns: ["organization_id", "stock_item_id"]
+            isOneToOne: false
             referencedRelation: "consumable_stock_items"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1530,18 +1570,21 @@ export type Database = {
           {
             foreignKeyName: "procurement_orders_event_fk"
             columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "procurement_orders_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "procurement_orders_supplier_fk"
             columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
             referencedRelation: "suppliers"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1582,18 +1625,21 @@ export type Database = {
           {
             foreignKeyName: "procurement_receipt_lines_movement_fk"
             columns: ["organization_id", "consumable_movement_id"]
+            isOneToOne: true
             referencedRelation: "consumable_movements"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "procurement_receipt_lines_order_line_fk"
             columns: ["organization_id", "order_id", "order_line_id"]
+            isOneToOne: false
             referencedRelation: "procurement_order_lines"
             referencedColumns: ["organization_id", "order_id", "id"]
           },
           {
             foreignKeyName: "procurement_receipt_lines_receipt_fk"
             columns: ["organization_id", "receipt_id", "order_id"]
+            isOneToOne: false
             referencedRelation: "procurement_receipts"
             referencedColumns: ["organization_id", "id", "order_id"]
           },
@@ -1640,6 +1686,7 @@ export type Database = {
           {
             foreignKeyName: "procurement_receipts_order_fk"
             columns: ["organization_id", "order_id"]
+            isOneToOne: false
             referencedRelation: "procurement_orders"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1734,18 +1781,21 @@ export type Database = {
           {
             foreignKeyName: "quotation_lines_catalog_org_fk"
             columns: ["organization_id", "source_catalog_item_id"]
+            isOneToOne: false
             referencedRelation: "catalog_items"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "quotation_lines_organization_id_quotation_id_fkey"
             columns: ["organization_id", "quotation_id"]
+            isOneToOne: false
             referencedRelation: "quotations"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "quotation_lines_package_org_fk"
             columns: ["organization_id", "source_package_id"]
+            isOneToOne: false
             referencedRelation: "packages"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1867,18 +1917,21 @@ export type Database = {
           {
             foreignKeyName: "quotations_converted_event_org_fk"
             columns: ["organization_id", "converted_event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "quotations_customer_org_fk"
             columns: ["organization_id", "customer_id"]
+            isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "quotations_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1937,6 +1990,7 @@ export type Database = {
           {
             foreignKeyName: "staff_advances_org_staff_fk"
             columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
             referencedRelation: "staff_members"
             referencedColumns: ["organization_id", "id"]
           },
@@ -2022,18 +2076,21 @@ export type Database = {
           {
             foreignKeyName: "staff_attendance_org_assignment_fk"
             columns: ["organization_id", "assignment_id"]
+            isOneToOne: false
             referencedRelation: "event_staff_assignments"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "staff_attendance_org_event_fk"
             columns: ["organization_id", "event_id"]
+            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
           {
             foreignKeyName: "staff_attendance_org_staff_fk"
             columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
             referencedRelation: "staff_members"
             referencedColumns: ["organization_id", "id"]
           },
@@ -2086,6 +2143,7 @@ export type Database = {
           {
             foreignKeyName: "staff_members_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -2147,6 +2205,7 @@ export type Database = {
           {
             foreignKeyName: "suppliers_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -2463,6 +2522,7 @@ export type Database = {
           {
             foreignKeyName: "command_idempotency_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -2506,6 +2566,7 @@ export type Database = {
           {
             foreignKeyName: "command_idempotency_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -2818,6 +2879,7 @@ export type Database = {
           {
             foreignKeyName: "command_idempotency_organization_id_fkey"
             columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
