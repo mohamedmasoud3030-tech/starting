@@ -236,8 +236,8 @@ function CustomerDialog({
 
   const set = <K extends keyof CustomerFormValues>(
     key: K,
-    value: CustomerFormValues[K],
-  ) => setValues((value) => ({ ...value, [key]: value }));
+    nextValue: CustomerFormValues[K],
+  ) => setValues((current) => ({ ...current, [key]: nextValue }));
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
