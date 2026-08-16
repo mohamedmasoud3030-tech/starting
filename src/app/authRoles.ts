@@ -24,18 +24,34 @@ export function canWriteCustomersFor(role: AppRole | null): boolean {
 
 export interface MembershipLike {
   membership: { role: AppRole };
-  organization: { name: string };
+  organization: { id?: string; name: string };
 }
 
 /**
- * Deterministically select the "current" organization: the first membership
- * ordered by organization name (Arabic collation). A multi-org switcher is
- * deferred; this keeps the selection stable and org-scoped.
+ * Select the organization the user is currently operating within.
+ *
+ * A multi-location operator may hold several ACTIVE memberships. When one is
+ * explicitly selected it wins — but ONLY if it corresponds to a real ACTIVE
+ * membership in the supplied list, so a stale or tampered preference can never
+ * widen access. Otherwise the historical deterministic default applies: the
+ * first membership ordered by organization name (Arabic collation).
+ *
+ * Authorization is unchanged: the role always comes from the membership INSIDE
+ * the selected organization, and the database remains authoritative via RLS.
  */
 export function selectCurrentMembership<T extends MembershipLike>(
   memberships: T[],
+  selectedOrganizationId?: string | null,
 ): T | null {
   if (memberships.length === 0) return null;
+
+  if (selectedOrganizationId) {
+    const selected = memberships.find(
+      (m) => m.organization.id === selectedOrganizationId,
+    );
+    if (selected) return selected;
+  }
+
   return (
     [...memberships].sort((a, b) =>
       a.organization.name.localeCompare(b.organization.name, "ar"),

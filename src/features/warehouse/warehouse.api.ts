@@ -37,8 +37,19 @@ export interface WarehouseData {
   summary: WarehouseSummary;
 }
 
-export function warehouseQueryKey(eventId: string, canReadCost: boolean) {
-  return ["event-warehouse", eventId, canReadCost] as const;
+/**
+ * Cache key for an Event's warehouse state.
+ *
+ * TENANT SCOPE: `orgId` is part of the key. Two organizations can never share
+ * a cache entry, so a sign-out/sign-in as a different tenant — or an
+ * organization switch — can never render another tenant's rows from cache.
+ */
+export function warehouseQueryKey(
+  orgId: string | null,
+  eventId: string,
+  canReadCost: boolean,
+) {
+  return ["event-warehouse", orgId, eventId, canReadCost] as const;
 }
 
 /**
@@ -54,7 +65,7 @@ export function useEventWarehouse(
   canReadCost: boolean,
 ) {
   return useQuery({
-    queryKey: warehouseQueryKey(eventId, canReadCost),
+    queryKey: warehouseQueryKey(orgId, eventId, canReadCost),
     enabled: !!orgId && !!eventId,
     queryFn: async (): Promise<WarehouseData> => {
       const [linesResult, summaryResult, valuedResult] = await Promise.all([
@@ -114,9 +125,13 @@ export function useEventWarehouse(
 function useWarehouseInvalidation(orgId: string | null, eventId: string) {
   const queryClient = useQueryClient();
   return () => {
-    void queryClient.invalidateQueries({ queryKey: ["event-warehouse", eventId] });
-    void queryClient.invalidateQueries({ queryKey: ["event-workspace", eventId] });
-    void queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    void queryClient.invalidateQueries({
+      queryKey: ["event-warehouse", orgId, eventId],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["event-workspace", orgId, eventId],
+    });
+    void queryClient.invalidateQueries({ queryKey: ["event", orgId, eventId] });
     void queryClient.invalidateQueries({ queryKey: ["events", orgId] });
   };
 }

@@ -2,11 +2,14 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { identityKey, resetTenantCache } from "./tenantCache";
 import type { AppRole, ProfileRow } from "@/lib/dbTypes";
 import {
   canManageCommercialFor,
@@ -15,15 +18,23 @@ import {
   selectCurrentMembership,
 } from "./authRoles";
 import { PUBLIC_DEMO_MODE, PUBLIC_DEMO_ORG_ID } from "./publicDemo";
+import {
+  readStoredOrganizationId,
+  writeStoredOrganizationId,
+} from "./organizationPreference";
 import { AuthContext, type ActiveMembership, type AuthContextValue } from "./authContext";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [memberships, setMemberships] = useState<ActiveMembership[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<
+    string | null
+  >(() => readStoredOrganizationId());
 
   const loadMemberships = useCallback(async (userId: string) => {
     const { data: membershipRows, error: membershipError } = await supabase
@@ -222,10 +233,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMemberships([]);
   }, [hydrate]);
 
-  // Deterministic current organization = first active membership (by name).
-  const current = useMemo(() => selectCurrentMembership(memberships), [memberships]);
+  /**
+   * Active organization for a multi-location operator.
+   *
+   * An explicit selection wins; otherwise the deterministic default (first
+   * active membership by organization name) is used, so single-location users
+   * see no change at all. The selection is remembered per browser so an
+   * operator returns to the location they were working in.
+   */
+  const current = useMemo(
+    () => selectCurrentMembership(memberships, selectedOrganizationId),
+    [memberships, selectedOrganizationId],
+  );
   const currentMembership = current?.membership ?? null;
   const currentOrganization = current?.organization ?? null;
+
+  const switchOrganization = useCallback(
+    (organizationId: string) => {
+      // Ignore an organization the user is not actually a member of: the
+      // active organization must always be backed by a real ACTIVE membership.
+      const target = memberships.find(
+        (m) => m.organization.id === organizationId,
+      );
+      if (!target) return;
+      setSelectedOrganizationId(organizationId);
+      writeStoredOrganizationId(organizationId);
+    },
+    [memberships],
+  );
+
+  /**
+   * Tenant isolation at the cache layer: whenever the effective identity
+   * changes (sign in, sign out, or an organization switch) every cached query
+   * is dropped, so no rows fetched as the previous identity can be rendered.
+   */
+  const currentIdentity = identityKey(user?.id ?? null, currentOrganization?.id ?? null);
+  const previousIdentityRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (previousIdentityRef.current === null) {
+      previousIdentityRef.current = currentIdentity;
+      return;
+    }
+    if (previousIdentityRef.current === currentIdentity) return;
+    previousIdentityRef.current = currentIdentity;
+    resetTenantCache(queryClient);
+  }, [currentIdentity, queryClient]);
   const currentRole = useMemo<AppRole | null>(
     () => currentMembership?.role ?? null,
     [currentMembership],
@@ -252,6 +304,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       login,
       logout,
+      switchOrganization,
     }),
     [
       user,
@@ -268,6 +321,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       login,
       logout,
+      switchOrganization,
     ],
   );
 

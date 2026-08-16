@@ -62,3 +62,46 @@ describe("organization-scoped role resolution", () => {
     expect(selectCurrentMembership([])).toBeNull();
   });
 });
+
+describe("selectCurrentMembership — multi-location selection", () => {
+  const memberships = [
+    {
+      membership: { role: "OWNER" as const },
+      organization: { id: "org-b", name: "فرع صحار" },
+    },
+    {
+      membership: { role: "SUPERVISOR" as const },
+      organization: { id: "org-a", name: "الفرع الرئيسي" },
+    },
+  ];
+
+  it("honours an explicit selection of another location", () => {
+    const current = selectCurrentMembership(memberships, "org-b");
+    expect(current?.organization.id).toBe("org-b");
+    // Role must come from the SELECTED organization, not the default one.
+    expect(canManageCommercialFor(current?.membership.role ?? null)).toBe(true);
+  });
+
+  it("falls back to the deterministic default when nothing is selected", () => {
+    const current = selectCurrentMembership(memberships, null);
+    expect(current?.organization.id).toBe("org-a");
+    expect(canManageCommercialFor(current?.membership.role ?? null)).toBe(false);
+  });
+
+  it("ignores an organization the user is not a member of (no access widening)", () => {
+    const current = selectCurrentMembership(memberships, "org-not-mine");
+    expect(current?.organization.id).toBe("org-a");
+    expect(canManageCommercialFor(current?.membership.role ?? null)).toBe(false);
+  });
+
+  it("keeps single-location behaviour byte-identical", () => {
+    const single = [
+      {
+        membership: { role: "OWNER" as const },
+        organization: { id: "org-only", name: "منظمة" },
+      },
+    ];
+    expect(selectCurrentMembership(single)).toBe(single[0]);
+    expect(selectCurrentMembership(single, "org-only")).toBe(single[0]);
+  });
+});
