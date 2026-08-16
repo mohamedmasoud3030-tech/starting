@@ -3,7 +3,6 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "alias": [
-    "starting-lenabeauty.vercel.app",
     "starting-livid.vercel.app"
   ],
   "rewrites": [
