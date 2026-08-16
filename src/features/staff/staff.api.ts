@@ -118,17 +118,6 @@ export interface PayrollRow {
   lateMilli: MilliOMR;
 }
 
-export interface HostPayrollTotals {
-  staffMemberId: string;
-  eventId: string | null;
-  earnedMilli: MilliOMR;
-  advancesMilli: MilliOMR;
-  payoutsMilli: MilliOMR;
-  dueMilli: MilliOMR;
-  paidMilli: MilliOMR;
-  lateMilli: MilliOMR;
-  attendanceCount: number;
-}
 
 export interface StaffMemberRow {
   id: string;

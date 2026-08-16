@@ -85,7 +85,3 @@ export function visibleNavGroups(
     ),
   })).filter((group) => group.items.length > 0);
 }
-
-export function flatNavItems(groups: ReadonlyArray<NavGroup>): NavItem[] {
-  return groups.flatMap((group) => group.items);
-}

@@ -192,10 +192,6 @@ export function eventReadinessQuery(orgId: string | null, eventId: string) {
   };
 }
 
-export function useEventReadiness(orgId: string | null, eventId: string) {
-  return useQuery(eventReadinessQuery(orgId, eventId));
-}
-
 /**
  * The workspace aggregate: everything the Event workspace needs in one
  * parallel round trip. Cost-gated views are selected by `cost` so a
