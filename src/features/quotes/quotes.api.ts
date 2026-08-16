@@ -63,6 +63,21 @@ export interface QuotationLineRow {
   sort_order: number;
 }
 
+export interface QuotationDraftLineValues {
+  id: string | null;
+  description: string;
+  itemType: CatalogItemType;
+  unit: string;
+  pricingMethod: PricingMethod;
+  quantity: string;
+  unitSellingPrice: string;
+  expectedUnitCost: string;
+  isCustom: boolean;
+  sourceCatalogItemId: string | null;
+  sourcePackageId: string | null;
+  notes?: string | null;
+}
+
 export interface QuotationDraftValues {
   prospectName: string;
   prospectPhone: string;
@@ -191,68 +206,37 @@ export function useCreateQuotationDraft(orgId: string | null) {
   });
 }
 
-export function useUpdateQuotationDraft(orgId: string | null) {
+export function usePersistQuotationDraft(orgId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ quotationId, values }: { quotationId: string; values: QuotationDraftValues }) =>
-      rpc<QuotationRow>("update_quotation_draft", {
-        p_org_id: orgId,
-        p_quotation_id: quotationId,
-        ...normalizeDraft(values),
-      }),
-    onSuccess: (quote) => invalidateQuotation(qc, orgId, quote.id),
-  });
-}
-
-export function useSaveQuotationLine(orgId: string | null) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (args: {
+    mutationFn: ({
+      quotationId,
+      values,
+      lines,
+    }: {
       quotationId: string;
-      lineId: string | null;
-      description: string;
-      itemType: CatalogItemType;
-      unit: string;
-      pricingMethod: PricingMethod;
-      quantity: string;
-      unitSellingPrice: string;
-      expectedUnitCost?: string;
-      isCustom: boolean;
-      sourceCatalogItemId?: string | null;
-      sourcePackageId?: string | null;
-    }) => rpc<QuotationLineRow>("save_quotation_line", {
+      values: QuotationDraftValues;
+      lines: QuotationDraftLineValues[];
+    }) => rpc<QuotationRow>("save_quotation_draft", {
       p_org_id: orgId,
-      p_quotation_id: args.quotationId,
-      p_line_id: args.lineId,
-      p_description: args.description,
-      p_item_type: args.itemType,
-      p_unit: args.unit,
-      p_pricing_method: args.pricingMethod,
-      p_quantity: args.quantity,
-      p_unit_selling_price: args.unitSellingPrice,
-      p_expected_unit_cost: args.expectedUnitCost ?? "0.000",
-      p_is_custom: args.isCustom,
-      p_source_catalog_item_id: args.sourceCatalogItemId ?? null,
-      p_source_package_id: args.sourcePackageId ?? null,
+      p_quotation_id: quotationId,
+      ...normalizeDraft(values),
+      p_lines: lines.map((line) => ({
+        id: line.id,
+        description: line.description,
+        item_type: line.itemType,
+        unit: line.unit,
+        pricing_method: line.pricingMethod,
+        quantity: line.quantity,
+        unit_selling_price: line.unitSellingPrice,
+        expected_unit_cost: line.expectedUnitCost,
+        is_custom: line.isCustom,
+        source_catalog_item_id: line.sourceCatalogItemId,
+        source_package_id: line.sourcePackageId,
+        notes: line.notes ?? null,
+      })),
     }),
-    onSuccess: (_line, args) => invalidateQuotation(qc, orgId, args.quotationId),
-  });
-}
-
-export function useResetQuotationLines(orgId: string | null) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (quotationId: string) => rpc<void>("reset_quotation_lines", { p_org_id: orgId, p_quotation_id: quotationId }),
-    onSuccess: (_data, id) => invalidateQuotation(qc, orgId, id),
-  });
-}
-
-export function useApplyPackageToQuotation(orgId: string | null) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ quotationId, packageId }: { quotationId: string; packageId: string }) =>
-      rpc<number>("apply_package_to_quotation", { p_org_id: orgId, p_quotation_id: quotationId, p_package_id: packageId }),
-    onSuccess: (_data, args) => invalidateQuotation(qc, orgId, args.quotationId),
+    onSuccess: (quote) => invalidateQuotation(qc, orgId, quote.id),
   });
 }
 

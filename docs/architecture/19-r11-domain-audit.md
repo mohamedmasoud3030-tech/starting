@@ -4,7 +4,7 @@ Status: implementation dependency map (baseline `2b25359b107a7a0668592289930a67b
 
 ## Method and scope
 
-The audit traced all repository migrations, public relations, foreign keys, triggers, RLS policies, RPCs, generated types, frontend queries/mutations, pgTAP tests, concurrency harnesses, routes, navigation, and architecture documents. Production project access was not available in this checkout (the Supabase CLI has no access token); consequently no production query or migration is run by R11. The forward migration migrates every matching row transactionally and verifies the migrated counts before any legacy table is dropped.
+The audit traced all repository migrations, public relations, foreign keys, triggers, RLS policies, RPCs, generated types, frontend queries/mutations, pgTAP tests, concurrency harnesses, routes, navigation, and architecture documents. Independent authorized production verification for PR #20 recorded zero rows in `quick_quotes`, `quick_quote_lines`, `quick_quote_applied_packages`, `quotations`, and `quotation_lines`; production migration history ends at `20260816004050 / 0049_command_idempotency_consolidation`. R11 migrations remain unapplied to production. The forward migration still migrates every matching row transactionally and verifies migrated counts before any legacy table is dropped.
 
 ## Classification
 
@@ -66,4 +66,4 @@ Event-first commands: `issue_event_quotation` and `accept_event_quotation` write
 
 ## Production safety boundary
 
-R11 does **not** apply its migration to production. Before production deployment an operator with authorized Supabase access must record counts for `quick_quotes`, `quick_quote_lines`, and `quick_quote_applied_packages`, take the normal backup, and review the migration report. The migration itself is data-preserving for non-zero counts and aborts atomically on a count mismatch; this is safer than assuming the known R10 zero replay counts imply zero quotation data.
+R11 does **not** apply its migration to production. Authorized independent review recorded: `quick_quotes=0`, `quick_quote_lines=0`, `quick_quote_applied_packages=0`, `quotations=0`, and `quotation_lines=0`; production history ends at version `20260816004050` (`0049_command_idempotency_consolidation`). A normal backup and migration review remain deployment gates. The migration is also data-preserving for future/non-zero counts and aborts atomically on a count mismatch.

@@ -12,7 +12,7 @@ DRAFT → ISSUED → ACCEPTED → CONVERTED
 ISSUED → SUPERSEDED (existing event-first revision rule)
 ```
 
-A draft supports prospect details or an existing customer link, optional event facts, quote-owned lines, exact selling/cost snapshots, package provenance, save/reopen, and cancellation. It has no official number. Issue is an explicit confirmed transition that locks the quote, validates/recomputes lines, allocates the document number, snapshots totals, and makes commercial facts immutable.
+A draft supports prospect details or an existing customer link, optional event facts, quote-owned lines, exact selling/cost snapshots, package provenance, save/reopen, and cancellation. It has no official number. `save_quotation_draft` replaces the header and complete line collection in one database transaction; both Save Draft and Issue use this shared persistence path. Full replacement is restricted to a locked `DRAFT`, so new/edited/deleted lines cannot be partially persisted or duplicated by retry. Issue is an explicit confirmed transition that locks the quote, validates/recomputes lines, allocates the document number, snapshots totals, and makes commercial facts immutable.
 
 Acceptance and conversion are separate transactional commands. Conversion creates one customer only when needed, creates one confirmed Event, copies commercial lines to the Event, and records audit/replay state. The converted quotation remains the revenue authority for invoices and payments.
 
@@ -42,7 +42,7 @@ The forward migration:
 4. compares source/mapped aggregate and line counts and aborts on mismatch;
 5. removes legacy RPCs, tables, and enum only after assertions pass.
 
-There are no compatibility views: frontend callers, tests, commands, and documentation move together. Production is intentionally not migrated from this development checkout; authorized production counts and backup remain deployment gates.
+There are no compatibility views: frontend callers, tests, commands, and documentation move together. Production is intentionally not migrated from this development checkout. Independent authorized review recorded zero rows in all three legacy Quick Quote relations and both canonical quotation relations, with production history ending at `20260816004050 / 0049`; backup and forward-migration review remain deployment gates.
 
 ## Operator experience
 

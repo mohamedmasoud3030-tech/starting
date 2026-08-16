@@ -26,13 +26,11 @@ import {
 import {
   arabicQuotationError,
   useCreateQuotationDraft,
-  useUpdateQuotationDraft,
+  usePersistQuotationDraft,
   useCancelQuotationDraft,
   useIssueQuotation,
   useQuotation,
   useQuotationLines,
-  useResetQuotationLines,
-  useSaveQuotationLine,
   type QuotationDraftValues,
 } from "./quotes.api";
 import { computeQuotationLineTotalMilli, sumQuotationLineTotals } from "./quotationMath";
@@ -107,12 +105,10 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
   const existing = useQuotation(orgId, draftId ?? "");
   const existingLines = useQuotationLines(orgId, draftId ?? "");
   const packages = usePackages(orgId);
-  const catalog = useCatalogItems(orgId);
+  const catalog = useCatalogItems(orgId, true);
 
   const createDraft = useCreateQuotationDraft(orgId);
-  const updateDraft = useUpdateQuotationDraft(orgId);
-  const saveLine = useSaveQuotationLine(orgId);
-  const resetLines = useResetQuotationLines(orgId);
+  const persistDraftMutation = usePersistQuotationDraft(orgId);
   const issue = useIssueQuotation(orgId);
   const discard = useCancelQuotationDraft(orgId);
 
@@ -170,20 +166,24 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
   // Hooks must run unconditionally, before any early return.
   const lineTotals = useMemo<Array<MilliOMR | null>>(
     () =>
-      lines.map((l) =>
-        computeQuotationLineTotalMilli(
-          l.pricingMethod,
-          parseOMR(l.unitSellingPrice),
-          parseQuantityMilli(l.quantity),
-          guestCountNum,
-        ),
-      ),
+      lines.map((line) => {
+        try {
+          return computeQuotationLineTotalMilli(
+            line.pricingMethod,
+            parseOMR(line.unitSellingPrice),
+            parseQuantityMilli(line.quantity),
+            guestCountNum,
+          );
+        } catch {
+          return null;
+        }
+      }),
     [lines, guestCountNum],
   );
   const grandTotalMilli = useMemo(() => sumQuotationLineTotals(lineTotals), [lineTotals]);
   const pricingBlocked = useMemo(
-    () => lines.some((l, i) => l.pricingMethod === "PER_GUEST" && lineTotals[i] === null),
-    [lines, lineTotals],
+    () => lineTotals.some((total) => total === null),
+    [lineTotals],
   );
 
   if (!canManageCommercial) {
@@ -195,13 +195,32 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
   }
 
   async function ensureDraft(): Promise<string> {
-    if (savedDraftId) {
-      await updateDraft.mutateAsync({ quotationId: savedDraftId, values: toDraftValues(form, guestCountNum) });
-      return savedDraftId;
-    }
+    if (savedDraftId) return savedDraftId;
     const draft = await createDraft.mutateAsync(toDraftValues(form, guestCountNum));
     setSavedDraftId(draft.id);
     return draft.id;
+  }
+
+  async function persistDraft(): Promise<string> {
+    const quotationId = await ensureDraft();
+    await persistDraftMutation.mutateAsync({
+      quotationId,
+      values: toDraftValues(form, guestCountNum),
+      lines: lines.map((line) => ({
+        id: line.id,
+        description: line.description,
+        itemType: line.itemType,
+        unit: line.unit,
+        pricingMethod: line.pricingMethod,
+        quantity: line.quantity,
+        unitSellingPrice: line.unitSellingPrice,
+        expectedUnitCost: line.expectedUnitCost,
+        isCustom: line.isCustom,
+        sourceCatalogItemId: line.sourceCatalogItemId,
+        sourcePackageId: line.sourcePackageId,
+      })),
+    });
+    return quotationId;
   }
 
   function setField<K extends keyof DraftForm>(key: K, value: string) {
@@ -283,6 +302,15 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
     setSelectedPackage("");
   }
 
+  function updateLine(
+    clientKey: string,
+    patch: Partial<Pick<DraftLine, "description" | "quantity" | "unitSellingPrice">>,
+  ) {
+    setLines((current) =>
+      current.map((line) => line.clientKey === clientKey ? { ...line, ...patch } : line),
+    );
+  }
+
   function removeLine(clientKey: string) {
     setLines((ls) => ls.filter((l) => l.clientKey !== clientKey));
   }
@@ -304,7 +332,7 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
     setError("");
     setBusy("الحفظ");
     try {
-      const id = await ensureDraft();
+      const id = await persistDraft();
       if (!draftId) await navigate({ to: "/quotes/$quoteId", params: { quoteId: id } });
       setBusy("");
     } catch (cause) {
@@ -322,26 +350,7 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
     }
     setBusy("الإصدار");
     try {
-      const id = await ensureDraft();
-      // Replace any previously persisted draft lines with the current set
-      // (a no-op on a brand-new draft). Keeps retries duplicate-free.
-      await resetLines.mutateAsync(id);
-      for (const line of lines) {
-        await saveLine.mutateAsync({
-          quotationId: id,
-          lineId: null,
-          description: line.description,
-          itemType: line.itemType,
-          unit: line.unit,
-          pricingMethod: line.pricingMethod,
-          quantity: line.quantity,
-          unitSellingPrice: line.unitSellingPrice,
-          expectedUnitCost: line.expectedUnitCost,
-          isCustom: line.isCustom,
-          sourceCatalogItemId: line.sourceCatalogItemId,
-          sourcePackageId: line.sourcePackageId,
-        });
-      }
+      const id = await persistDraft();
       const quote = await issue.mutateAsync(id);
       await navigate({ to: "/quotes/$quoteId", params: { quoteId: id } });
       void quote;
@@ -563,25 +572,48 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
                   return (
                     <div
                       key={line.clientKey}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 p-3"
+                      className="grid gap-3 rounded-xl border border-slate-200 p-3 sm:grid-cols-[minmax(0,1fr)_7rem_9rem_auto] sm:items-end"
                     >
-                      <div className="min-w-0">
-                        <p className="font-bold">
-                          {line.description}
+                      <Field label="الخدمة" htmlFor={`draft-description-${line.clientKey}`}>
+                        <div className="relative">
+                          <Input
+                            id={`draft-description-${line.clientKey}`}
+                            aria-label={`وصف خدمة ${line.description}`}
+                            value={line.description}
+                            onChange={(event) => updateLine(line.clientKey, { description: event.target.value })}
+                          />
                           {!line.isCustom && (
-                            <Badge tone="neutral" className="ms-2">
+                            <Badge tone="neutral" className="absolute top-3 left-2">
                               من باقة
                             </Badge>
                           )}
-                        </p>
-                        <p className="text-sm text-slate-500">
-                          {line.quantity} {line.unit} · {PRICING_METHOD_LABELS[line.pricingMethod]}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <p className="font-black">
-                          {total != null ? formatOMR(total) : "يُحدد بعد معرفة عدد الضيوف"}
-                        </p>
+                        </div>
+                      </Field>
+                      <Field label={`الكمية (${line.unit})`} htmlFor={`draft-quantity-${line.clientKey}`}>
+                        <Input
+                          id={`draft-quantity-${line.clientKey}`}
+                          aria-label={`كمية خدمة ${line.description}`}
+                          inputMode="decimal"
+                          value={line.quantity}
+                          onChange={(event) => updateLine(line.clientKey, { quantity: event.target.value })}
+                        />
+                      </Field>
+                      <Field label="سعر الوحدة (ر.ع.)" htmlFor={`draft-price-${line.clientKey}`}>
+                        <Input
+                          id={`draft-price-${line.clientKey}`}
+                          aria-label={`سعر خدمة ${line.description}`}
+                          inputMode="decimal"
+                          value={line.unitSellingPrice}
+                          onChange={(event) => updateLine(line.clientKey, { unitSellingPrice: event.target.value })}
+                        />
+                      </Field>
+                      <div className="flex min-h-12 items-center justify-between gap-2 sm:justify-end">
+                        <div className="text-left">
+                          <p className="text-xs text-slate-500">{PRICING_METHOD_LABELS[line.pricingMethod]}</p>
+                          <p className="font-black">
+                            {total != null ? formatOMR(total) : "حدد الضيوف"}
+                          </p>
+                        </div>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -640,7 +672,7 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
                     إلغاء المسودة
                   </Button>
                 )}
-                <Button variant="secondary" onClick={() => void onSaveDraft()} disabled={busy !== "" || !form.prospectName.trim()}>
+                <Button variant="secondary" onClick={() => void onSaveDraft()} disabled={busy !== "" || !form.prospectName.trim() || pricingBlocked}>
                   {busy === "الحفظ" ? "جارٍ الحفظ…" : "حفظ المسودة"}
                 </Button>
                 <Button

@@ -1,5 +1,5 @@
 begin;
-select plan(37);
+select plan(49);
 
 insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at,raw_app_meta_data,raw_user_meta_data,is_super_admin) values
 ('00000000-0000-0000-0000-000000000000','51000000-0000-0000-0000-000000000001','authenticated','authenticated','r11-owner@test.local','x',now(),now(),now(),'{"provider":"email","providers":["email"]}','{}',false),
@@ -66,6 +66,40 @@ select lives_ok($$select public.convert_quotation_to_event('51000000-0000-0000-0
 select is((select status::text from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000101'),'CONVERTED','quotation reaches CONVERTED');
 select is((select count(*)::int from public.events where accepted_quotation_id=(select id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000101')),1,'exactly one event created');
 select is((select count(*)::int from public.event_commercial_lines where event_id=(select converted_event_id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000101')),2,'commercial snapshots copied to event');
+
+-- Complete draft persistence is one atomic aggregate replacement.
+select lives_ok($$select public.create_quotation_draft(
+ '51000000-0000-0000-0000-0000000000a1','مريم',null,'99112233',null,null,'اجتماع','OTHER',
+ '2026-09-05 10:00+04','2026-09-05 12:00+04',20,'مسقط',null,
+ '51000000-0000-0000-0000-000000000106')$$,'second draft created for aggregate-save proof');
+select lives_ok($$select public.save_quotation_draft(
+ '51000000-0000-0000-0000-0000000000a1',
+ (select id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000106'),
+ 'مريم',null,'99112233',null,null,'اجتماع','OTHER','2026-09-05 10:00+04','2026-09-05 12:00+04',20,'مسقط',null,
+ '[{"id":"51000000-0000-0000-0000-0000000000e1","description":"خدمة","item_type":"SERVICE","unit":"مناسبة","pricing_method":"FIXED","quantity":"1.000","unit_selling_price":"25.000","expected_unit_cost":"10.000","is_custom":true,"source_catalog_item_id":null,"source_package_id":null},
+   {"id":"51000000-0000-0000-0000-0000000000e2","description":"تمر","item_type":"CONSUMABLE","unit":"علبة","pricing_method":"PER_UNIT","quantity":"2.000","unit_selling_price":"0.800","expected_unit_cost":"0.300","is_custom":false,"source_catalog_item_id":"51000000-0000-0000-0000-0000000000c2","source_package_id":"51000000-0000-0000-0000-0000000000d1"}]'::jsonb)$$,'header and complete draft lines save atomically');
+select is((select count(*)::int from public.quotation_lines where quotation_id=(select id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000106')),2,'aggregate save persists both lines');
+select is((select total_selling::text||'/'||total_expected_cost::text from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000106'),'26.600/10.600','aggregate totals are authored exactly by server');
+select is((select source_catalog_item_id::text||'/'||source_package_id::text from public.quotation_lines where id='51000000-0000-0000-0000-0000000000e2'),'51000000-0000-0000-0000-0000000000c2/51000000-0000-0000-0000-0000000000d1','package provenance survives aggregate save');
+select lives_ok($$select public.save_quotation_draft(
+ '51000000-0000-0000-0000-0000000000a1',
+ (select id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000106'),
+ 'مريم',null,'99112233',null,null,'اجتماع','OTHER','2026-09-05 10:00+04','2026-09-05 12:00+04',20,'مسقط',null,
+ '[{"id":"51000000-0000-0000-0000-0000000000e1","description":"خدمة معدلة","item_type":"SERVICE","unit":"مناسبة","pricing_method":"PER_UNIT","quantity":"2.000","unit_selling_price":"30.000","expected_unit_cost":"11.000","is_custom":true}]'::jsonb)$$,'replacement save updates and deletes in one transaction');
+select is((select count(*)::int from public.quotation_lines where quotation_id=(select id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000106')),1,'omitted persisted line is deleted');
+select is((select description||'/'||pricing_method::text||'/'||quantity::text||'/'||unit_selling_price::text||'/'||expected_unit_cost::text from public.quotation_lines where id='51000000-0000-0000-0000-0000000000e1'),'خدمة معدلة/PER_UNIT/2.000/30.000/11.000','persisted line edit replaces every commercial field exactly');
+select lives_ok($$select public.save_quotation_draft(
+ '51000000-0000-0000-0000-0000000000a1',
+ (select id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000106'),
+ 'مريم',null,'99112233',null,null,'اجتماع','OTHER','2026-09-05 10:00+04','2026-09-05 12:00+04',20,'مسقط',null,
+ '[{"id":"51000000-0000-0000-0000-0000000000e1","description":"خدمة معدلة","item_type":"SERVICE","unit":"مناسبة","pricing_method":"PER_UNIT","quantity":"2.000","unit_selling_price":"30.000","expected_unit_cost":"11.000","is_custom":true}]'::jsonb)$$,'identical repeated save is safe');
+select is((select count(*)::int from public.quotation_lines where quotation_id=(select id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000106')),1,'repeated save never duplicates lines');
+select lives_ok($$select public.issue_quotation('51000000-0000-0000-0000-0000000000a1',(select id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000106'),null,null,'51000000-0000-0000-0000-000000000107')$$,'aggregate-saved draft can issue');
+select throws_ok($$select public.save_quotation_draft(
+ '51000000-0000-0000-0000-0000000000a1',
+ (select id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000106'),
+ 'مريم',null,null,null,null,null,null,null,null,null,null,null,'[]'::jsonb)$$,'P0001','QUOTATION_NOT_EDITABLE','aggregate save cannot weaken issued immutability');
+
 select lives_ok($$select public.convert_quotation_to_event('51000000-0000-0000-0000-0000000000a1',(select id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000101'),'51000000-0000-0000-0000-000000000104',null,null,null,null,null)$$,'conversion replay returns safely');
 select lives_ok($$select public.create_event_invoice('51000000-0000-0000-0000-0000000000a1',(select converted_event_id from public.quotations where idempotency_key='51000000-0000-0000-0000-000000000101'),'INV-R11-1',null,340.000,'[{"seq":0,"kind":"DEPOSIT","due_date":"2026-09-02","amount":"100.000"},{"seq":1,"kind":"FINAL","due_date":"2026-09-10","amount":"240.000"}]'::jsonb,null,'51000000-0000-0000-0000-000000000105')$$,'converted quotation remains invoice authority');
 

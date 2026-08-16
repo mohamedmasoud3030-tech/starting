@@ -5041,6 +5041,68 @@ export type Database = {
         }
         Returns: string
       }
+      save_quotation_draft: {
+        Args: {
+          p_customer_id?: string
+          p_end_at?: string
+          p_event_title?: string
+          p_event_type?: string
+          p_guest_count?: number
+          p_lines?: Json
+          p_notes?: string
+          p_org_id: string
+          p_prospect_company?: string
+          p_prospect_name: string
+          p_prospect_phone?: string
+          p_prospect_whatsapp?: string
+          p_quotation_id: string
+          p_start_at?: string
+          p_venue_name?: string
+        }
+        Returns: {
+          accepted_at: string | null
+          accepted_by: string | null
+          cancellation_reason: string | null
+          converted_at: string | null
+          converted_event_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_name_snapshot: string
+          customer_phone_snapshot: string | null
+          end_at_snapshot: string | null
+          event_id: string | null
+          event_number_snapshot: string | null
+          event_title_snapshot: string
+          event_type_snapshot: string
+          guest_count_snapshot: number | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          location_snapshot: string | null
+          notes: string | null
+          organization_id: string
+          prospect_company: string | null
+          prospect_whatsapp: string | null
+          quotation_number: string | null
+          revision: number
+          start_at_snapshot: string | null
+          status: Database["public"]["Enums"]["quotation_status"]
+          terms: string | null
+          total_expected_cost: number
+          total_expected_profit: number
+          total_selling: number
+          updated_at: string
+          venue_snapshot: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       save_quotation_line: {
         Args: {
           p_description: string

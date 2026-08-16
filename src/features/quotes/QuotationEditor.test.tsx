@@ -5,60 +5,93 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { QuotationEditor } from "./QuotationEditor";
 
-// ---------------------------------------------------------------------------
-// Mocks: no real Supabase, no router, fixed auth (OWNER).
-// ---------------------------------------------------------------------------
-const rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
+const testState = vi.hoisted(() => ({
+  rpcCalls: [] as Array<{ name: string; args: Record<string, unknown> }>,
+  quote: null as Record<string, unknown> | null,
+  lines: [] as Array<Record<string, unknown>>,
+}));
+
+function draftRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "qt-1", organization_id: "org", event_id: null, quotation_number: null,
+    revision: 1, status: "DRAFT", customer_id: null,
+    customer_name_snapshot: "مريم", customer_phone_snapshot: null,
+    prospect_whatsapp: null, prospect_company: null, event_number_snapshot: null,
+    event_title_snapshot: "مريم", event_type_snapshot: "OTHER", guest_count_snapshot: null,
+    start_at_snapshot: null, end_at_snapshot: null, venue_snapshot: null,
+    location_snapshot: null, terms: null, notes: null, total_selling: "0.000",
+    issued_at: null, accepted_at: null, converted_event_id: null,
+    created_at: "2026-08-16T00:00:00Z", updated_at: "2026-08-16T00:00:00Z",
+    ...overrides,
+  };
+}
+
+function persistedLine(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "line-1", organization_id: "org", quotation_id: "qt-1",
+    source_catalog_item_id: null, source_package_id: null, description: "خدمة محفوظة",
+    item_type: "SERVICE", unit: "مناسبة", pricing_method: "FIXED", quantity: "1.000",
+    unit_selling_price: "25.000", expected_unit_cost: "10.000", total_selling: "25.000",
+    total_expected_cost: "10.000", is_custom: true, notes: null, sort_order: 0,
+    ...overrides,
+  };
+}
+
 const rpcMock = vi.fn(async (name: string, args: Record<string, unknown>) => {
-  rpcCalls.push({ name, args });
-  const data =
-    name === "create_quotation_draft"
-      ? { id: "qt-1", organization_id: "org", status: "DRAFT", customer_name_snapshot: args.p_prospect_name }
-      : name === "issue_quotation"
-        ? { id: "qt-1", quotation_number: "QT-2026-00001" }
-        : name === "save_quotation_line"
-          ? { id: `line-${rpcCalls.length}` }
-          : null;
-  return { data, error: null };
+  testState.rpcCalls.push({ name, args });
+  if (name === "create_quotation_draft") {
+    testState.quote = draftRow({ customer_name_snapshot: args.p_prospect_name });
+    return { data: testState.quote, error: null };
+  }
+  if (name === "save_quotation_draft") {
+    const input = args.p_lines as Array<Record<string, unknown>>;
+    testState.quote = draftRow({
+      customer_name_snapshot: args.p_prospect_name,
+      guest_count_snapshot: args.p_guest_count,
+      venue_snapshot: args.p_venue_name,
+    });
+    testState.lines = input.map((line, index) => persistedLine({
+      id: line.id ?? `saved-line-${index + 1}`,
+      description: line.description,
+      item_type: line.item_type,
+      unit: line.unit,
+      pricing_method: line.pricing_method,
+      quantity: line.quantity,
+      unit_selling_price: line.unit_selling_price,
+      expected_unit_cost: line.expected_unit_cost,
+      is_custom: line.is_custom,
+      source_catalog_item_id: line.source_catalog_item_id,
+      source_package_id: line.source_package_id,
+      sort_order: index,
+    }));
+    return { data: testState.quote, error: null };
+  }
+  if (name === "issue_quotation") {
+    return { data: { ...draftRow(), status: "ISSUED", quotation_number: "QT-2026-00001" }, error: null };
+  }
+  return { data: null, error: null };
 });
 
 function builderFor(table: string) {
-  const data: Record<string, unknown[]> = {
-    packages: [
-      {
-        id: "p1",
-        organization_id: "org",
-        name: "باقة القهوة",
-        status: "ACTIVE",
-        base_guest_count: 50,
-      },
-    ],
-    package_items: [
-      { package_id: "p1", catalog_item_id: "c1", quantity: "1", sort_order: 0 },
-    ],
-    catalog_items_operational: [
-      {
-        id: "c1",
-        organization_id: "org",
-        name: "قهوة",
-        item_type: "SERVICE",
-        unit: "ضيف",
-        pricing_method: "PER_GUEST",
-        selling_price: "2.800",
-        status: "ACTIVE",
-      },
-    ],
-    quotations_customer: [],
-    quotation_lines_customer: [],
+  const staticData: Record<string, unknown[]> = {
+    packages: [{ id: "p1", organization_id: "org", name: "باقة القهوة", status: "ACTIVE", base_guest_count: 50 }],
+    package_items: [{ package_id: "p1", catalog_item_id: "c1", quantity: "1", sort_order: 0 }],
+    catalog_items: [{
+      id: "c1", organization_id: "org", name: "قهوة", item_type: "SERVICE", unit: "ضيف",
+      pricing_method: "PER_GUEST", selling_price: "2.800", cost_price: "1.250", status: "ACTIVE",
+    }],
+    catalog_items_operational: [{
+      id: "c1", organization_id: "org", name: "قهوة", item_type: "SERVICE", unit: "ضيف",
+      pricing_method: "PER_GUEST", selling_price: "2.800", status: "ACTIVE",
+    }],
   };
-  const rows = data[table] ?? [];
+  const rows = table === "quotations_customer"
+    ? (testState.quote ? [testState.quote] : [])
+    : table === "quotation_lines_customer" ? testState.lines : (staticData[table] ?? []);
   const chain = {
-    select: () => chain,
-    eq: () => chain,
-    order: () => chain,
+    select: () => chain, eq: () => chain, order: () => chain,
     single: async () => ({ data: rows[0] ?? null, error: null }),
-    then: (resolve: (v: { data: unknown; error: null }) => void) =>
-      resolve({ data: rows, error: null }),
+    then: (resolve: (value: { data: unknown; error: null }) => void) => resolve({ data: rows, error: null }),
   };
   return chain;
 }
@@ -70,143 +103,158 @@ vi.mock("@/lib/supabase", () => ({
     from: (table: string) => builderFor(table),
   },
 }));
-
 vi.mock("@/app/AuthContext", () => ({
   useAuth: () => ({
-    currentOrganization: { id: "org", name: "Org A" },
-    currentRole: "OWNER",
-    canManageCommercial: true,
-    canReadCost: true,
+    currentOrganization: { id: "org", name: "Org A" }, currentRole: "OWNER",
+    canManageCommercial: true, canReadCost: true,
   }),
 }));
-
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
   Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
 }));
 
-function renderWorkspace() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+function renderEditor(draftId?: string) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <QuotationEditor />
+      <QuotationEditor draftId={draftId} />
     </QueryClientProvider>,
   );
 }
 
+async function addCustomLine(user: ReturnType<typeof userEvent.setup>, description = "تصوير") {
+  await user.type(screen.getByLabelText(/^الوصف$/), description);
+  await user.type(screen.getByLabelText(/^الكمية$/), "1");
+  await user.type(screen.getByLabelText(/سعر الوحدة/), "100");
+  await user.click(screen.getByRole("button", { name: "إضافة خدمة" }));
+}
+
 beforeEach(() => {
-  rpcCalls.length = 0;
+  testState.rpcCalls.length = 0;
+  testState.quote = null;
+  testState.lines = [];
   rpcMock.mockClear();
 });
 
-describe("QuotationEditor (عرض سعر سريع)", () => {
-  it("is ONE focused page with three clear sections, not a multi-page wizard", () => {
-    renderWorkspace();
+describe("QuotationEditor", () => {
+  it("is one focused page with three clear sections", () => {
+    renderEditor();
     expect(screen.getByRole("heading", { name: /١\. بيانات بسيطة/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /٢\. الخدمات والسعر/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /٣\. مراجعة وإرسال/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "إصدار عرض السعر" })).toBeInTheDocument();
   });
 
-  it("creates NO records on mount and disables issue without services", async () => {
-    renderWorkspace();
-    await waitFor(() => expect(rpcCalls).toHaveLength(0));
+  it("creates no records on mount and disables issue without services", async () => {
+    renderEditor();
+    await waitFor(() => expect(testState.rpcCalls).toHaveLength(0));
     expect(screen.getByRole("button", { name: "إصدار عرض السعر" })).toBeDisabled();
   });
 
-  it("saves and reopens a prospect draft without issuing it", async () => {
+  it("persists a new custom line on Save Draft without issuing", async () => {
     const user = userEvent.setup();
-    renderWorkspace();
+    renderEditor();
     await user.type(screen.getByLabelText(/اسم العميل \/ المتوقع/), "مريم");
+    await addCustomLine(user);
     await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
-    await waitFor(() => expect(rpcCalls.some((call) => call.name === "create_quotation_draft")).toBe(true));
-    expect(rpcCalls.some((call) => call.name === "issue_quotation")).toBe(false);
+    await waitFor(() => expect(testState.rpcCalls.some((call) => call.name === "save_quotation_draft")).toBe(true));
+    expect(testState.rpcCalls[0]?.name).toBe("create_quotation_draft");
+    expect(testState.rpcCalls.some((call) => call.name === "issue_quotation")).toBe(false);
+    expect((testState.rpcCalls.find((call) => call.name === "save_quotation_draft")?.args.p_lines as unknown[])).toHaveLength(1);
+    expect(testState.lines).toHaveLength(1);
   });
 
-  it("adds a custom line and updates the live total without any server call", async () => {
+  it("reopens a saved draft with its persisted lines", async () => {
     const user = userEvent.setup();
-    renderWorkspace();
-
-    await user.type(screen.getByLabelText(/الوصف/), "تصوير");
-    await user.type(screen.getByLabelText(/الكمية/), "1");
-    await user.type(screen.getByLabelText(/سعر الوحدة/), "150");
-    await user.click(screen.getByRole("button", { name: "إضافة خدمة" }));
-
-    expect(screen.getByText("تصوير")).toBeInTheDocument();
-    expect(screen.getAllByText("150.000 ر.ع.").length).toBeGreaterThan(0);
-    expect(rpcCalls).toHaveLength(0); // the live total is client-side only
+    const first = renderEditor();
+    await user.type(screen.getByLabelText(/اسم العميل \/ المتوقع/), "مريم");
+    await addCustomLine(user, "بوفيه محفوظ");
+    await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
+    await waitFor(() => expect(testState.lines).toHaveLength(1));
+    first.unmount();
+    renderEditor("qt-1");
+    expect(await screen.findByDisplayValue("بوفيه محفوظ")).toBeInTheDocument();
+    expect(screen.getByLabelText("سعر خدمة بوفيه محفوظ")).toHaveValue("100");
   });
 
-  it("applies a package client-side as snapshot lines (no server call)", async () => {
+  it("deleting a persisted line then saving removes it from storage", async () => {
+    testState.quote = draftRow();
+    testState.lines = [persistedLine()];
     const user = userEvent.setup();
-    renderWorkspace();
+    renderEditor("qt-1");
+    await user.click(await screen.findByRole("button", { name: "حذف خدمة خدمة محفوظة" }));
+    await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
+    await waitFor(() => expect(testState.lines).toHaveLength(0));
+    const save = testState.rpcCalls.find((call) => call.name === "save_quotation_draft");
+    expect(save?.args.p_lines).toEqual([]);
+  });
 
-    await waitFor(() =>
-      expect(screen.getByRole("option", { name: "باقة القهوة" })).toBeInTheDocument(),
-    );
-    await user.selectOptions(screen.getByLabelText(/باقة جاهزة/), "p1");
+  it("editing a persisted line then saving replaces persisted commercial state", async () => {
+    testState.quote = draftRow();
+    testState.lines = [persistedLine()];
+    const user = userEvent.setup();
+    renderEditor("qt-1");
+    const quantity = await screen.findByLabelText("كمية خدمة خدمة محفوظة");
+    const price = screen.getByLabelText("سعر خدمة خدمة محفوظة");
+    await user.clear(quantity);
+    await user.type(quantity, "2.500");
+    await user.clear(price);
+    await user.type(price, "30.125");
+    await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
+    await waitFor(() => expect(testState.lines[0]?.quantity).toBe("2.500"));
+    expect(testState.lines[0]?.unit_selling_price).toBe("30.125");
+    expect(testState.lines[0]?.expected_unit_cost).toBe("10.000");
+  });
+
+  it("repeated Save Draft replaces the collection without duplicate lines", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.type(screen.getByLabelText(/اسم العميل \/ المتوقع/), "مريم");
+    await addCustomLine(user);
+    await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
+    await waitFor(() => expect(testState.lines).toHaveLength(1));
+    await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
+    await waitFor(() => expect(testState.rpcCalls.filter((call) => call.name === "save_quotation_draft")).toHaveLength(2));
+    expect(testState.lines).toHaveLength(1);
+  });
+
+  it("persists package provenance and expected cost", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.type(screen.getByLabelText(/اسم العميل \/ المتوقع/), "مريم");
+    await user.type(screen.getByLabelText(/عدد الضيوف/), "20");
+    await user.selectOptions(await screen.findByLabelText(/باقة جاهزة/), "p1");
     await user.click(screen.getByRole("button", { name: "تطبيق الباقة" }));
-
-    expect(screen.getByText("قهوة")).toBeInTheDocument();
-    expect(screen.getByText("من باقة")).toBeInTheDocument();
-    expect(rpcCalls).toHaveLength(0);
-  });
-
-  it("issues: creates draft, saves lines, then issues the quotation", async () => {
-    const user = userEvent.setup();
-    renderWorkspace();
-
-    await user.type(screen.getByLabelText(/اسم العميل \/ المتوقع/), "محمد");
-    await user.type(screen.getByLabelText(/الوصف/), "تصوير");
-    await user.type(screen.getByLabelText(/الكمية/), "1");
-    await user.type(screen.getByLabelText(/سعر الوحدة/), "100");
-    await user.click(screen.getByRole("button", { name: "إضافة خدمة" }));
-
-    await user.click(screen.getByRole("button", { name: "إصدار عرض السعر" }));
-    await user.click(await screen.findByRole("button", { name: "تأكيد الإصدار" }));
-
-    await waitFor(() => {
-      const names = rpcCalls.map((c) => c.name);
-      expect(names).toContain("create_quotation_draft");
-      expect(names).toContain("save_quotation_line");
-      expect(names).toContain("issue_quotation");
-      expect(names[0]).toBe("create_quotation_draft");
-      expect(names[names.length - 1]).toBe("issue_quotation");
+    await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
+    await waitFor(() => expect(testState.lines).toHaveLength(1));
+    expect(testState.lines[0]).toMatchObject({
+      source_catalog_item_id: "c1", source_package_id: "p1", expected_unit_cost: "1.250",
+      pricing_method: "PER_GUEST", quantity: "1.000", unit_selling_price: "2.800",
     });
-    expect(rpcCalls.find((c) => c.name === "create_quotation_draft")?.args.p_prospect_name).toBe(
-      "محمد",
-    );
   });
 
-  it("does not create a Customer or Event during issue (prospect only)", async () => {
+  it("uses the same aggregate persistence path before issue", async () => {
     const user = userEvent.setup();
-    renderWorkspace();
-    await user.type(screen.getByLabelText(/اسم العميل \/ المتوقع/), "سعيد");
-    await user.type(screen.getByLabelText(/الوصف/), "خدمة");
-    await user.type(screen.getByLabelText(/الكمية/), "1");
-    await user.type(screen.getByLabelText(/سعر الوحدة/), "50");
-    await user.click(screen.getByRole("button", { name: "إضافة خدمة" }));
+    renderEditor();
+    await user.type(screen.getByLabelText(/اسم العميل \/ المتوقع/), "محمد");
+    await addCustomLine(user);
     await user.click(screen.getByRole("button", { name: "إصدار عرض السعر" }));
     await user.click(await screen.findByRole("button", { name: "تأكيد الإصدار" }));
-    await waitFor(() =>
-      expect(rpcCalls.some((c) => c.name === "issue_quotation")).toBe(true),
-    );
-    const names = rpcCalls.map((c) => c.name);
-    expect(names.some((n) => n === "create_event" || n === "save_customer")).toBe(false);
+    await waitFor(() => expect(testState.rpcCalls.some((call) => call.name === "issue_quotation")).toBe(true));
+    expect(testState.rpcCalls.map((call) => call.name)).toEqual([
+      "create_quotation_draft", "save_quotation_draft", "issue_quotation",
+    ]);
   });
 
-  it("warns when a per-guest service has no guest count yet", async () => {
+  it("warns when a per-guest service has no guest count", async () => {
     const user = userEvent.setup();
-    renderWorkspace();
-    await user.type(screen.getByLabelText(/الوصف/), "بوفيه");
+    renderEditor();
+    await user.type(screen.getByLabelText(/^الوصف$/), "بوفيه");
     await user.selectOptions(screen.getByLabelText(/طريقة التسعير/), "PER_GUEST");
-    await user.type(screen.getByLabelText(/الكمية/), "1");
+    await user.type(screen.getByLabelText(/^الكمية$/), "1");
     await user.type(screen.getByLabelText(/سعر الوحدة/), "2.800");
     await user.click(screen.getByRole("button", { name: "إضافة خدمة" }));
-
-    expect(screen.getByText("يُحدد بعد معرفة عدد الضيوف")).toBeInTheDocument();
     expect(screen.getByText(/حدد عدد الضيوف أولاً/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "حفظ المسودة" })).toBeDisabled();
   });
 });
