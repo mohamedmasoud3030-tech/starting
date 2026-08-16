@@ -13,6 +13,8 @@ import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
 import { buildQuotationVoiceSummary } from "@/features/ownerVoice/screenSummary";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import { PRICING_METHOD_LABELS } from "@/lib/domain";
+import { InlineError } from "@/components/ui/ErrorState";
+import { LoadingState } from "@/components/ui/LoadingState";
 import {
   arabicQuotationError,
   useAcceptQuotation,
@@ -110,7 +112,7 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
   };
 
   if (quote.isLoading || lines.isLoading) {
-    return <p>جارٍ التحميل…</p>;
+    return <LoadingState label="جارٍ التحميل…" />;
   }
   if (!q) {
     return <p>تعذر العثور على عرض السعر.</p>;
@@ -150,9 +152,7 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
       />
 
       {error && (
-        <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">
-          {error}
-        </p>
+        <InlineError message={error} />
       )}
 
       <div className="grid gap-4 md:grid-cols-2">

@@ -20,6 +20,7 @@ import {
   type AttendanceStatus,
   type StaffShift,
 } from "./staff.api";
+import { InlineError } from "@/components/ui/ErrorState";
 import {
   ATTENDANCE_STATUS_LABELS,
   ATTENDANCE_STATUS_TONE,
@@ -203,7 +204,7 @@ export function AttendancePanel({
       </div>
 
       {error && (
-        <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{error}</p>
+        <InlineError message={error} />
       )}
 
       {attendance.isLoading ? (

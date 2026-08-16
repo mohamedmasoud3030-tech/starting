@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { InlineError } from "@/components/ui/ErrorState";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -7,6 +8,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { MoneyInput } from "@/components/MoneyInput";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { formatOMR, type MilliOMR } from "@/lib/money";
 import {
   buildInstallmentSchedule,
@@ -114,7 +116,7 @@ export function InvoicesPanel({
   }
 
   if (invoice.isLoading) {
-    return <p>جارٍ تحميل الفاتورة…</p>;
+    return <LoadingState label="جارٍ تحميل الفاتورة…" />;
   }
 
   if (!inv) {
@@ -133,7 +135,7 @@ export function InvoicesPanel({
             </Button>
           )}
         </div>
-        {error && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{error}</p>}
+        {error && <InlineError message={error} />}
         {canMutate && totalMilli <= 0 && (
           <EmptyState
             title="لا يوجد عرض سعر معتمد قابل للفوترة"
@@ -197,7 +199,7 @@ export function InvoicesPanel({
         )}
       </div>
 
-      {error && <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">{error}</p>}
+      {error && <InlineError message={error} />}
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Card><CardBody>

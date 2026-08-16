@@ -3,6 +3,7 @@ import { useAuth } from "@/app/authContext";
 import { useQuotation } from "./quotes.api";
 import { QuotationEditor } from "./QuotationEditor";
 import { QuotationReview } from "./QuotationReview";
+import { LoadingState } from "@/components/ui/LoadingState";
 
 /**
  * Route shim for /quotes, /quotes/new and /quotes/$quoteId.
@@ -19,7 +20,7 @@ export function QuotePage() {
   if (!quoteId) {
     return <QuotationEditor />;
   }
-  if (quote.isLoading) return <p>جارٍ التحميل…</p>;
+  if (quote.isLoading) return <LoadingState label="جارٍ التحميل…" />;
   if (!quote.data) return <p>تعذر العثور على عرض السعر.</p>;
   if (quote.data.status === "DRAFT") {
     return canManageCommercial ? <QuotationEditor draftId={quoteId} /> : null;
