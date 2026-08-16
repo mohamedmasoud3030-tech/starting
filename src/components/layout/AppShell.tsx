@@ -3,6 +3,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/app/authContext";
 import { DesktopSidebar } from "./DesktopSidebar";
 import { MobileNav } from "./MobileNav";
+import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { visibleNavGroups } from "./navConfig";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -31,6 +32,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                 عمليات الضيافة والمناسبات
               </p>
             </div>
+          </div>
+
+          {/* Multi-location operators only; renders nothing for a single org. */}
+          <div className="ms-auto flex items-center gap-2">
+            <OrganizationSwitcher />
           </div>
         </div>
       </header>
