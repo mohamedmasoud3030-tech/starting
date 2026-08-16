@@ -42,6 +42,7 @@ describe("ProcurementPage", () => {
       canWriteCustomers: true,
       login: vi.fn(),
       logout: vi.fn(),
+      switchOrganization: vi.fn(),
     });
 
     vi.mocked(useEvents).mockReturnValue({
@@ -71,6 +72,7 @@ describe("ProcurementPage", () => {
       canWriteCustomers: false,
       login: vi.fn(),
       logout: vi.fn(),
+      switchOrganization: vi.fn(),
     });
 
     vi.mocked(useEvents).mockReturnValue({

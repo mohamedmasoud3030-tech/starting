@@ -127,7 +127,17 @@ export function MobileNav({
         style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
         aria-label="التنقل السريع على الجوال"
       >
-        <div className="mx-auto grid max-w-lg grid-cols-4 gap-1">
+        {/*
+          Column count follows the number of primary targets actually visible
+          to the role (+1 for "المزيد"). It was hardcoded to 4 while only 3
+          targets are configured, leaving a dead column and off-centre bar.
+        */}
+        <div
+          className="mx-auto grid max-w-lg gap-1"
+          style={{
+            gridTemplateColumns: `repeat(${mobilePrimary.length + 1}, minmax(0, 1fr))`,
+          }}
+        >
           {mobilePrimary.map((item) => {
             const active = isActivePath(pathname, item.to);
             const Icon = MOBILE_PRIMARY_ICONS[item.to];

@@ -18,9 +18,9 @@ export interface AuthContextValue {
   profile: ProfileRow | null;
   memberships: ActiveMembership[];
   /**
-   * The organization the user is currently operating within. Deterministically
-   * selected as the first ACTIVE membership (sorted by organization name).
-   * A multi-org switcher is deferred; authorization is already org-scoped.
+   * The organization the user is currently operating within. Defaults to the
+   * first ACTIVE membership (sorted by organization name) and follows an
+   * explicit selection made through `switchOrganization`.
    */
   currentOrganization: OrganizationRow | null;
   currentMembership: MembershipRow | null;
@@ -36,6 +36,12 @@ export interface AuthContextValue {
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  /**
+   * Switch the active location/organization. Ignored unless the id matches one
+   * of the user's ACTIVE memberships. Switching drops the whole query cache so
+   * no rows from the previous organization can be rendered.
+   */
+  switchOrganization: (organizationId: string) => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

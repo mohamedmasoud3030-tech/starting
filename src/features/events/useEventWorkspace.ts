@@ -24,6 +24,8 @@ import {
 } from "./events.api";
 import {
   eventPermissions,
+  resolveActiveTab,
+  visibleWorkspaceTabs,
   voiceSummaryForTab,
   type VoiceSummaries,
   type WorkspaceTab,
@@ -66,7 +68,15 @@ export function useEventWorkspace() {
   const customers = useCustomers(orgId);
   const command = useEventCommand(orgId, eventId);
 
-  const [tab, setTab] = useState<WorkspaceTab>("ملخص");
+  const [requestedTab, setTab] = useState<WorkspaceTab>("ملخص");
+  /**
+   * Tabs are filtered by role, so the active tab is resolved against what the
+   * role can actually reach. This keeps the workspace consistent if the role
+   * changes underneath it (e.g. switching to a location where the user holds
+   * a different role) instead of stranding the user on a refusal screen.
+   */
+  const visibleTabs = visibleWorkspaceTabs(perms);
+  const tab = resolveActiveTab(requestedTab, perms);
   const [error, setError] = useState("");
 
   async function run(
@@ -222,6 +232,7 @@ export function useEventWorkspace() {
     command,
     run,
     tab,
+    visibleTabs,
     setTab,
     error,
     // guards

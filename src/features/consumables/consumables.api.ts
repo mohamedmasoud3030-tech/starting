@@ -233,13 +233,22 @@ export interface EventConsumableData {
   summary: ConsumableSummary | null;
 }
 
-export function eventConsumablesQueryKey(eventId: string) {
-  return ["event-consumables", eventId] as const;
+/**
+ * Cache key for an Event's consumable state.
+ *
+ * TENANT SCOPE: `orgId` is part of the key so no cache entry can ever be
+ * shared across organizations (see `warehouseQueryKey`).
+ */
+export function eventConsumablesQueryKey(
+  orgId: string | null,
+  eventId: string,
+) {
+  return ["event-consumables", orgId, eventId] as const;
 }
 
 export function useEventConsumables(orgId: string | null, eventId: string) {
   return useQuery({
-    queryKey: eventConsumablesQueryKey(eventId),
+    queryKey: eventConsumablesQueryKey(orgId, eventId),
     enabled: !!orgId && !!eventId,
     queryFn: async (): Promise<EventConsumableData> => {
       const [linesResult, summaryResult] = await Promise.all([
@@ -277,7 +286,9 @@ export function useEventConsumables(orgId: string | null, eventId: string) {
 function useEventConsumableInvalidation(orgId: string | null, eventId: string) {
   const queryClient = useQueryClient();
   return () => {
-    void queryClient.invalidateQueries({ queryKey: ["event-consumables", eventId] });
+    void queryClient.invalidateQueries({
+      queryKey: ["event-consumables", orgId, eventId],
+    });
     void queryClient.invalidateQueries({ queryKey: ["consumable-stock", orgId] });
   };
 }
