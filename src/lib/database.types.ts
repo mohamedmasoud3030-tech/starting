@@ -166,6 +166,53 @@ export type Database = {
           },
         ]
       }
+      command_idempotency: {
+        Row: {
+          actor_id: string
+          command_name: string
+          command_scope: string
+          created_at: string
+          idempotency_key: string
+          organization_id: string
+          request_fingerprint: string
+          response_payload: Json
+          result_entity: string
+          result_id: string
+        }
+        Insert: {
+          actor_id: string
+          command_name: string
+          command_scope: string
+          created_at?: string
+          idempotency_key: string
+          organization_id: string
+          request_fingerprint: string
+          response_payload: Json
+          result_entity: string
+          result_id: string
+        }
+        Update: {
+          actor_id?: string
+          command_name?: string
+          command_scope?: string
+          created_at?: string
+          idempotency_key?: string
+          organization_id?: string
+          request_fingerprint?: string
+          response_payload?: Json
+          result_entity?: string
+          result_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "command_idempotency_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consumable_movements: {
         Row: {
           actor_id: string
@@ -220,20 +267,6 @@ export type Database = {
             foreignKeyName: "consumable_movements_event_fk"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "consumable_movements_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "consumable_movements_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -243,13 +276,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "consumable_stock_items"
             referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "consumable_movements_stock_item_fk"
-            columns: ["organization_id", "stock_item_id"]
-            isOneToOne: false
-            referencedRelation: "consumable_stock_summary"
-            referencedColumns: ["organization_id", "stock_item_id"]
           },
         ]
       }
@@ -290,13 +316,6 @@ export type Database = {
             columns: ["organization_id", "catalog_item_id"]
             isOneToOne: true
             referencedRelation: "catalog_items"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "consumable_stock_items_catalog_fk"
-            columns: ["organization_id", "catalog_item_id"]
-            isOneToOne: true
-            referencedRelation: "catalog_items_operational"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -357,20 +376,6 @@ export type Database = {
           voided_by?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "customer_payments_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "customer_payments_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
           {
             foreignKeyName: "customer_payments_org_event_fk"
             columns: ["organization_id", "event_id"]
@@ -492,13 +497,6 @@ export type Database = {
             referencedRelation: "catalog_items"
             referencedColumns: ["organization_id", "id"]
           },
-          {
-            foreignKeyName: "equipment_capacity_organization_id_catalog_item_id_fkey"
-            columns: ["organization_id", "catalog_item_id"]
-            isOneToOne: true
-            referencedRelation: "catalog_items_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
         ]
       }
       event_commercial_lines: {
@@ -570,20 +568,6 @@ export type Database = {
             foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -592,13 +576,6 @@ export type Database = {
             columns: ["organization_id", "source_catalog_item_id"]
             isOneToOne: false
             referencedRelation: "catalog_items"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_commercial_lines_organization_id_source_catalog_item_fkey"
-            columns: ["organization_id", "source_catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items_operational"
             referencedColumns: ["organization_id", "id"]
           },
           {
@@ -654,20 +631,6 @@ export type Database = {
           total_wasted_quantity?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "consumable_reconciliations_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: true
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "consumable_reconciliations_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: true
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
           {
             foreignKeyName: "consumable_reconciliations_event_fk"
             columns: ["organization_id", "event_id"]
@@ -759,20 +722,6 @@ export type Database = {
             foreignKeyName: "movements_event_fk"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "movements_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "movements_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -782,20 +731,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "event_equipment_reservations"
             referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "movements_reservation_fk"
-            columns: ["organization_id", "reservation_id"]
-            isOneToOne: false
-            referencedRelation: "event_warehouse_lines"
-            referencedColumns: ["organization_id", "reservation_id"]
-          },
-          {
-            foreignKeyName: "movements_reservation_fk"
-            columns: ["organization_id", "reservation_id"]
-            isOneToOne: false
-            referencedRelation: "event_warehouse_lines_valued"
-            referencedColumns: ["organization_id", "reservation_id"]
           },
         ]
       }
@@ -846,20 +781,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "equipment_capacity"
             referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
           },
           {
             foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
@@ -927,20 +848,6 @@ export type Database = {
             foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -949,13 +856,6 @@ export type Database = {
             columns: ["organization_id", "staff_member_id"]
             isOneToOne: false
             referencedRelation: "staff_members"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_staff_assignments_organization_id_staff_member_id_fkey"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members_operational"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -992,20 +892,6 @@ export type Database = {
           to_status?: Database["public"]["Enums"]["event_status"]
         }
         Relationships: [
-          {
-            foreignKeyName: "event_status_history_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_status_history_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
           {
             foreignKeyName: "event_status_history_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
@@ -1065,20 +951,6 @@ export type Database = {
           total_returned_good_quantity?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "reconciliations_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: true
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "reconciliations_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: true
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
           {
             foreignKeyName: "reconciliations_event_fk"
             columns: ["organization_id", "event_id"]
@@ -1170,13 +1042,6 @@ export type Database = {
             referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "events_accepted_quote_fk"
-            columns: ["organization_id", "accepted_quotation_id"]
-            isOneToOne: false
-            referencedRelation: "quotations_customer"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
             foreignKeyName: "events_customer_org_fk"
             columns: ["organization_id", "customer_id"]
             isOneToOne: false
@@ -1255,20 +1120,6 @@ export type Database = {
             foreignKeyName: "host_payouts_org_event_fk"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "host_payouts_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "host_payouts_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1277,13 +1128,6 @@ export type Database = {
             columns: ["organization_id", "staff_member_id"]
             isOneToOne: false
             referencedRelation: "staff_members"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "host_payouts_org_staff_fk"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members_operational"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -1323,13 +1167,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["installment_status"]
         }
         Relationships: [
-          {
-            foreignKeyName: "invoice_installments_org_fk"
-            columns: ["organization_id", "invoice_id"]
-            isOneToOne: false
-            referencedRelation: "invoice_summaries"
-            referencedColumns: ["organization_id", "invoice_id"]
-          },
           {
             foreignKeyName: "invoice_installments_org_fk"
             columns: ["organization_id", "invoice_id"]
@@ -1399,20 +1236,6 @@ export type Database = {
             foreignKeyName: "invoices_org_event_fk"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "invoices_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "invoices_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1421,13 +1244,6 @@ export type Database = {
             columns: ["organization_id", "quotation_id"]
             isOneToOne: false
             referencedRelation: "quotations"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "invoices_org_quotation_fk"
-            columns: ["organization_id", "quotation_id"]
-            isOneToOne: false
-            referencedRelation: "quotations_customer"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -1543,13 +1359,6 @@ export type Database = {
             referencedColumns: ["id", "organization_id"]
           },
           {
-            foreignKeyName: "package_items_catalog_org_fk"
-            columns: ["catalog_item_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items_operational"
-            referencedColumns: ["id", "organization_id"]
-          },
-          {
             foreignKeyName: "package_items_package_org_fk"
             columns: ["package_id", "organization_id"]
             isOneToOne: false
@@ -1595,94 +1404,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "packages_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      payments_command_idempotency: {
-        Row: {
-          actor_id: string
-          command_name: string
-          created_at: string
-          idempotency_key: string
-          organization_id: string
-          request_fingerprint: string
-          response_payload: Json
-          result_entity: string
-          result_id: string
-        }
-        Insert: {
-          actor_id: string
-          command_name: string
-          created_at?: string
-          idempotency_key: string
-          organization_id: string
-          request_fingerprint: string
-          response_payload: Json
-          result_entity: string
-          result_id: string
-        }
-        Update: {
-          actor_id?: string
-          command_name?: string
-          created_at?: string
-          idempotency_key?: string
-          organization_id?: string
-          request_fingerprint?: string
-          response_payload?: Json
-          result_entity?: string
-          result_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "payments_command_idempotency_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      procurement_command_idempotency: {
-        Row: {
-          actor_id: string
-          command_name: string
-          created_at: string
-          idempotency_key: string
-          organization_id: string
-          request_fingerprint: string
-          response_payload: Json
-          result_entity: string
-          result_id: string
-        }
-        Insert: {
-          actor_id: string
-          command_name: string
-          created_at?: string
-          idempotency_key: string
-          organization_id: string
-          request_fingerprint: string
-          response_payload: Json
-          result_entity: string
-          result_id: string
-        }
-        Update: {
-          actor_id?: string
-          command_name?: string
-          created_at?: string
-          idempotency_key?: string
-          organization_id?: string
-          request_fingerprint?: string
-          response_payload?: Json
-          result_entity?: string
-          result_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "procurement_command_idempotency_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -1745,27 +1466,6 @@ export type Database = {
             referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "procurement_order_lines_catalog_fk"
-            columns: ["organization_id", "catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_order_details"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_order_summaries"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-          {
             foreignKeyName: "procurement_order_lines_order_fk"
             columns: ["organization_id", "order_id"]
             isOneToOne: false
@@ -1773,25 +1473,11 @@ export type Database = {
             referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "procurement_order_lines_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_receiving_order_summaries"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-          {
             foreignKeyName: "procurement_order_lines_stock_item_fk"
             columns: ["organization_id", "stock_item_id"]
             isOneToOne: false
             referencedRelation: "consumable_stock_items"
             referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_stock_item_fk"
-            columns: ["organization_id", "stock_item_id"]
-            isOneToOne: false
-            referencedRelation: "consumable_stock_summary"
-            referencedColumns: ["organization_id", "stock_item_id"]
           },
         ]
       }
@@ -1885,20 +1571,6 @@ export type Database = {
             foreignKeyName: "procurement_orders_event_fk"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1908,20 +1580,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_supplier_fk"
-            columns: ["organization_id", "supplier_id"]
-            isOneToOne: false
-            referencedRelation: "supplier_details"
-            referencedColumns: ["organization_id", "supplier_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_supplier_fk"
-            columns: ["organization_id", "supplier_id"]
-            isOneToOne: false
-            referencedRelation: "supplier_summaries"
-            referencedColumns: ["organization_id", "supplier_id"]
           },
           {
             foreignKeyName: "procurement_orders_supplier_fk"
@@ -1975,29 +1633,8 @@ export type Database = {
             foreignKeyName: "procurement_receipt_lines_order_line_fk"
             columns: ["organization_id", "order_id", "order_line_id"]
             isOneToOne: false
-            referencedRelation: "procurement_order_line_summaries"
-            referencedColumns: ["organization_id", "order_id", "order_line_id"]
-          },
-          {
-            foreignKeyName: "procurement_receipt_lines_order_line_fk"
-            columns: ["organization_id", "order_id", "order_line_id"]
-            isOneToOne: false
             referencedRelation: "procurement_order_lines"
             referencedColumns: ["organization_id", "order_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_receipt_lines_order_line_fk"
-            columns: ["organization_id", "order_id", "order_line_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_receiving_line_summaries"
-            referencedColumns: ["organization_id", "order_id", "order_line_id"]
-          },
-          {
-            foreignKeyName: "procurement_receipt_lines_receipt_fk"
-            columns: ["organization_id", "receipt_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_receipt_summaries"
-            referencedColumns: ["organization_id", "receipt_id", "order_id"]
           },
           {
             foreignKeyName: "procurement_receipt_lines_receipt_fk"
@@ -2050,29 +1687,8 @@ export type Database = {
             foreignKeyName: "procurement_receipts_order_fk"
             columns: ["organization_id", "order_id"]
             isOneToOne: false
-            referencedRelation: "procurement_order_details"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-          {
-            foreignKeyName: "procurement_receipts_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_order_summaries"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-          {
-            foreignKeyName: "procurement_receipts_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
             referencedRelation: "procurement_orders"
             referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_receipts_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_receiving_order_summaries"
-            referencedColumns: ["organization_id", "order_id"]
           },
         ]
       }
@@ -2274,13 +1890,6 @@ export type Database = {
             referencedRelation: "quotations"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "quick_quotes_quotation_fk"
-            columns: ["quotation_id"]
-            isOneToOne: true
-            referencedRelation: "quotations_customer"
-            referencedColumns: ["id"]
-          },
         ]
       }
       quotation_lines: {
@@ -2338,13 +1947,6 @@ export type Database = {
             columns: ["organization_id", "quotation_id"]
             isOneToOne: false
             referencedRelation: "quotations"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "quotation_lines_organization_id_quotation_id_fkey"
-            columns: ["organization_id", "quotation_id"]
-            isOneToOne: false
-            referencedRelation: "quotations_customer"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -2445,20 +2047,6 @@ export type Database = {
             foreignKeyName: "quotations_converted_event_org_fk"
             columns: ["organization_id", "converted_event_id"]
             isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "quotations_converted_event_org_fk"
-            columns: ["organization_id", "converted_event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "quotations_converted_event_org_fk"
-            columns: ["organization_id", "converted_event_id"]
-            isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["organization_id", "id"]
           },
@@ -2468,20 +2056,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "quotations_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "quotations_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
           },
           {
             foreignKeyName: "quotations_organization_id_event_id_fkey"
@@ -2547,13 +2121,6 @@ export type Database = {
             columns: ["organization_id", "staff_member_id"]
             isOneToOne: false
             referencedRelation: "staff_members"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "staff_advances_org_staff_fk"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members_operational"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -2643,27 +2210,6 @@ export type Database = {
             referencedColumns: ["organization_id", "id"]
           },
           {
-            foreignKeyName: "staff_attendance_org_assignment_fk"
-            columns: ["organization_id", "assignment_id"]
-            isOneToOne: false
-            referencedRelation: "event_staff_assignments_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "staff_attendance_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "staff_attendance_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
             foreignKeyName: "staff_attendance_org_event_fk"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
@@ -2675,13 +2221,6 @@ export type Database = {
             columns: ["organization_id", "staff_member_id"]
             isOneToOne: false
             referencedRelation: "staff_members"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "staff_attendance_org_staff_fk"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members_operational"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -2732,50 +2271,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "staff_members_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      staff_payroll_command_idempotency: {
-        Row: {
-          actor_id: string
-          command_name: string
-          created_at: string
-          idempotency_key: string
-          organization_id: string
-          request_fingerprint: string
-          response_payload: Json
-          result_entity: string
-          result_id: string
-        }
-        Insert: {
-          actor_id: string
-          command_name: string
-          created_at?: string
-          idempotency_key: string
-          organization_id: string
-          request_fingerprint: string
-          response_payload: Json
-          result_entity: string
-          result_id: string
-        }
-        Update: {
-          actor_id?: string
-          command_name?: string
-          created_at?: string
-          idempotency_key?: string
-          organization_id?: string
-          request_fingerprint?: string
-          response_payload?: Json
-          result_entity?: string
-          result_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "staff_payroll_command_idempotency_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -2865,56 +2360,7 @@ export type Database = {
           unit: string | null
           updated_at: string | null
         }
-        Insert: {
-          category_id?: string | null
-          code?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          item_type?: Database["public"]["Enums"]["catalog_item_type"] | null
-          name?: string | null
-          name_en?: string | null
-          organization_id?: string | null
-          pricing_method?: Database["public"]["Enums"]["pricing_method"] | null
-          selling_price?: number | null
-          sort_order?: number | null
-          status?: Database["public"]["Enums"]["catalog_item_status"] | null
-          unit?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          category_id?: string | null
-          code?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          item_type?: Database["public"]["Enums"]["catalog_item_type"] | null
-          name?: string | null
-          name_en?: string | null
-          organization_id?: string | null
-          pricing_method?: Database["public"]["Enums"]["pricing_method"] | null
-          selling_price?: number | null
-          sort_order?: number | null
-          status?: Database["public"]["Enums"]["catalog_item_status"] | null
-          unit?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "catalog_items_org_category_fk"
-            columns: ["category_id", "organization_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_categories"
-            referencedColumns: ["id", "organization_id"]
-          },
-          {
-            foreignKeyName: "catalog_items_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       consumable_stock_summary: {
         Row: {
@@ -2933,22 +2379,7 @@ export type Database = {
           stock_item_id: string | null
           updated_at: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "consumable_stock_items_catalog_fk"
-            columns: ["organization_id", "catalog_item_id"]
-            isOneToOne: true
-            referencedRelation: "catalog_items"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "consumable_stock_items_catalog_fk"
-            columns: ["organization_id", "catalog_item_id"]
-            isOneToOne: true
-            referencedRelation: "catalog_items_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       customer_payment_summaries: {
         Row: {
@@ -2968,29 +2399,7 @@ export type Database = {
           voided_at: string | null
           voided_by: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "customer_payments_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "customer_payments_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "customer_payments_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       event_commercial_lines_operational: {
         Row: {
@@ -3012,88 +2421,7 @@ export type Database = {
           unit_selling_price: number | null
           updated_at: string | null
         }
-        Insert: {
-          created_at?: string | null
-          description?: string | null
-          event_id?: string | null
-          id?: string | null
-          is_custom?: boolean | null
-          item_type?: Database["public"]["Enums"]["catalog_item_type"] | null
-          notes?: string | null
-          organization_id?: string | null
-          pricing_method?: Database["public"]["Enums"]["pricing_method"] | null
-          quantity?: number | null
-          sort_order?: number | null
-          source_catalog_item_id?: string | null
-          source_package_id?: string | null
-          total_selling?: number | null
-          unit?: string | null
-          unit_selling_price?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          description?: string | null
-          event_id?: string | null
-          id?: string | null
-          is_custom?: boolean | null
-          item_type?: Database["public"]["Enums"]["catalog_item_type"] | null
-          notes?: string | null
-          organization_id?: string | null
-          pricing_method?: Database["public"]["Enums"]["pricing_method"] | null
-          quantity?: number | null
-          sort_order?: number | null
-          source_catalog_item_id?: string | null
-          source_package_id?: string | null
-          total_selling?: number | null
-          unit?: string | null
-          unit_selling_price?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_commercial_lines_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_commercial_lines_organization_id_source_catalog_item_fkey"
-            columns: ["organization_id", "source_catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_commercial_lines_organization_id_source_catalog_item_fkey"
-            columns: ["organization_id", "source_catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_commercial_lines_organization_id_source_package_id_fkey"
-            columns: ["organization_id", "source_package_id"]
-            isOneToOne: false
-            referencedRelation: "packages"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       event_consumable_lines: {
         Row: {
@@ -3111,43 +2439,7 @@ export type Database = {
           stock_item_id: string | null
           wasted_quantity: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "consumable_movements_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "consumable_movements_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "consumable_movements_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "consumable_movements_stock_item_fk"
-            columns: ["organization_id", "stock_item_id"]
-            isOneToOne: false
-            referencedRelation: "consumable_stock_items"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "consumable_movements_stock_item_fk"
-            columns: ["organization_id", "stock_item_id"]
-            isOneToOne: false
-            referencedRelation: "consumable_stock_summary"
-            referencedColumns: ["organization_id", "stock_item_id"]
-          },
-        ]
+        Relationships: []
       }
       event_finance_summaries: {
         Row: {
@@ -3164,15 +2456,7 @@ export type Database = {
           organization_id: string | null
           outstanding_balance: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "events_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       event_procurement_cost_summaries: {
         Row: {
@@ -3185,15 +2469,7 @@ export type Database = {
           event_number: string | null
           organization_id: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "events_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       event_staff_assignments_operational: {
         Row: {
@@ -3208,67 +2484,7 @@ export type Database = {
           staff_member_id: string | null
           status: Database["public"]["Enums"]["assignment_status"] | null
         }
-        Insert: {
-          assignment_role?: Database["public"]["Enums"]["staff_type"] | null
-          created_at?: string | null
-          event_id?: string | null
-          id?: string | null
-          notes?: string | null
-          organization_id?: string | null
-          scheduled_end?: string | null
-          scheduled_start?: string | null
-          staff_member_id?: string | null
-          status?: Database["public"]["Enums"]["assignment_status"] | null
-        }
-        Update: {
-          assignment_role?: Database["public"]["Enums"]["staff_type"] | null
-          created_at?: string | null
-          event_id?: string | null
-          id?: string | null
-          notes?: string | null
-          organization_id?: string | null
-          scheduled_end?: string | null
-          scheduled_start?: string | null
-          staff_member_id?: string | null
-          status?: Database["public"]["Enums"]["assignment_status"] | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_staff_assignments_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_staff_assignments_organization_id_staff_member_id_fkey"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_staff_assignments_organization_id_staff_member_id_fkey"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       event_warehouse_lines: {
         Row: {
@@ -3294,36 +2510,7 @@ export type Database = {
           reserved_until: string | null
           returned_good_quantity: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "event_equipment_reservations_organization_id_equipment_cap_fkey"
-            columns: ["organization_id", "equipment_capacity_id"]
-            isOneToOne: false
-            referencedRelation: "equipment_capacity"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       event_warehouse_lines_valued: {
         Row: {
@@ -3341,36 +2528,7 @@ export type Database = {
           unit_valuation_omr: number | null
           valuation_basis: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "event_equipment_reservations_organization_id_equipment_cap_fkey"
-            columns: ["organization_id", "equipment_capacity_id"]
-            isOneToOne: false
-            referencedRelation: "equipment_capacity"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "event_equipment_reservations_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       host_event_payroll_summaries: {
         Row: {
@@ -3389,43 +2547,7 @@ export type Database = {
           staff_name: string | null
           staff_type: Database["public"]["Enums"]["staff_type"] | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "staff_attendance_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "staff_attendance_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "staff_attendance_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "staff_attendance_org_staff_fk"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "staff_attendance_org_staff_fk"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       host_payout_summaries: {
         Row: {
@@ -3448,43 +2570,7 @@ export type Database = {
           voided_at: string | null
           voided_by: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "host_payouts_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "host_payouts_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "host_payouts_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "host_payouts_org_staff_fk"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "host_payouts_org_staff_fk"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       invoice_installment_summaries: {
         Row: {
@@ -3502,22 +2588,7 @@ export type Database = {
           plan_status: Database["public"]["Enums"]["installment_status"] | null
           seq: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "invoice_installments_org_fk"
-            columns: ["organization_id", "invoice_id"]
-            isOneToOne: false
-            referencedRelation: "invoice_summaries"
-            referencedColumns: ["organization_id", "invoice_id"]
-          },
-          {
-            foreignKeyName: "invoice_installments_org_fk"
-            columns: ["organization_id", "invoice_id"]
-            isOneToOne: false
-            referencedRelation: "invoices"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       invoice_summaries: {
         Row: {
@@ -3540,41 +2611,93 @@ export type Database = {
           voided_at: string | null
           voided_by: string | null
         }
+        Relationships: []
+      }
+      payments_command_idempotency: {
+        Row: {
+          actor_id: string | null
+          command_name: string | null
+          created_at: string | null
+          idempotency_key: string | null
+          organization_id: string | null
+          request_fingerprint: string | null
+          response_payload: Json | null
+          result_entity: string | null
+          result_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          command_name?: string | null
+          created_at?: string | null
+          idempotency_key?: string | null
+          organization_id?: string | null
+          request_fingerprint?: string | null
+          response_payload?: Json | null
+          result_entity?: string | null
+          result_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          command_name?: string | null
+          created_at?: string | null
+          idempotency_key?: string | null
+          organization_id?: string | null
+          request_fingerprint?: string | null
+          response_payload?: Json | null
+          result_entity?: string | null
+          result_id?: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "invoices_org_event_fk"
-            columns: ["organization_id", "event_id"]
+            foreignKeyName: "command_idempotency_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
+        ]
+      }
+      procurement_command_idempotency: {
+        Row: {
+          actor_id: string | null
+          command_name: string | null
+          created_at: string | null
+          idempotency_key: string | null
+          organization_id: string | null
+          request_fingerprint: string | null
+          response_payload: Json | null
+          result_entity: string | null
+          result_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          command_name?: string | null
+          created_at?: string | null
+          idempotency_key?: string | null
+          organization_id?: string | null
+          request_fingerprint?: string | null
+          response_payload?: Json | null
+          result_entity?: string | null
+          result_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          command_name?: string | null
+          created_at?: string | null
+          idempotency_key?: string | null
+          organization_id?: string | null
+          request_fingerprint?: string | null
+          response_payload?: Json | null
+          result_entity?: string | null
+          result_id?: string | null
+        }
+        Relationships: [
           {
-            foreignKeyName: "invoices_org_event_fk"
-            columns: ["organization_id", "event_id"]
+            foreignKeyName: "command_idempotency_organization_id_fkey"
+            columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "invoices_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "invoices_org_quotation_fk"
-            columns: ["organization_id", "quotation_id"]
-            isOneToOne: false
-            referencedRelation: "quotations"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "invoices_org_quotation_fk"
-            columns: ["organization_id", "quotation_id"]
-            isOneToOne: false
-            referencedRelation: "quotations_customer"
-            referencedColumns: ["organization_id", "id"]
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3609,57 +2732,7 @@ export type Database = {
           supplier_phone_snapshot: string | null
           updated_at: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "procurement_orders_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_supplier_fk"
-            columns: ["organization_id", "supplier_id"]
-            isOneToOne: false
-            referencedRelation: "supplier_details"
-            referencedColumns: ["organization_id", "supplier_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_supplier_fk"
-            columns: ["organization_id", "supplier_id"]
-            isOneToOne: false
-            referencedRelation: "supplier_summaries"
-            referencedColumns: ["organization_id", "supplier_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_supplier_fk"
-            columns: ["organization_id", "supplier_id"]
-            isOneToOne: false
-            referencedRelation: "suppliers"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       procurement_order_line_summaries: {
         Row: {
@@ -3679,64 +2752,7 @@ export type Database = {
           stock_item_id: string | null
           unit: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "procurement_order_lines_catalog_fk"
-            columns: ["organization_id", "catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_catalog_fk"
-            columns: ["organization_id", "catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_order_details"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_order_summaries"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_orders"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_receiving_order_summaries"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_stock_item_fk"
-            columns: ["organization_id", "stock_item_id"]
-            isOneToOne: false
-            referencedRelation: "consumable_stock_items"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_stock_item_fk"
-            columns: ["organization_id", "stock_item_id"]
-            isOneToOne: false
-            referencedRelation: "consumable_stock_summary"
-            referencedColumns: ["organization_id", "stock_item_id"]
-          },
-        ]
+        Relationships: []
       }
       procurement_order_summaries: {
         Row: {
@@ -3760,57 +2776,7 @@ export type Database = {
           supplier_name: string | null
           updated_at: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "procurement_orders_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_supplier_fk"
-            columns: ["organization_id", "supplier_id"]
-            isOneToOne: false
-            referencedRelation: "supplier_details"
-            referencedColumns: ["organization_id", "supplier_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_supplier_fk"
-            columns: ["organization_id", "supplier_id"]
-            isOneToOne: false
-            referencedRelation: "supplier_summaries"
-            referencedColumns: ["organization_id", "supplier_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_supplier_fk"
-            columns: ["organization_id", "supplier_id"]
-            isOneToOne: false
-            referencedRelation: "suppliers"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       procurement_receipt_line_summaries: {
         Row: {
@@ -3823,70 +2789,7 @@ export type Database = {
           receipt_id: string | null
           receipt_line_id: string | null
         }
-        Insert: {
-          consumable_movement_id?: string | null
-          created_at?: string | null
-          order_id?: string | null
-          order_line_id?: string | null
-          organization_id?: string | null
-          quantity?: number | null
-          receipt_id?: string | null
-          receipt_line_id?: string | null
-        }
-        Update: {
-          consumable_movement_id?: string | null
-          created_at?: string | null
-          order_id?: string | null
-          order_line_id?: string | null
-          organization_id?: string | null
-          quantity?: number | null
-          receipt_id?: string | null
-          receipt_line_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "procurement_receipt_lines_movement_fk"
-            columns: ["organization_id", "consumable_movement_id"]
-            isOneToOne: true
-            referencedRelation: "consumable_movements"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_receipt_lines_order_line_fk"
-            columns: ["organization_id", "order_id", "order_line_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_order_line_summaries"
-            referencedColumns: ["organization_id", "order_id", "order_line_id"]
-          },
-          {
-            foreignKeyName: "procurement_receipt_lines_order_line_fk"
-            columns: ["organization_id", "order_id", "order_line_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_order_lines"
-            referencedColumns: ["organization_id", "order_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_receipt_lines_order_line_fk"
-            columns: ["organization_id", "order_id", "order_line_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_receiving_line_summaries"
-            referencedColumns: ["organization_id", "order_id", "order_line_id"]
-          },
-          {
-            foreignKeyName: "procurement_receipt_lines_receipt_fk"
-            columns: ["organization_id", "receipt_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_receipt_summaries"
-            referencedColumns: ["organization_id", "receipt_id", "order_id"]
-          },
-          {
-            foreignKeyName: "procurement_receipt_lines_receipt_fk"
-            columns: ["organization_id", "receipt_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_receipts"
-            referencedColumns: ["organization_id", "id", "order_id"]
-          },
-        ]
+        Relationships: []
       }
       procurement_receipt_summaries: {
         Row: {
@@ -3907,36 +2810,7 @@ export type Database = {
           reference: string | null
           supplier_name: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "procurement_receipts_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_order_details"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-          {
-            foreignKeyName: "procurement_receipts_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_order_summaries"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-          {
-            foreignKeyName: "procurement_receipts_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_orders"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_receipts_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_receiving_order_summaries"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-        ]
+        Relationships: []
       }
       procurement_receiving_line_summaries: {
         Row: {
@@ -3953,64 +2827,7 @@ export type Database = {
           stock_item_id: string | null
           unit: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "procurement_order_lines_catalog_fk"
-            columns: ["organization_id", "catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_catalog_fk"
-            columns: ["organization_id", "catalog_item_id"]
-            isOneToOne: false
-            referencedRelation: "catalog_items_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_order_details"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_order_summaries"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_orders"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_order_fk"
-            columns: ["organization_id", "order_id"]
-            isOneToOne: false
-            referencedRelation: "procurement_receiving_order_summaries"
-            referencedColumns: ["organization_id", "order_id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_stock_item_fk"
-            columns: ["organization_id", "stock_item_id"]
-            isOneToOne: false
-            referencedRelation: "consumable_stock_items"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_order_lines_stock_item_fk"
-            columns: ["organization_id", "stock_item_id"]
-            isOneToOne: false
-            referencedRelation: "consumable_stock_summary"
-            referencedColumns: ["organization_id", "stock_item_id"]
-          },
-        ]
+        Relationships: []
       }
       procurement_receiving_order_summaries: {
         Row: {
@@ -4030,57 +2847,7 @@ export type Database = {
           supplier_phone: string | null
           updated_at: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "procurement_orders_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_supplier_fk"
-            columns: ["organization_id", "supplier_id"]
-            isOneToOne: false
-            referencedRelation: "supplier_details"
-            referencedColumns: ["organization_id", "supplier_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_supplier_fk"
-            columns: ["organization_id", "supplier_id"]
-            isOneToOne: false
-            referencedRelation: "supplier_summaries"
-            referencedColumns: ["organization_id", "supplier_id"]
-          },
-          {
-            foreignKeyName: "procurement_orders_supplier_fk"
-            columns: ["organization_id", "supplier_id"]
-            isOneToOne: false
-            referencedRelation: "suppliers"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       quotation_lines_customer: {
         Row: {
@@ -4097,50 +2864,7 @@ export type Database = {
           unit: string | null
           unit_selling_price: number | null
         }
-        Insert: {
-          description?: string | null
-          id?: string | null
-          is_custom?: boolean | null
-          item_type?: Database["public"]["Enums"]["catalog_item_type"] | null
-          organization_id?: string | null
-          pricing_method?: Database["public"]["Enums"]["pricing_method"] | null
-          quantity?: number | null
-          quotation_id?: string | null
-          sort_order?: number | null
-          total_selling?: number | null
-          unit?: string | null
-          unit_selling_price?: number | null
-        }
-        Update: {
-          description?: string | null
-          id?: string | null
-          is_custom?: boolean | null
-          item_type?: Database["public"]["Enums"]["catalog_item_type"] | null
-          organization_id?: string | null
-          pricing_method?: Database["public"]["Enums"]["pricing_method"] | null
-          quantity?: number | null
-          quotation_id?: string | null
-          sort_order?: number | null
-          total_selling?: number | null
-          unit?: string | null
-          unit_selling_price?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quotation_lines_organization_id_quotation_id_fkey"
-            columns: ["organization_id", "quotation_id"]
-            isOneToOne: false
-            referencedRelation: "quotations"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "quotation_lines_organization_id_quotation_id_fkey"
-            columns: ["organization_id", "quotation_id"]
-            isOneToOne: false
-            referencedRelation: "quotations_customer"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       quotations_customer: {
         Row: {
@@ -4165,73 +2889,7 @@ export type Database = {
           total_selling: number | null
           venue_snapshot: string | null
         }
-        Insert: {
-          accepted_at?: string | null
-          customer_name_snapshot?: string | null
-          customer_phone_snapshot?: string | null
-          end_at_snapshot?: string | null
-          event_id?: string | null
-          event_number_snapshot?: string | null
-          event_title_snapshot?: string | null
-          guest_count_snapshot?: number | null
-          id?: string | null
-          issued_at?: string | null
-          location_snapshot?: string | null
-          notes?: string | null
-          organization_id?: string | null
-          quotation_number?: string | null
-          revision?: number | null
-          start_at_snapshot?: string | null
-          status?: Database["public"]["Enums"]["quotation_status"] | null
-          terms?: string | null
-          total_selling?: number | null
-          venue_snapshot?: string | null
-        }
-        Update: {
-          accepted_at?: string | null
-          customer_name_snapshot?: string | null
-          customer_phone_snapshot?: string | null
-          end_at_snapshot?: string | null
-          event_id?: string | null
-          event_number_snapshot?: string | null
-          event_title_snapshot?: string | null
-          guest_count_snapshot?: number | null
-          id?: string | null
-          issued_at?: string | null
-          location_snapshot?: string | null
-          notes?: string | null
-          organization_id?: string | null
-          quotation_number?: string | null
-          revision?: number | null
-          start_at_snapshot?: string | null
-          status?: Database["public"]["Enums"]["quotation_status"] | null
-          terms?: string | null
-          total_selling?: number | null
-          venue_snapshot?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quotations_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "quotations_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "quotations_organization_id_event_id_fkey"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       staff_advances_summaries: {
         Row: {
@@ -4250,22 +2908,7 @@ export type Database = {
           voided_at: string | null
           voided_by: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "staff_advances_org_staff_fk"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "staff_advances_org_staff_fk"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       staff_attendance_summaries: {
         Row: {
@@ -4298,57 +2941,7 @@ export type Database = {
           wage_method: Database["public"]["Enums"]["compensation_method"] | null
           wage_rate: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "staff_attendance_org_assignment_fk"
-            columns: ["organization_id", "assignment_id"]
-            isOneToOne: false
-            referencedRelation: "event_staff_assignments"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "staff_attendance_org_assignment_fk"
-            columns: ["organization_id", "assignment_id"]
-            isOneToOne: false
-            referencedRelation: "event_staff_assignments_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "staff_attendance_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_finance_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "staff_attendance_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "event_procurement_cost_summaries"
-            referencedColumns: ["organization_id", "event_id"]
-          },
-          {
-            foreignKeyName: "staff_attendance_org_event_fk"
-            columns: ["organization_id", "event_id"]
-            isOneToOne: false
-            referencedRelation: "events"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "staff_attendance_org_staff_fk"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members"
-            referencedColumns: ["organization_id", "id"]
-          },
-          {
-            foreignKeyName: "staff_attendance_org_staff_fk"
-            columns: ["organization_id", "staff_member_id"]
-            isOneToOne: false
-            referencedRelation: "staff_members_operational"
-            referencedColumns: ["organization_id", "id"]
-          },
-        ]
+        Relationships: []
       }
       staff_members_operational: {
         Row: {
@@ -4363,33 +2956,45 @@ export type Database = {
           updated_at: string | null
           whatsapp: string | null
         }
+        Relationships: []
+      }
+      staff_payroll_command_idempotency: {
+        Row: {
+          actor_id: string | null
+          command_name: string | null
+          created_at: string | null
+          idempotency_key: string | null
+          organization_id: string | null
+          request_fingerprint: string | null
+          response_payload: Json | null
+          result_entity: string | null
+          result_id: string | null
+        }
         Insert: {
+          actor_id?: string | null
+          command_name?: string | null
           created_at?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          name?: string | null
-          notes?: string | null
+          idempotency_key?: string | null
           organization_id?: string | null
-          phone?: string | null
-          staff_type?: Database["public"]["Enums"]["staff_type"] | null
-          updated_at?: string | null
-          whatsapp?: string | null
+          request_fingerprint?: string | null
+          response_payload?: Json | null
+          result_entity?: string | null
+          result_id?: string | null
         }
         Update: {
+          actor_id?: string | null
+          command_name?: string | null
           created_at?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          name?: string | null
-          notes?: string | null
+          idempotency_key?: string | null
           organization_id?: string | null
-          phone?: string | null
-          staff_type?: Database["public"]["Enums"]["staff_type"] | null
-          updated_at?: string | null
-          whatsapp?: string | null
+          request_fingerprint?: string | null
+          response_payload?: Json | null
+          result_entity?: string | null
+          result_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "staff_members_organization_id_fkey"
+            foreignKeyName: "command_idempotency_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -4413,45 +3018,7 @@ export type Database = {
           updated_at: string | null
           whatsapp: string | null
         }
-        Insert: {
-          category?: Database["public"]["Enums"]["supplier_category"] | null
-          commercial_registration_number?: string | null
-          contact_name?: string | null
-          created_at?: string | null
-          email?: string | null
-          name?: string | null
-          notes?: string | null
-          organization_id?: string | null
-          phone?: string | null
-          status?: Database["public"]["Enums"]["supplier_status"] | null
-          supplier_id?: string | null
-          updated_at?: string | null
-          whatsapp?: string | null
-        }
-        Update: {
-          category?: Database["public"]["Enums"]["supplier_category"] | null
-          commercial_registration_number?: string | null
-          contact_name?: string | null
-          created_at?: string | null
-          email?: string | null
-          name?: string | null
-          notes?: string | null
-          organization_id?: string | null
-          phone?: string | null
-          status?: Database["public"]["Enums"]["supplier_status"] | null
-          supplier_id?: string | null
-          updated_at?: string | null
-          whatsapp?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "suppliers_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       supplier_summaries: {
         Row: {
@@ -4466,42 +3033,563 @@ export type Database = {
           updated_at: string | null
           whatsapp: string | null
         }
-        Insert: {
-          category?: Database["public"]["Enums"]["supplier_category"] | null
-          contact_name?: string | null
-          created_at?: string | null
-          name?: string | null
-          organization_id?: string | null
-          phone?: string | null
-          status?: Database["public"]["Enums"]["supplier_status"] | null
-          supplier_id?: string | null
-          updated_at?: string | null
-          whatsapp?: string | null
-        }
-        Update: {
-          category?: Database["public"]["Enums"]["supplier_category"] | null
-          contact_name?: string | null
-          created_at?: string | null
-          name?: string | null
-          organization_id?: string | null
-          phone?: string | null
-          status?: Database["public"]["Enums"]["supplier_status"] | null
-          supplier_id?: string | null
-          updated_at?: string | null
-          whatsapp?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "suppliers_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Functions: {
+      _view_catalog_items_operational: {
+        Args: never
+        Returns: {
+          category_id: string
+          code: string
+          created_at: string
+          description: string
+          id: string
+          item_type: Database["public"]["Enums"]["catalog_item_type"]
+          name: string
+          name_en: string
+          organization_id: string
+          pricing_method: Database["public"]["Enums"]["pricing_method"]
+          selling_price: number
+          sort_order: number
+          status: Database["public"]["Enums"]["catalog_item_status"]
+          unit: string
+          updated_at: string
+        }[]
+      }
+      _view_consumable_stock_summary: {
+        Args: never
+        Returns: {
+          catalog_item_id: string
+          catalog_status: Database["public"]["Enums"]["catalog_item_status"]
+          created_at: string
+          is_low_stock: boolean
+          is_tracking_active: boolean
+          item_name: string
+          item_unit: string
+          minimum_stock_quantity: number
+          on_hand_quantity: number
+          organization_id: string
+          stock_item_id: string
+          updated_at: string
+        }[]
+      }
+      _view_customer_payment_summaries: {
+        Args: never
+        Returns: {
+          amount: number
+          created_at: string
+          event_id: string
+          event_number: string
+          notes: string
+          organization_id: string
+          paid_at: string
+          payment_id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          recorded_by: string
+          reference: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          void_reason: string
+          voided_at: string
+          voided_by: string
+        }[]
+      }
+      _view_event_commercial_lines_operational: {
+        Args: never
+        Returns: {
+          created_at: string
+          description: string
+          event_id: string
+          id: string
+          is_custom: boolean
+          item_type: Database["public"]["Enums"]["catalog_item_type"]
+          notes: string
+          organization_id: string
+          pricing_method: Database["public"]["Enums"]["pricing_method"]
+          quantity: number
+          sort_order: number
+          source_catalog_item_id: string
+          source_package_id: string
+          total_selling: number
+          unit: string
+          unit_selling_price: number
+          updated_at: string
+        }[]
+      }
+      _view_event_consumable_lines: {
+        Args: never
+        Returns: {
+          catalog_item_id: string
+          consumed_quantity: number
+          event_id: string
+          is_reconciled: boolean
+          issued_quantity: number
+          item_name: string
+          item_unit: string
+          organization_id: string
+          outstanding_quantity: number
+          reconciled_at: string
+          returned_quantity: number
+          stock_item_id: string
+          wasted_quantity: number
+        }[]
+      }
+      _view_event_finance_summaries: {
+        Args: never
+        Returns: {
+          accepted_revenue: number
+          amount_paid: number
+          committed_cost: number
+          delivered_cost: number
+          event_id: string
+          event_number: string
+          event_status: Database["public"]["Enums"]["event_status"]
+          expected_cost: number
+          expected_profit: number
+          gross_margin: number
+          organization_id: string
+          outstanding_balance: number
+        }[]
+      }
+      _view_event_procurement_cost_summaries: {
+        Args: never
+        Returns: {
+          active_committed_cost: number
+          active_order_count: number
+          all_approved_order_cost: number
+          cancelled_order_count: number
+          delivered_cost: number
+          event_id: string
+          event_number: string
+          organization_id: string
+        }[]
+      }
+      _view_event_staff_assignments_operational: {
+        Args: never
+        Returns: {
+          assignment_role: Database["public"]["Enums"]["staff_type"]
+          created_at: string
+          event_id: string
+          id: string
+          notes: string
+          organization_id: string
+          scheduled_end: string
+          scheduled_start: string
+          staff_member_id: string
+          status: Database["public"]["Enums"]["assignment_status"]
+        }[]
+      }
+      _view_event_warehouse_lines: {
+        Args: never
+        Returns: {
+          capacity_total_quantity: number
+          catalog_item_id: string
+          damaged_quantity: number
+          dispatched_quantity: number
+          equipment_capacity_id: string
+          equipment_name: string
+          equipment_unit: string
+          event_id: string
+          is_reconciled: boolean
+          lost_quantity: number
+          organization_id: string
+          outstanding_quantity: number
+          reconciled_at: string
+          reservation_id: string
+          reservation_status: Database["public"]["Enums"]["reservation_status"]
+          reserved_from: string
+          reserved_quantity: number
+          reserved_until: string
+          returned_good_quantity: number
+        }[]
+      }
+      _view_event_warehouse_lines_valued: {
+        Args: never
+        Returns: {
+          damage_loss_valuation_omr: number
+          damaged_quantity: number
+          dispatched_quantity: number
+          equipment_capacity_id: string
+          event_id: string
+          lost_quantity: number
+          organization_id: string
+          outstanding_quantity: number
+          reservation_id: string
+          reserved_quantity: number
+          returned_good_quantity: number
+          unit_valuation_omr: number
+          valuation_basis: string
+        }[]
+      }
+      _view_host_event_payroll_summaries: {
+        Args: never
+        Returns: {
+          advances_total: number
+          attendance_count: number
+          due_total: number
+          earned_total: number
+          event_id: string
+          event_number: string
+          event_title: string
+          late_total: number
+          organization_id: string
+          paid_total: number
+          payouts_total: number
+          staff_member_id: string
+          staff_name: string
+          staff_type: Database["public"]["Enums"]["staff_type"]
+        }[]
+      }
+      _view_host_payout_summaries: {
+        Args: never
+        Returns: {
+          amount: number
+          created_at: string
+          event_id: string
+          event_number: string
+          organization_id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          payout_date: string
+          payout_id: string
+          reason: string
+          recorded_by: string
+          reference: string
+          staff_member_id: string
+          staff_name: string
+          staff_type: Database["public"]["Enums"]["staff_type"]
+          status: Database["public"]["Enums"]["host_payment_status"]
+          void_reason: string
+          voided_at: string
+          voided_by: string
+        }[]
+      }
+      _view_invoice_installment_summaries: {
+        Args: never
+        Returns: {
+          amount: number
+          cumulative_amount: number
+          due_date: string
+          effective_status: string
+          event_id: string
+          installment_id: string
+          invoice_id: string
+          invoice_number: string
+          invoice_paid_total: number
+          kind: Database["public"]["Enums"]["invoice_installment_kind"]
+          organization_id: string
+          plan_status: Database["public"]["Enums"]["installment_status"]
+          seq: number
+        }[]
+      }
+      _view_invoice_summaries: {
+        Args: never
+        Returns: {
+          created_at: string
+          due_at: string
+          event_id: string
+          event_number: string
+          event_title: string
+          invoice_id: string
+          invoice_number: string
+          invoice_status: Database["public"]["Enums"]["invoice_status"]
+          issued_at: string
+          note: string
+          organization_id: string
+          paid_total: number
+          quotation_id: string
+          remaining_balance: number
+          total_amount: number
+          void_reason: string
+          voided_at: string
+          voided_by: string
+        }[]
+      }
+      _view_procurement_order_details: {
+        Args: never
+        Returns: {
+          agreed_total_cost: number
+          approved_at: string
+          approved_by: string
+          cancellation_reason: string
+          cancelled_at: string
+          cancelled_by: string
+          confirmed_at: string
+          confirmed_by: string
+          created_at: string
+          created_by: string
+          event_id: string
+          event_number: string
+          event_title: string
+          expected_delivery_at: string
+          notes: string
+          order_date: string
+          order_id: string
+          order_number: string
+          organization_id: string
+          sent_at: string
+          sent_by: string
+          status: Database["public"]["Enums"]["procurement_order_status"]
+          supplier_contact_name_snapshot: string
+          supplier_id: string
+          supplier_name: string
+          supplier_name_snapshot: string
+          supplier_phone_snapshot: string
+          updated_at: string
+        }[]
+      }
+      _view_procurement_order_line_summaries: {
+        Args: never
+        Returns: {
+          agreed_total_cost: number
+          agreed_unit_cost: number
+          catalog_item_id: string
+          created_at: string
+          description: string
+          line_kind: Database["public"]["Enums"]["procurement_line_kind"]
+          order_id: string
+          order_line_id: string
+          ordered_quantity: number
+          organization_id: string
+          received_quantity: number
+          remaining_quantity: number
+          sort_order: number
+          stock_item_id: string
+          unit: string
+        }[]
+      }
+      _view_procurement_order_summaries: {
+        Args: never
+        Returns: {
+          agreed_total_cost: number
+          approved_at: string
+          cancelled_at: string
+          confirmed_at: string
+          created_at: string
+          event_id: string
+          event_number: string
+          event_title: string
+          expected_delivery_at: string
+          line_count: number
+          order_date: string
+          order_id: string
+          order_number: string
+          organization_id: string
+          sent_at: string
+          status: Database["public"]["Enums"]["procurement_order_status"]
+          supplier_id: string
+          supplier_name: string
+          updated_at: string
+        }[]
+      }
+      _view_procurement_receipt_line_summaries: {
+        Args: never
+        Returns: {
+          consumable_movement_id: string
+          created_at: string
+          order_id: string
+          order_line_id: string
+          organization_id: string
+          quantity: number
+          receipt_id: string
+          receipt_line_id: string
+        }[]
+      }
+      _view_procurement_receipt_summaries: {
+        Args: never
+        Returns: {
+          created_at: string
+          event_id: string
+          has_stock_movements: boolean
+          line_count: number
+          notes: string
+          order_id: string
+          order_number: string
+          order_status: Database["public"]["Enums"]["procurement_order_status"]
+          organization_id: string
+          receipt_id: string
+          received_at: string
+          received_by: string
+          reference: string
+          supplier_name: string
+        }[]
+      }
+      _view_procurement_receiving_line_summaries: {
+        Args: never
+        Returns: {
+          catalog_item_id: string
+          description: string
+          line_kind: Database["public"]["Enums"]["procurement_line_kind"]
+          order_id: string
+          order_line_id: string
+          ordered_quantity: number
+          organization_id: string
+          received_quantity: number
+          remaining_quantity: number
+          sort_order: number
+          stock_item_id: string
+          unit: string
+        }[]
+      }
+      _view_procurement_receiving_order_summaries: {
+        Args: never
+        Returns: {
+          confirmed_at: string
+          event_id: string
+          event_number: string
+          event_title: string
+          expected_delivery_at: string
+          order_date: string
+          order_id: string
+          order_number: string
+          organization_id: string
+          status: Database["public"]["Enums"]["procurement_order_status"]
+          supplier_contact_name: string
+          supplier_id: string
+          supplier_name: string
+          supplier_phone: string
+          updated_at: string
+        }[]
+      }
+      _view_quotation_lines_customer: {
+        Args: never
+        Returns: {
+          description: string
+          id: string
+          is_custom: boolean
+          item_type: Database["public"]["Enums"]["catalog_item_type"]
+          organization_id: string
+          pricing_method: Database["public"]["Enums"]["pricing_method"]
+          quantity: number
+          quotation_id: string
+          sort_order: number
+          total_selling: number
+          unit: string
+          unit_selling_price: number
+        }[]
+      }
+      _view_quotations_customer: {
+        Args: never
+        Returns: {
+          accepted_at: string
+          customer_name_snapshot: string
+          customer_phone_snapshot: string
+          end_at_snapshot: string
+          event_id: string
+          event_number_snapshot: string
+          event_title_snapshot: string
+          guest_count_snapshot: number
+          id: string
+          issued_at: string
+          location_snapshot: string
+          notes: string
+          organization_id: string
+          quotation_number: string
+          revision: number
+          start_at_snapshot: string
+          status: Database["public"]["Enums"]["quotation_status"]
+          terms: string
+          total_selling: number
+          venue_snapshot: string
+        }[]
+      }
+      _view_staff_advances_summaries: {
+        Args: never
+        Returns: {
+          advance_date: string
+          advance_id: string
+          amount: number
+          created_at: string
+          organization_id: string
+          reason: string
+          recorded_by: string
+          staff_member_id: string
+          staff_name: string
+          staff_type: Database["public"]["Enums"]["staff_type"]
+          status: Database["public"]["Enums"]["host_payment_status"]
+          void_reason: string
+          voided_at: string
+          voided_by: string
+        }[]
+      }
+      _view_staff_attendance_summaries: {
+        Args: never
+        Returns: {
+          assignment_id: string
+          attendance_date: string
+          attendance_id: string
+          attendance_status: Database["public"]["Enums"]["attendance_status"]
+          break_minutes: number
+          check_in: string
+          check_out: string
+          created_at: string
+          earned_amount: number
+          event_id: string
+          event_number: string
+          event_title: string
+          hours_worked: number
+          notes: string
+          organization_id: string
+          record_status: Database["public"]["Enums"]["attendance_status"]
+          recorded_by: string
+          shift: Database["public"]["Enums"]["staff_shift"]
+          staff_member_id: string
+          staff_name: string
+          staff_type: Database["public"]["Enums"]["staff_type"]
+          void_reason: string
+          voided_at: string
+          voided_by: string
+          wage_method: Database["public"]["Enums"]["compensation_method"]
+          wage_rate: number
+        }[]
+      }
+      _view_staff_members_operational: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string
+          organization_id: string
+          phone: string
+          staff_type: Database["public"]["Enums"]["staff_type"]
+          updated_at: string
+          whatsapp: string
+        }[]
+      }
+      _view_supplier_details: {
+        Args: never
+        Returns: {
+          category: Database["public"]["Enums"]["supplier_category"]
+          commercial_registration_number: string
+          contact_name: string
+          created_at: string
+          email: string
+          name: string
+          notes: string
+          organization_id: string
+          phone: string
+          status: Database["public"]["Enums"]["supplier_status"]
+          supplier_id: string
+          updated_at: string
+          whatsapp: string
+        }[]
+      }
+      _view_supplier_summaries: {
+        Args: never
+        Returns: {
+          category: Database["public"]["Enums"]["supplier_category"]
+          contact_name: string
+          created_at: string
+          name: string
+          organization_id: string
+          phone: string
+          status: Database["public"]["Enums"]["supplier_status"]
+          supplier_id: string
+          updated_at: string
+          whatsapp: string
+        }[]
+      }
       accept_event_quotation: {
         Args: {
           p_idempotency_key: string
@@ -4718,6 +3806,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      begin_command: {
+        Args: {
+          p_command_scope: string
+          p_fingerprint: string
+          p_idempotency_key: string
+          p_org_id: string
+        }
+        Returns: Json
       }
       begin_payment_command: {
         Args: {
@@ -5262,6 +4359,19 @@ export type Database = {
       event_warehouse_summary: {
         Args: { p_event_id: string; p_org_id: string }
         Returns: Json
+      }
+      finish_command: {
+        Args: {
+          p_command_name: string
+          p_command_scope: string
+          p_fingerprint: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_response: Json
+          p_result_entity: string
+          p_result_id: string
+        }
+        Returns: undefined
       }
       finish_payment_command: {
         Args: {
