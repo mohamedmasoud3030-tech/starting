@@ -140,3 +140,19 @@ export type EventProcurementCostSummaryRow =
   ViewRow<"event_procurement_cost_summaries">;
 export type CustomerPaymentSummaryRow = ViewRow<"customer_payment_summaries">;
 export type EventFinanceSummaryRow = ViewRow<"event_finance_summaries">;
+
+// S9 staff attendance / payroll read models (migrations 0038-0048). The
+// generated types now cover this slice completely, so the staff data layer
+// reads through these aliases instead of an untyped client boundary.
+export type StaffAttendanceSummaryRow = ViewRow<"staff_attendance_summaries">;
+export type StaffAdvanceSummaryRow = ViewRow<"staff_advances_summaries">;
+export type HostPayoutSummaryRow = ViewRow<"host_payout_summaries">;
+export type HostEventPayrollSummaryRow =
+  ViewRow<"host_event_payroll_summaries">;
+export type StaffMemberDbRow = TableRow<"staff_members">;
+
+/** Lifecycle of a voidable S9 ledger row (advances / payouts). */
+export type HostPaymentStatus = DbEnum<"host_payment_status">;
+/** Attendance status enum INCLUDING the VOIDED lifecycle value. */
+export type AttendanceStatusDb = DbEnum<"attendance_status">;
+export type StaffShift = DbEnum<"staff_shift">;
