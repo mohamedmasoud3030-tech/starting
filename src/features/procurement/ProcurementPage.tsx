@@ -20,9 +20,9 @@ export function ProcurementPage() {
 
   if (!orgId || !dataSource) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
-        <p className="text-lg font-bold text-slate-600">
-          اختر منظمة لعرض المشتريات والموردين.
+      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+        <p className="text-base font-bold text-slate-600">
+          اختر المنشأة لعرض المشتريات والموردين.
         </p>
       </div>
     );
