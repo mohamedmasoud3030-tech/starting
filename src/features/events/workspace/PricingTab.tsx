@@ -2,8 +2,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Select } from "@/components/ui/Select";
+import { formatOMR, fromDbAmount } from "@/lib/money";
 import type { EventRow, CommercialLine, Quote } from "../events.api";
 import { CommercialLineForm } from "./CommercialLineForm";
+import { pricingTotals } from "./pricingTotals";
 
 type PricingDeps = {
   packages: ReadonlyArray<{ package: { id: string; name: string } }>;
@@ -28,28 +30,25 @@ export function PricingTab({
   deps: PricingDeps;
 }) {
   const { packages, run } = deps;
-  const totalSell = lines.reduce((n, l) => n + Number(l.total_selling), 0);
-  const totalCost = lines.reduce(
-    (n, l) => n + Number(l.total_expected_cost ?? 0),
-    0,
-  );
+  // Exact integer milli-OMR sums — never float reduce + toFixed (AGENTS.md).
+  const totals = pricingTotals(lines);
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
         <Card>
           <p className="text-sm text-slate-500">الإيراد المتوقع</p>
-          <p className="text-xl font-black">{totalSell.toFixed(3)} ر.ع.</p>
+          <p className="text-xl font-black">{formatOMR(totals.sellMilli)}</p>
         </Card>
         {canCost && (
           <>
             <Card>
               <p className="text-sm text-slate-500">التكلفة المتوقعة</p>
-              <p className="text-xl font-black">{totalCost.toFixed(3)} ر.ع.</p>
+              <p className="text-xl font-black">{formatOMR(totals.costMilli)}</p>
             </Card>
             <Card>
               <p className="text-sm text-slate-500">الربح المتوقع</p>
-              <p className="text-xl font-black">{(totalSell - totalCost).toFixed(3)} ر.ع.</p>
+              <p className="text-xl font-black">{formatOMR(totals.profitMilli)}</p>
             </Card>
           </>
         )}
@@ -95,10 +94,10 @@ export function PricingTab({
                 </p>
               </div>
               <div className="text-left">
-                <p className="font-black">{Number(l.total_selling).toFixed(3)} ر.ع.</p>
+                <p className="font-black">{formatOMR(fromDbAmount(l.total_selling))}</p>
                 {canCost && (
                   <p className="text-sm text-slate-500">
-                    تكلفة {Number(l.total_expected_cost).toFixed(3)}
+                    تكلفة {formatOMR(fromDbAmount(l.total_expected_cost))}
                   </p>
                 )}
                 {canCommercial && event.accepted_quotation_id === null && (
@@ -157,7 +156,7 @@ export function PricingTab({
                 <p className="font-bold">
                   {q.quotation_number} · مراجعة {q.revision}
                 </p>
-                <p>{Number(q.total_selling).toFixed(3)} ر.ع.</p>
+                <p>{formatOMR(fromDbAmount(q.total_selling))}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge>{q.status}</Badge>
