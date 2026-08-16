@@ -34,9 +34,18 @@ export function ErrorState({
 }
 
 /** Inline (non-bordered, compact) error notice for inside cards/forms. */
-export function InlineError({ message }: { message: string }) {
+export function InlineError({
+  message,
+  className,
+}: {
+  message: string;
+  className?: string;
+}) {
   return (
-    <p role="alert" className="rounded-xl bg-red-50 p-3 font-bold text-red-700">
+    <p
+      role="alert"
+      className={`rounded-xl bg-red-50 p-3 font-bold text-red-700 ${className ?? ""}`}
+    >
       {message}
     </p>
   );
