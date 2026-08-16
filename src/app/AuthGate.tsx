@@ -13,13 +13,13 @@ function LoadingScreen() {
 }
 
 export function AuthGate() {
-  const { user, loading } = useAuth();
+  const { currentOrganization, loading } = useAuth();
 
   if (loading) {
     return <LoadingScreen />;
   }
 
-  if (!user) {
+  if (!currentOrganization) {
     return <Navigate to="/login" />;
   }
 
