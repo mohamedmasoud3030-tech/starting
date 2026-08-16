@@ -236,6 +236,11 @@ PostgreSQL **does not support schema rollback**. Instead:
 
 - [ ] All `VITE_*` env vars are set on the hosting platform (never in code or
       committed `.env`).
+- [ ] `VITE_PUBLIC_DEMO_MODE` is **unset** (or `false`) on every production
+      deployment. It is a temporary per-deployment opt-in that grants
+      anonymous OWNER-equivalent capability (RLS-scoped to the named demo
+      organization) and bypasses login; it must only be set on the dedicated
+      demo deployment and removed when the demo ends.
 - [ ] `service_role` key is NOT stored in any `VITE_*` variable or web-accessible
       location.
 - [ ] The Supabase project has **Row Level Security** enabled (verify in
