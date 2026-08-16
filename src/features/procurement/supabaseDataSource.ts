@@ -3,7 +3,6 @@ import type { AppRole } from "@/lib/dbTypes";
 import { canManageCommercialFor, canReadCostFor } from "@/app/authRoles";
 import { fromDbAmount, parseQuantityMilli, toOMRString } from "@/lib/money";
 import type {
-  Capability,
   CreateProcurementOrderInput,
   EventProcurementSummary,
   OrderCapabilities,
@@ -11,7 +10,6 @@ import type {
   ProcurementAccess,
   ProcurementConsumableOption,
   ProcurementDataSource,
-  ProcurementLineKind,
   ProcurementOrderDetail,
   ProcurementOrderLine,
   ProcurementOrderListItem,
@@ -26,20 +24,13 @@ import type {
   SupplierStatus,
 } from "./contracts";
 import { ProcurementDomainError } from "./errors";
-import * as api from "@/lib/procurement.api";
-
-function toProcurementLineKind(
-  kind: string | null | undefined,
-): ProcurementLineKind {
-  if (
-    kind === "CONSUMABLE" ||
-    kind === "CATERING_SERVICE" ||
-    kind === "OTHER"
-  ) {
-    return kind;
-  }
-  return "OTHER";
-}
+import * as api from "./procurement.api";
+import {
+  countOutstandingDeliveries,
+  groupReceiptLines,
+  mapOrderLine,
+  mapReceipts,
+} from "./orderMapping";
 
 function deriveOrderCapabilities(
   status: ProcurementOrderStatus,
@@ -520,75 +511,17 @@ export function createSupabaseProcurementDataSource(
           .eq("organization_id", organizationId)
           .eq("order_id", orderId);
 
-        const receiptLinesByReceipt = new Map<
-          string,
-          Array<{ order_line_id: string | null; quantity: number | null }>
-        >();
-        for (const rl of receiptLines ?? []) {
-          if (!rl.receipt_id) continue;
-          const list = receiptLinesByReceipt.get(rl.receipt_id) ?? [];
-          list.push({
-            order_line_id: rl.order_line_id,
-            quantity: rl.quantity,
-          });
-          receiptLinesByReceipt.set(rl.receipt_id, list);
-        }
+        const receipts = mapReceipts(
+          detail.receipts,
+          groupReceiptLines(receiptLines ?? []),
+        );
 
-        const receipts: ProcurementReceipt[] = detail.receipts.map((r) => ({
-          id: r.receipt_id!,
-          receiptNumber: r.reference ?? null,
-          receivedAt: r.received_at ?? r.created_at ?? "",
-          lines: (receiptLinesByReceipt.get(r.receipt_id!) ?? []).map((rl) => ({
-            orderLineId: rl.order_line_id!,
-            quantityMilli: parseQuantityMilli(rl.quantity ?? 0),
-          })),
-        }));
-
-        const lines: ProcurementOrderLine[] = detail.lines.map((l) => {
-          const orderedMilli = parseQuantityMilli(l.ordered_quantity ?? 0);
-          const receivedMilli = parseQuantityMilli(l.received_quantity ?? 0);
-          const remainingMilli = parseQuantityMilli(l.remaining_quantity ?? 0);
-
-          let receiveAllowed = false;
-          let receiveReason: Capability["reason"] = undefined;
-
-          if (remainingMilli <= 0) {
-            receiveAllowed = false;
-          } else if (status !== "CONFIRMED" && status !== "PARTIALLY_RECEIVED") {
-            receiveAllowed = false;
-            receiveReason = "ITEM_NOT_RECEIVABLE";
-          } else if (role === "ACCOUNTANT") {
-            receiveAllowed = false;
-            receiveReason = "PERMISSION_DENIED";
-          } else if (role === "WAREHOUSE" && l.line_kind !== "CONSUMABLE") {
-            receiveAllowed = false;
-            receiveReason = "PERMISSION_DENIED";
-          } else {
-            receiveAllowed = true;
-          }
-
-          return {
-            id: l.order_line_id!,
-            description: l.description ?? "",
-            kind: toProcurementLineKind(l.line_kind),
-            catalogItemId: l.catalog_item_id,
-            unit: l.unit ?? "",
-            orderedQuantityMilli: orderedMilli,
-            receivedQuantityMilli: receivedMilli,
-            remainingQuantityMilli: remainingMilli,
+        const orderLines: ProcurementOrderLine[] = detail.lines.map((l) =>
+          mapOrderLine(l, status, role, {
             unitCostMilli: fromDbAmount(l.agreed_unit_cost),
             lineTotalMilli: fromDbAmount(l.agreed_total_cost),
-            receive: {
-              allowed: receiveAllowed,
-              reason: receiveReason,
-            },
-          };
-        });
-
-        const isTerminal = status === "RECEIVED" || status === "CANCELLED";
-        const outstandingCount = isTerminal
-          ? 0
-          : lines.filter((l) => l.remainingQuantityMilli > 0).length;
+          }),
+        );
 
         return {
           id: order.order_id!,
@@ -608,10 +541,10 @@ export function createSupabaseProcurementDataSource(
           deliveryDueAt: order.expected_delivery_at ?? null,
           status,
           negotiatedTotalMilli: fromDbAmount(order.agreed_total_cost),
-          outstandingDeliveryCount: outstandingCount,
-          capabilities: deriveOrderCapabilities(status, role, lines),
+          outstandingDeliveryCount: countOutstandingDeliveries(status, orderLines),
+          capabilities: deriveOrderCapabilities(status, role, orderLines),
           notes: order.notes ?? null,
-          lines,
+          lines: orderLines,
           receipts,
         };
       } else {
@@ -650,79 +583,18 @@ export function createSupabaseProcurementDataSource(
         const order = orderRes.data;
         const status = order.status as ProcurementOrderStatus;
 
-        const receiptLinesByReceipt = new Map<
-          string,
-          Array<{ order_line_id: string | null; quantity: number | null }>
-        >();
-        for (const rl of receiptLinesRes.data ?? []) {
-          if (!rl.receipt_id) continue;
-          const list = receiptLinesByReceipt.get(rl.receipt_id) ?? [];
-          list.push({
-            order_line_id: rl.order_line_id,
-            quantity: rl.quantity,
-          });
-          receiptLinesByReceipt.set(rl.receipt_id, list);
-        }
-
-        const receipts: ProcurementReceipt[] = (receiptsRes.data ?? []).map(
-          (r) => ({
-            id: r.receipt_id!,
-            receiptNumber: r.reference ?? null,
-            receivedAt: r.received_at ?? r.created_at ?? "",
-            lines: (receiptLinesByReceipt.get(r.receipt_id!) ?? []).map(
-              (rl) => ({
-                orderLineId: rl.order_line_id!,
-                quantityMilli: parseQuantityMilli(rl.quantity ?? 0),
-              }),
-            ),
-          }),
+        const receipts = mapReceipts(
+          receiptsRes.data ?? [],
+          groupReceiptLines(receiptLinesRes.data ?? []),
         );
 
-        const lines: ProcurementOrderLine[] = (linesRes.data ?? []).map((l) => {
-          const orderedMilli = parseQuantityMilli(l.ordered_quantity ?? 0);
-          const receivedMilli = parseQuantityMilli(l.received_quantity ?? 0);
-          const remainingMilli = parseQuantityMilli(l.remaining_quantity ?? 0);
-
-          let receiveAllowed = false;
-          let receiveReason: Capability["reason"] = undefined;
-
-          if (remainingMilli <= 0) {
-            receiveAllowed = false;
-          } else if (status !== "CONFIRMED" && status !== "PARTIALLY_RECEIVED") {
-            receiveAllowed = false;
-            receiveReason = "ITEM_NOT_RECEIVABLE";
-          } else if (role === "ACCOUNTANT") {
-            receiveAllowed = false;
-            receiveReason = "PERMISSION_DENIED";
-          } else if (role === "WAREHOUSE" && l.line_kind !== "CONSUMABLE") {
-            receiveAllowed = false;
-            receiveReason = "PERMISSION_DENIED";
-          } else {
-            receiveAllowed = true;
-          }
-
-          return {
-            id: l.order_line_id!,
-            description: l.description ?? "",
-            kind: toProcurementLineKind(l.line_kind),
-            catalogItemId: l.catalog_item_id,
-            unit: l.unit ?? "",
-            orderedQuantityMilli: orderedMilli,
-            receivedQuantityMilli: receivedMilli,
-            remainingQuantityMilli: remainingMilli,
-            unitCostMilli: null,
-            lineTotalMilli: null,
-            receive: {
-              allowed: receiveAllowed,
-              reason: receiveReason,
-            },
-          };
-        });
-
-        const isTerminal = status === "RECEIVED" || status === "CANCELLED";
-        const outstandingCount = isTerminal
-          ? 0
-          : lines.filter((l) => l.remainingQuantityMilli > 0).length;
+        const orderLines: ProcurementOrderLine[] = (linesRes.data ?? []).map(
+          (l) =>
+            mapOrderLine(l, status, role, {
+              unitCostMilli: null,
+              lineTotalMilli: null,
+            }),
+        );
 
         return {
           id: order.order_id!,
@@ -742,10 +614,10 @@ export function createSupabaseProcurementDataSource(
           deliveryDueAt: order.expected_delivery_at ?? null,
           status,
           negotiatedTotalMilli: null,
-          outstandingDeliveryCount: outstandingCount,
-          capabilities: deriveOrderCapabilities(status, role, lines),
+          outstandingDeliveryCount: countOutstandingDeliveries(status, orderLines),
+          capabilities: deriveOrderCapabilities(status, role, orderLines),
           notes: null,
-          lines,
+          lines: orderLines,
           receipts,
         };
       }

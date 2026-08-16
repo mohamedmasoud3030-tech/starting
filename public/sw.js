@@ -33,7 +33,13 @@ self.addEventListener("install", (event) => {
       // Pre-cache the shell so the very first offline navigation succeeds.
       const cache = await caches.open(SHELL_CACHE);
       try {
-        await cache.add(new Request(APP_SHELL_URL, { cache: "reload" }));
+        // Fetch + inspect instead of cache.add: a redirected response must
+        // never become the shell (browsers refuse to serve a redirected
+        // cached response to a navigation request).
+        const response = await fetch(new Request(APP_SHELL_URL, { cache: "reload" }));
+        if (response.ok && !response.redirected) {
+          await cache.put(APP_SHELL_URL, response);
+        }
       } catch {
         // A failed pre-cache must not block activation; the runtime handler
         // below will populate the shell on the first successful navigation.
@@ -71,7 +77,10 @@ self.addEventListener("fetch", (event) => {
       (async () => {
         try {
           const response = await fetch(request);
-          if (response && response.ok) {
+          // Never cache a redirected response as the shell: browsers refuse to
+          // serve a redirected cached response to a navigation request, which
+          // would break the offline fallback exactly when it is needed.
+          if (response && response.ok && !response.redirected) {
             const cache = await caches.open(SHELL_CACHE);
             await cache.put(APP_SHELL_URL, response.clone());
           }

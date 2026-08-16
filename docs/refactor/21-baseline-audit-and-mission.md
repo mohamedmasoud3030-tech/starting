@@ -1,4 +1,4 @@
-# Baseline audit + multi-location / dashboard / PWA mission
+# Baseline audit + multi-organization / dashboard / PWA mission
 
 ## 1. Verified baseline
 
@@ -70,15 +70,17 @@ cached rows**. RLS still protects the database — this is a presentation-layer
 isolation defect, but it is exactly the class of bug tenant isolation must not
 have, so it is treated as P0.
 
-### F2 — multi-location is unreachable in the UI
+### F2 — organization (account) switching is unreachable in the UI
 
-The schema is fully multi-tenant (`organization_id` + composite FKs + RLS on
-every table) and a user may hold several `organization_memberships`, but
+Each organization is one independent business (there are no branches or
+locations inside an organization). The schema is fully multi-tenant
+(`organization_id` + composite FKs + RLS on every table) and a user may hold
+memberships in several independent organizations, but
 `selectCurrentMembership()` hard-selects "first membership sorted by
 organization name" and `authContext.ts` documents *"A multi-org switcher is
-deferred"*. A multi-location operator therefore **cannot reach their other
-locations at all**. This is the core multi-location product gap and is a pure
-frontend gap — no schema change required.
+deferred"*. A user who belongs to more than one organization therefore
+**cannot reach their other organizations at all**. This is an account/tenant
+switching gap and is a pure frontend gap — no schema change required.
 
 ### F3 — Dashboard correctness
 

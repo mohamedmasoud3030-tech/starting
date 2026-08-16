@@ -27,3 +27,4 @@ export { EventProcurementPanel } from "./EventProcurementPanel";
 export { ProcurementWorkspace } from "./ProcurementWorkspace";
 export { ProcurementPage } from "./ProcurementPage";
 export { createSupabaseProcurementDataSource } from "./supabaseDataSource";
+export { useProcurementDataSource } from "./useProcurementDataSource";

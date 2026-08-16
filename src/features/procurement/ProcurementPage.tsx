@@ -1,18 +1,14 @@
 import { useMemo } from "react";
 import { useAuth } from "@/app/authContext";
 import { useEvents } from "@/features/events/events.api";
-import { createSupabaseProcurementDataSource } from "./supabaseDataSource";
+import { useProcurementDataSource } from "./useProcurementDataSource";
 import { ProcurementWorkspace } from "./ProcurementWorkspace";
 
 export function ProcurementPage() {
-  const { currentOrganization, currentRole } = useAuth();
+  const { currentOrganization } = useAuth();
   const orgId = currentOrganization?.id ?? null;
   const eventsQuery = useEvents(orgId);
-
-  const dataSource = useMemo(() => {
-    if (!orgId) return null;
-    return createSupabaseProcurementDataSource(orgId, currentRole);
-  }, [orgId, currentRole]);
+  const dataSource = useProcurementDataSource();
 
   const eventOptions = useMemo(() => {
     return (eventsQuery.data ?? []).map((e) => ({

@@ -7,7 +7,7 @@
  * Quantities and OMR values enter line JSON as exact 3-decimal strings; the
  * database rejects excess precision and performs all persisted arithmetic.
  */
-import { supabase } from "./supabase";
+import { supabase } from "@/lib/supabase";
 import type {
   FunctionArgs,
   ProcurementLineKind,
@@ -26,7 +26,7 @@ import type {
   SupplierStatus,
   SupplierSummaryRow,
   EventProcurementCostSummaryRow,
-} from "./dbTypes";
+} from "@/lib/dbTypes";
 
 /** Generated PostgREST args do not encode SQL parameter nullability. */
 function nullableDbArg<T>(value: T | null): T {

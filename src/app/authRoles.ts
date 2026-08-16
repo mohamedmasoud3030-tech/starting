@@ -30,7 +30,8 @@ export interface MembershipLike {
 /**
  * Select the organization the user is currently operating within.
  *
- * A multi-location operator may hold several ACTIVE memberships. When one is
+ * A user may belong to several independent organizations (tenants) and so
+ * hold several ACTIVE memberships. When one is
  * explicitly selected it wins — but ONLY if it corresponds to a real ACTIVE
  * membership in the supplied list, so a stale or tampered preference can never
  * widen access. Otherwise the historical deterministic default applies: the

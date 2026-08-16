@@ -5,16 +5,21 @@ import { cn } from "@/lib/utils";
 import { ROLE_LABELS } from "@/lib/domain";
 
 /**
- * Active location (organization) switcher for multi-location operators.
+ * Active organization (account/tenant) switcher.
  *
- * Renders NOTHING for a single-location user — the overwhelming majority — so
- * the header stays uncluttered; it appears only when the signed-in user really
- * holds more than one ACTIVE membership.
+ * Each organization is one independent business. A user may legitimately
+ * belong to several independent organizations, so switching here is
+ * account/tenant switching — NOT branch or location switching (organizations
+ * have no branches or locations).
  *
- * The role shown next to each location is the role the user holds INSIDE that
- * organization, which is what makes switching meaningful (an OWNER in one
- * branch may be a SUPERVISOR in another). Authorization itself is unchanged
- * and remains enforced by RLS in the database.
+ * Renders NOTHING for a user with a single organization — the overwhelming
+ * majority — so the header stays uncluttered; it appears only when the
+ * signed-in user really holds more than one ACTIVE membership.
+ *
+ * The role shown next to each organization is the role the user holds INSIDE
+ * it, which is what makes switching meaningful (an OWNER in one organization
+ * may be a SUPERVISOR in another). Authorization itself is unchanged and
+ * remains enforced by RLS in the database.
  */
 export function OrganizationSwitcher() {
   const { memberships, currentOrganization, switchOrganization } = useAuth();
@@ -39,7 +44,7 @@ export function OrganizationSwitcher() {
     };
   }, [open]);
 
-  // Single-location operator: no switcher at all.
+  // Single organization: no switcher at all.
   if (memberships.length < 2) return null;
 
   const sorted = [...memberships].sort((a, b) =>
@@ -58,9 +63,9 @@ export function OrganizationSwitcher() {
       >
         <Building2 className="h-5 w-5 flex-none text-slate-400" />
         <span className="hidden max-w-[10rem] truncate sm:inline">
-          {currentOrganization?.display_name ?? currentOrganization?.name ?? "اختر الموقع"}
+          {currentOrganization?.display_name ?? currentOrganization?.name ?? "اختر المنشأة"}
         </span>
-        <span className="sm:hidden">الموقع</span>
+        <span className="sm:hidden">المنشأة</span>
         <ChevronDown className="h-4 w-4 flex-none text-slate-400" />
       </button>
 
@@ -68,11 +73,11 @@ export function OrganizationSwitcher() {
         <div
           id={menuId}
           role="menu"
-          aria-label="اختيار الموقع"
+          aria-label="اختيار المنشأة"
           className="absolute inset-x-auto top-full z-50 mt-2 max-h-[60dvh] w-64 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl ltr:right-0 rtl:left-0"
         >
           <p className="px-2 pb-2 pt-1 text-xs font-bold text-slate-400">
-            المواقع المتاحة
+            المنشآت المتاحة
           </p>
           {sorted.map(({ membership, organization }) => {
             const active = organization.id === currentOrganization?.id;

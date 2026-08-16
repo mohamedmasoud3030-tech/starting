@@ -234,12 +234,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [hydrate]);
 
   /**
-   * Active organization for a multi-location operator.
+   * Active organization (independent tenant) for a user who belongs to more
+   * than one organization.
    *
    * An explicit selection wins; otherwise the deterministic default (first
-   * active membership by organization name) is used, so single-location users
-   * see no change at all. The selection is remembered per browser so an
-   * operator returns to the location they were working in.
+   * active membership by organization name) is used, so single-organization users
+   * see no change at all. The selection is remembered per browser so a
+   * user returns to the organization they were working in.
    */
   const current = useMemo(
     () => selectCurrentMembership(memberships, selectedOrganizationId),

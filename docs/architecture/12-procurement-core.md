@@ -307,7 +307,7 @@ Receipt line JSON:
 { "order_line_id": "uuid", "quantity": "4.125" }
 ```
 
-`src/lib/procurement.api.ts` is the generated-type-backed adapter implementing
+`src/features/procurement/procurement.api.ts` is the generated-type-backed adapter implementing
 these calls without raw table queries.
 
 ### Domain error codes
