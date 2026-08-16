@@ -3,6 +3,8 @@ import {
   EVENT_STATUS_LABELS,
   eventPermissions,
   readinessText,
+  resolveActiveTab,
+  visibleWorkspaceTabs,
   voiceSummaryForTab,
   WORKSPACE_TABS,
   type VoiceSummaries,
@@ -107,5 +109,47 @@ describe("eventWorkspace.model", () => {
     expect(voiceSummaryForTab("الأجور", summaries)).toBe("أجور");
     expect(voiceSummaryForTab("ملخص", summaries)).toBe("ملخص");
     expect(voiceSummaryForTab("المخزن", summaries)).toBe("ملخص");
+  });
+});
+
+describe("visibleWorkspaceTabs — no dead-end tabs", () => {
+  it("gives an OWNER the full workspace", () => {
+    const tabs = visibleWorkspaceTabs(eventPermissions("OWNER"));
+    expect(tabs).toEqual([...WORKSPACE_TABS]);
+  });
+
+  it("hides finance-only tabs from a WAREHOUSE user", () => {
+    const tabs = visibleWorkspaceTabs(eventPermissions("WAREHOUSE"));
+    // These panels can only render a refusal for this role.
+    expect(tabs).not.toContain("المدفوعات");
+    expect(tabs).not.toContain("الفواتير");
+    expect(tabs).not.toContain("الأجور");
+    // The operational work a warehouse user is actually here to do stays.
+    expect(tabs).toEqual(
+      expect.arrayContaining(["ملخص", "المخزن", "المواد", "المعدات", "السجل"]),
+    );
+  });
+
+  it("lets an ACCOUNTANT read money but not run payroll", () => {
+    const tabs = visibleWorkspaceTabs(eventPermissions("ACCOUNTANT"));
+    expect(tabs).toContain("المدفوعات");
+    expect(tabs).toContain("الفواتير");
+    expect(tabs).toContain("الأجور");
+  });
+
+  it("keeps the canonical tab order", () => {
+    const tabs = visibleWorkspaceTabs(eventPermissions("SUPERVISOR"));
+    const canonical = WORKSPACE_TABS.filter((t) => tabs.includes(t));
+    expect(tabs).toEqual(canonical);
+  });
+});
+
+describe("resolveActiveTab", () => {
+  it("keeps a tab the role can use", () => {
+    expect(resolveActiveTab("المخزن", eventPermissions("WAREHOUSE"))).toBe("المخزن");
+  });
+
+  it("falls back to the summary instead of stranding the user on a refusal", () => {
+    expect(resolveActiveTab("الفواتير", eventPermissions("WAREHOUSE"))).toBe("ملخص");
   });
 });

@@ -36,7 +36,7 @@ export function EventWorkspace() {
     <div className="space-y-5">
       <EventWorkspaceHeader event={ev} voiceSummary={ws.voiceSummary} />
       <ReadinessBanner readiness={d.readiness} />
-      <WorkspaceTabs tab={ws.tab} onChange={ws.setTab} />
+      <WorkspaceTabs tab={ws.tab} tabs={ws.visibleTabs} onChange={ws.setTab} />
       {ws.error && <InlineError message={ws.error} />}
 
       {ws.tab === "ملخص" && (

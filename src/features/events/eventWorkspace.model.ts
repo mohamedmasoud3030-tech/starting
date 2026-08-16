@@ -23,6 +23,46 @@ export const WORKSPACE_TABS = [
 
 export type WorkspaceTab = (typeof WORKSPACE_TABS)[number];
 
+/**
+ * Capability required to get anything out of a tab.
+ *
+ * Tabs whose panel can only ever render a "not available for your role"
+ * message are not navigation — they are dead ends. A WAREHOUSE user was shown
+ * all twelve tabs and four of them (المدفوعات، الفواتير، الأجور and the cost
+ * half of التسعير) led only to a refusal.
+ *
+ * This is presentation only. Every panel keeps its own guard and the database
+ * remains authoritative via RLS/RPC checks — hiding a tab is never the
+ * security boundary.
+ */
+const TAB_REQUIREMENT: Partial<Record<WorkspaceTab, keyof EventPermissions>> = {
+  المدفوعات: "canCost",
+  الفواتير: "canCost",
+  الأجور: "canFinance",
+};
+
+/** The tabs a role can actually use, in canonical order. */
+export function visibleWorkspaceTabs(
+  permissions: EventPermissions,
+): WorkspaceTab[] {
+  return WORKSPACE_TABS.filter((tab) => {
+    const requirement = TAB_REQUIREMENT[tab];
+    return requirement === undefined || permissions[requirement];
+  });
+}
+
+/**
+ * Keeps the active tab valid. If the current tab is not available to the role
+ * (for example after an organization switch where the user holds a different
+ * role) the workspace falls back to the always-available summary tab.
+ */
+export function resolveActiveTab(
+  tab: WorkspaceTab,
+  permissions: EventPermissions,
+): WorkspaceTab {
+  return visibleWorkspaceTabs(permissions).includes(tab) ? tab : "ملخص";
+}
+
 export const EVENT_STATUS_LABELS: Record<string, string> = {
   DRAFT: "مسودة",
   QUOTED: "تم التسعير",

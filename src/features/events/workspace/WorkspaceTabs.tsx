@@ -1,15 +1,18 @@
-import { WORKSPACE_TABS, type WorkspaceTab } from "../eventWorkspace.model";
+import { type WorkspaceTab } from "../eventWorkspace.model";
 
 export function WorkspaceTabs({
   tab,
+  tabs,
   onChange,
 }: {
   tab: WorkspaceTab;
+  /** Only the tabs the current role can actually use. */
+  tabs: ReadonlyArray<WorkspaceTab>;
   onChange: (tab: WorkspaceTab) => void;
 }) {
   return (
     <div className="flex gap-2 overflow-x-auto border-b" role="tablist">
-      {WORKSPACE_TABS.map((name) => (
+      {tabs.map((name) => (
         <button
           key={name}
           role="tab"
