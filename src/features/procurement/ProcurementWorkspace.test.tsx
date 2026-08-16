@@ -5,7 +5,7 @@ import { ProcurementWorkspace } from "./ProcurementWorkspace";
 import { createTestSource } from "./__tests__/testDoubles";
 
 describe("ProcurementWorkspace page", () => {
-  it("loads server-derived access and exposes accessible Arabic tabs", async () => {
+  it("loads server-derived access and exposes accessible compact Arabic tabs", async () => {
     const controls = createTestSource();
     const user = userEvent.setup();
     render(<ProcurementWorkspace dataSource={controls.source} />);
@@ -15,7 +15,8 @@ describe("ProcurementWorkspace page", () => {
     const ordersTab = screen.getByRole("tab", { name: "الطلبات" });
     const suppliersTab = screen.getByRole("tab", { name: "الموردون" });
     expect(ordersTab).toHaveAttribute("aria-selected", "true");
-    expect(ordersTab).toHaveClass("min-h-14");
+    expect(ordersTab).toHaveClass("min-h-11");
+    expect(ordersTab).not.toHaveClass("min-h-14");
 
     ordersTab.focus();
     await user.keyboard("{ArrowLeft}");
