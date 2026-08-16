@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { MoneyInput } from "@/components/MoneyInput";
 import { formatOMR, parseOptionalOMR, type MilliOMR } from "@/lib/money";
+import { todayInMuscat } from "@/lib/dates";
 import type { CompensationMethod } from "@/lib/dbTypes";
 import {
   attendanceError,
@@ -78,7 +79,7 @@ export function AttendancePanel({
   // Form state
   const [staffMemberId, setStaffMemberId] = useState("");
   const [shift, setShift] = useState<StaffShift>("MORNING");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayInMuscat());
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [breakMinutes, setBreakMinutes] = useState(0);

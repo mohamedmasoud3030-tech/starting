@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { formatOMR } from "@/lib/money";
+import { todayInMuscat } from "@/lib/dates";
 import { InlineError } from "@/components/ui/ErrorState";
 import type {
   ProcurementAccess,
@@ -40,15 +41,6 @@ function newLine(): OrderLineDraft {
     quantityText: "1",
     unitCostText: "",
   };
-}
-
-function todayInMuscat(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Muscat",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
 }
 
 function newIdempotencyKey(): string {

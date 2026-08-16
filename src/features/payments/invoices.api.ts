@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase as db } from "@/lib/supabase";
 import { fromDbAmount, toDbNumeric, type MilliOMR } from "@/lib/money";
+import { todayInMuscat } from "@/lib/dates";
 import { callRpc } from "@/lib/rpc";
 import { paymentError } from "./payments.api";
 
@@ -189,7 +190,7 @@ export function buildInstallmentSchedule(
     {
       seq: 0,
       kind: "DEPOSIT",
-      dueDate: new Date().toISOString().slice(0, 10),
+      dueDate: todayInMuscat(),
       amountMilli: depositMilli,
     },
   ];

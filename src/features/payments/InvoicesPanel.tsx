@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { MoneyInput } from "@/components/MoneyInput";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { formatOMR, type MilliOMR } from "@/lib/money";
+import { todayInMuscat } from "@/lib/dates";
 import {
   buildInstallmentSchedule,
   invoiceError,
@@ -56,7 +57,7 @@ export function InvoicesPanel({
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-${eventNumber}`);
   const [depositMilli, setDepositMilli] = useState<MilliOMR>(0);
   const [count, setCount] = useState(2);
-  const [firstDue, setFirstDue] = useState(() => new Date().toISOString().slice(0, 10));
+  const [firstDue, setFirstDue] = useState(() => todayInMuscat());
   const [intervalDays, setIntervalDays] = useState(30);
 
   const financeLoaded = acceptedRevenueMilli !== null;

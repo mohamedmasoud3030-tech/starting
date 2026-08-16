@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Select } from "@/components/ui/Select";
 import { MoneyInput } from "@/components/MoneyInput";
 import { formatOMR, type MilliOMR } from "@/lib/money";
+import { todayInMuscat } from "@/lib/dates";
 import type { PaymentMethod } from "@/lib/dbTypes";
 import { COST_READER_ROLES, PAYMENT_WRITE_ROLES } from "@/lib/domain";
 import {
@@ -37,7 +38,7 @@ function HostDetail({ orgId, staff }: { orgId: string | null; staff: StaffMember
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"ADVANCE" | "PAYOUT">("PAYOUT");
   const [amountMilli, setAmountMilli] = useState<MilliOMR>(0);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayInMuscat());
   const [method, setMethod] = useState<PaymentMethod>("CASH");
   const [reference, setReference] = useState("");
   const [reason, setReason] = useState("");
