@@ -101,3 +101,66 @@ frontend-side mitigation are in the security commit
 - The schema contains no live duplicate objects and no safely-removable
   dead objects; the only legacy path (quick quote) was already dropped
   forward-only in 0051.
+
+---
+
+# Addendum — multi-location readiness audit (2026-08-16, follow-up mission)
+
+Question: does exposing a location (organization) switcher in the frontend
+require any schema change, and is tenant isolation still sound when one user
+holds memberships in several organizations?
+
+## A1. The schema is already fully multi-location — no migration required
+
+Every business table carries `organization_id`. A sweep of all `create table
+public.*` statements found exactly one table without it — `organizations`
+itself, which is the tenant root:
+
+```
+NO ORG SCOPE: organizations
+```
+
+Isolation is enforced per organization, not per session, by
+`public.is_org_member(p_org_id)` / `public.has_org_role(p_org_id, roles)`
+(migration 0003). Both resolve `auth.uid()` against an **ACTIVE membership in
+an ACTIVE organization** for *that specific* organization id, and they are
+`security definer` with `set search_path = ''`.
+
+Consequences for multi-location:
+
+1. A user with memberships in A and B is authorized **independently** in each.
+   Holding OWNER in B grants nothing in A.
+2. The role is per membership, so the same person can be OWNER in one branch
+   and SUPERVISOR in another; the frontend now reflects this by deriving
+   capabilities from the membership inside the *active* organization.
+3. Composite foreign keys (`(organization_id, id)`) make cross-organization
+   references impossible at the constraint level, independent of RLS.
+
+**No new migration was added for multi-location, and none is needed.** The gap
+was purely a frontend one: the UI hard-selected a single membership.
+
+## A2. Frontend-side isolation defect found and fixed (P0, no schema change)
+
+The database was never at risk, but the client cache was: query keys for
+`event`, `event-workspace`, `event-warehouse` and `event-consumables` were
+keyed by event id only, and nothing cleared the TanStack Query cache when the
+identity changed. Two identities in one browser tab could therefore share
+cache entries. Fixed in the frontend only (org-scoped keys + cache reset on
+identity change); see `src/app/tenantCache.ts`. **No RLS, RPC, grant or
+migration was modified.**
+
+## A3. Demo-mode re-verification under multi-location
+
+`app_private.is_public_demo_request(p_org_id)` checks the org id **and** the
+org name, so anonymous demo capability cannot follow a location switch into a
+real tenant: a demo visitor has no memberships at all, and the switcher only
+ever offers organizations backed by a real ACTIVE membership. The switcher
+therefore does not widen the demo surface.
+
+## A4. Conclusion (unchanged from the main audit)
+
+- No historical migration edited, squashed, reordered or deleted.
+- No live database object dropped.
+- **No new migration added by this mission.**
+- The only isolation defect found was in the browser cache and was fixed
+  entirely in the frontend.
