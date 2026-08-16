@@ -3,7 +3,7 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "alias": [
-    "starting-livid.vercel.app"
+    "jiwdah.vercel.app"
   ],
   "rewrites": [
     {
