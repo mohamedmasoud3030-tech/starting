@@ -172,7 +172,12 @@ describe("useProcurementDataSource — cross-feature cache sync", () => {
     expect(keys).toContainEqual(["event-finance", "org-1", "event-9"]);
   });
 
-  it("falls back to a stock refresh when the order cannot be re-read after a receipt", async () => {
+  it("refreshes stock AND org-wide event finance when the order cannot be re-read after a receipt", async () => {
+    // The receipt is committed server-side BEFORE the follow-up getOrder
+    // lookup, and it may have changed event_finance_summaries.delivered_cost
+    // for an event we can no longer identify. The fallback must therefore
+    // refresh stock and prefix-invalidate ["event-finance", orgId] — never
+    // leave a stale delivered cost presented as fact.
     innerSource.recordReceipt.mockResolvedValue({
       id: "receipt-3",
       receivedAt: "2026-08-16T09:00:00Z",
@@ -192,8 +197,40 @@ describe("useProcurementDataSource — cross-feature cache sync", () => {
 
     // The receipt itself must not fail…
     expect(receipt.id).toBe("receipt-3");
-    // …and stock must still be refreshed rather than risk a stale quantity.
-    expect(invalidatedKeys()).toContainEqual(["consumable-stock", "org-1"]);
+    const keys = invalidatedKeys();
+    // …stock must still be refreshed rather than risk a stale quantity…
+    expect(keys).toContainEqual(["consumable-stock", "org-1"]);
+    // …and event finance must be refreshed org-wide (prefix key, no event id).
+    expect(keys).toContainEqual(["event-finance", "org-1"]);
+  });
+
+  it("prefix-invalidates every cached event-finance entry of the tenant in the fallback", async () => {
+    // Prove the prefix semantics end-to-end: a concrete per-event
+    // ["event-finance", org, event] cache entry must be marked invalidated
+    // by the org-wide ["event-finance", org] fallback invalidation.
+    queryClient.setQueryData(["event-finance", "org-1", "event-9"], {
+      eventId: "event-9",
+      deliveredCostMilli: 0,
+    });
+    innerSource.recordReceipt.mockResolvedValue({
+      id: "receipt-4",
+      receivedAt: "2026-08-16T09:00:00Z",
+      lines: [{ orderLineId: "line-1", quantityMilli: 1000 }],
+    });
+    innerSource.getOrder.mockRejectedValue(new Error("network"));
+
+    const { result } = renderHook(() => useProcurementDataSource(), { wrapper });
+    await result.current!.recordReceipt({
+      orderId: "order-1",
+      receivedAt: "2026-08-16T09:00:00Z",
+      reference: null,
+      notes: null,
+      lines: [{ orderLineId: "line-1", quantityMilli: 1000 }],
+      idempotencyKey: "key-4",
+    });
+
+    const state = queryClient.getQueryState(["event-finance", "org-1", "event-9"]);
+    expect(state?.isInvalidated).toBe(true);
   });
 
   it.each(["approveOrder", "sendOrder", "confirmOrder"] as const)(

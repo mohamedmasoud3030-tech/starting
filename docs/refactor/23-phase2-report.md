@@ -38,7 +38,7 @@
 | 2 | Payment record/void never refreshed invoice read models, although `paid_total`/`remaining_balance`/installment `effective_status` are DERIVED from the payments ledger (migration 0043) | `invalidatePaymentReadModels` refreshes payments+finance+invoice+installments | `payments.invalidation.test.tsx` |
 | 3 | Attendance record/void never refreshed `["attendance-gaps", org]` → dashboard kept alerting on a fixed gap | both mutations invalidate it | `staff.invalidation.test.tsx` |
 | 4 | `convert_quotation_to_event` can CREATE a customer (migration 0051) but the customers list was never refreshed | `useConvertQuotation` invalidates `["customers", org]` | `events.invalidation.test.tsx` |
-| 5 | Procurement commands change consumable stock (receipt of CONSUMABLE lines → stock IN movement, migration 0030) and event finance (committed/delivered cost, migration 0037), but the feature's self-managed reload never told the TanStack cache | `useProcurementDataSource` decorator with cross-feature cache sync; fallback broad stock refresh if the order can't be re-read (receipt never fails) | `useProcurementDataSource.test.tsx` (9 tests) |
+| 5 | Procurement commands change consumable stock (receipt of CONSUMABLE lines → stock IN movement, migration 0030) and event finance (committed/delivered cost, migration 0037), but the feature's self-managed reload never told the TanStack cache | `useProcurementDataSource` decorator with cross-feature cache sync. Fallback when the post-receipt order lookup fails (the receipt is already committed server-side): refresh stock AND org-wide prefix-invalidate `["event-finance", orgId]`, since the receipt may have moved `delivered_cost` for an event we could not identify — the receipt itself never fails | `useProcurementDataSource.test.tsx` (10 tests, incl. a prefix-semantics proof against a concrete per-event cache entry) |
 
 ## Query-key audit result
 
@@ -77,7 +77,7 @@ no database migration (no server-side correctness problem was found).
 | --- | --- |
 | `npm run typecheck` | pass |
 | `npm run lint` | 0 warnings / 0 errors (211 files) |
-| `npm test` | **51 files / 446 tests** (was 45/408 at PR #23 head; +38, none weakened) |
+| `npm test` | **51 files / 447 tests** (was 45/408 at PR #23 head; +39, none weakened) |
 | `npm run build` | pass |
 | `node scripts/production_smoke.mjs` | pass |
 | Database CI (pgTAP/concurrency/restore/types) | CI-only (no Docker in this workspace); **no migration or SQL change in Phase 2**, so the DB job runs against identical inputs that passed on PR #23 |

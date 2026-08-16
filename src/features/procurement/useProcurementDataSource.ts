@@ -47,15 +47,17 @@ export function useProcurementDataSource(): ProcurementDataSource | null {
       recordReceipt: async (input) => {
         const receipt = await inner.recordReceipt(input);
         // The receipt result does not carry the order shape, so resolve the
-        // order to learn its event linkage and line kinds. A failure here
-        // must not fail the receipt — fall back to broad-but-safe stock
-        // invalidation.
+        // order to learn its event linkage and line kinds. The receipt is
+        // already committed server-side, so a failure here must not fail
+        // the receipt — instead fall back to refreshing EVERYTHING a
+        // receipt can change: stock, plus org-wide event-finance (the
+        // receipt may have moved delivered_cost for an event we could not
+        // identify).
         try {
           const order = await inner.getOrder(input.orderId);
           sync.receiptRecorded(order);
         } catch {
-          sync.receiptRecorded({ event: null, lines: [] });
-          sync.stockPossiblyChanged();
+          sync.receiptResolutionFailed();
         }
         return receipt;
       },

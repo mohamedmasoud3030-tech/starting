@@ -57,13 +57,27 @@ export function useProcurementCacheSync() {
     },
 
     /**
-     * Fallback when the order shape could not be resolved after a receipt:
-     * refresh stock unconditionally rather than risk serving a stale
-     * quantity as fact.
+     * Fallback when the order shape could not be resolved after a receipt.
+     *
+     * The receipt is already COMMITTED server-side at this point, so every
+     * read model a receipt can change must be refreshed even though the
+     * event linkage is unknown:
+     *
+     *  - consumable stock (a CONSUMABLE line may have produced an IN
+     *    movement, migration 0030);
+     *  - event finance — org-wide PREFIX invalidation of
+     *    `["event-finance", orgId]`, because the receipt may have changed
+     *    `event_finance_summaries.delivered_cost` (migration 0037) for an
+     *    event we could not identify. Broad by necessity, tenant-scoped by
+     *    construction; better one extra refetch than a stale delivered
+     *    cost presented as fact.
      */
-    stockPossiblyChanged() {
+    receiptResolutionFailed() {
       void queryClient.invalidateQueries({
         queryKey: ["consumable-stock", orgId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["event-finance", orgId],
       });
     },
   };
