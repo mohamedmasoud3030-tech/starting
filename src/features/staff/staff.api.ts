@@ -1,30 +1,51 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase as typedSupabase } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import {
   fromDbAmount,
   toDbNumeric,
   type MilliOMR,
 } from "@/lib/money";
-import type { CompensationMethod, PaymentMethod, StaffType } from "@/lib/dbTypes";
+import type {
+  AttendanceStatusDb,
+  CompensationMethod,
+  HostEventPayrollSummaryRow,
+  HostPaymentStatus,
+  HostPayoutSummaryRow,
+  PaymentMethod,
+  StaffAdvanceSummaryRow,
+  StaffAttendanceSummaryRow,
+  StaffShift as StaffShiftDb,
+  StaffType,
+} from "@/lib/dbTypes";
 import { callRpc } from "@/lib/rpc";
 
 /**
  * S9 staff attendance & host payroll data layer.
  *
- * The staff_attendance slice (migrations 0038-0040) is not yet reflected in the
- * committed generated types, so access goes through an untyped client boundary
- * (the same forward-compat pattern used elsewhere when generated types lag the
- * migrations). Every row returned from the stable read models is normalized via
- * the hand-written mappers below into exact milli-OMR money — no binary
- * floating point becomes financial truth. Writes are server-authoritative
- * SECURITY DEFINER commands with idempotency keys.
+ * READS are fully typed against the generated database types (the S9 slice —
+ * migrations 0038-0048 — is covered by the committed `database.types.ts`, so
+ * the former untyped client boundary is gone). Every row from the stable read
+ * models is normalized via the exported mappers below into exact milli-OMR
+ * money — no binary floating point becomes financial truth.
+ *
+ * WRITES are server-authoritative SECURITY DEFINER commands with idempotency
+ * keys, dispatched through the canonical `callRpc` helper (the generated
+ * `Args` for these commands declare optional text/timestamp parameters as
+ * non-nullable `string` because they carry no SQL DEFAULT; the commands
+ * themselves accept NULL, so the dynamic helper is the honest boundary).
  */
-const db = typedSupabase as unknown as SupabaseClient;
+const db = supabase;
 
-export type StaffShift = "MORNING" | "EVENING";
-export type AttendanceStatus = "PRESENT" | "LATE" | "PARTIAL" | "ABSENT";
-export type HostPaymentStatus = "RECORDED" | "VOIDED";
+export type StaffShift = StaffShiftDb;
+/**
+ * Attendance status as read from the read model. Includes `VOIDED`: voiding
+ * rewrites `staff_attendance.status` itself (migration 0039), so a voided
+ * row's original live status is no longer available.
+ */
+export type AttendanceStatus = AttendanceStatusDb;
+/** Live statuses an operator can record (the command rejects `VOIDED`). */
+export type AttendanceLiveStatus = Exclude<AttendanceStatusDb, "VOIDED">;
+export type { HostPaymentStatus };
 
 export interface AttendanceSummary {
   id: string;
@@ -97,17 +118,6 @@ export interface PayrollRow {
   lateMilli: MilliOMR;
 }
 
-export interface HostPayrollTotals {
-  staffMemberId: string;
-  eventId: string | null;
-  earnedMilli: MilliOMR;
-  advancesMilli: MilliOMR;
-  payoutsMilli: MilliOMR;
-  dueMilli: MilliOMR;
-  paidMilli: MilliOMR;
-  lateMilli: MilliOMR;
-  attendanceCount: number;
-}
 
 export interface StaffMemberRow {
   id: string;
@@ -118,82 +128,93 @@ export interface StaffMemberRow {
   defaultRateMilli: MilliOMR;
 }
 
-function mapAttendance(row: Record<string, unknown>): AttendanceSummary {
+/**
+ * REGRESSION NOTE (Phase 3 P0): `staff_attendance_summaries.record_status`
+ * is `staff_attendance.status` itself — the `attendance_status` enum, whose
+ * live values are PRESENT/LATE/PARTIAL/ABSENT and whose voided value is
+ * VOIDED. It is NEVER the string 'RECORDED'. The previous mapper cast it to
+ * `HostPaymentStatus` untranslated, so every live row carried
+ * `recordStatus: "PRESENT" | …` and each `recordStatus === "RECORDED"`
+ * consumer silently failed: earned totals summed to 0.000 OMR and the void
+ * button never rendered. The lifecycle must be DERIVED here.
+ */
+export function mapAttendance(row: StaffAttendanceSummaryRow): AttendanceSummary {
+  const status: AttendanceStatus = row.attendance_status ?? "PRESENT";
   return {
-    id: String(row.attendance_id),
-    eventId: String(row.event_id),
-    eventNumber: (row.event_number as string) ?? "",
-    eventTitle: (row.event_title as string) ?? "",
-    staffMemberId: String(row.staff_member_id),
-    staffName: (row.staff_name as string) ?? "",
-    staffType: (row.staff_type as StaffType) ?? "OTHER",
-    assignmentId: row.assignment_id ? String(row.assignment_id) : null,
-    attendanceDate: String(row.attendance_date),
-    shift: (row.shift as StaffShift) ?? "MORNING",
-    checkIn: (row.check_in as string) ?? null,
-    checkOut: (row.check_out as string) ?? null,
-    breakMinutes: Number(row.break_minutes ?? 0),
-    hoursWorked: Number(row.hours_worked ?? 0),
-    status: (row.attendance_status as AttendanceStatus) ?? "PRESENT",
-    wageMethod: (row.wage_method as CompensationMethod) ?? "PER_EVENT",
-    wageRateMilli: fromDbAmount(row.wage_rate as never),
-    earnedMilli: fromDbAmount(row.earned_amount as never),
-    notes: (row.notes as string) ?? null,
-    recordStatus: (row.record_status as HostPaymentStatus) ?? "RECORDED",
-    voidReason: (row.void_reason as string) ?? null,
-    createdAt: String(row.created_at),
+    id: row.attendance_id ?? "",
+    eventId: row.event_id ?? "",
+    eventNumber: row.event_number ?? "",
+    eventTitle: row.event_title ?? "",
+    staffMemberId: row.staff_member_id ?? "",
+    staffName: row.staff_name ?? "",
+    staffType: row.staff_type ?? "OTHER",
+    assignmentId: row.assignment_id,
+    attendanceDate: row.attendance_date ?? "",
+    shift: row.shift ?? "MORNING",
+    checkIn: row.check_in,
+    checkOut: row.check_out,
+    breakMinutes: row.break_minutes ?? 0,
+    hoursWorked: row.hours_worked ?? 0,
+    status,
+    wageMethod: row.wage_method ?? "PER_EVENT",
+    wageRateMilli: fromDbAmount(row.wage_rate),
+    earnedMilli: fromDbAmount(row.earned_amount),
+    notes: row.notes,
+    recordStatus: status === "VOIDED" ? "VOIDED" : "RECORDED",
+    voidReason: row.void_reason,
+    createdAt: row.created_at ?? "",
   };
 }
 
-function mapAdvance(row: Record<string, unknown>): AdvanceSummary {
+export function mapAdvance(row: StaffAdvanceSummaryRow): AdvanceSummary {
   return {
-    id: String(row.advance_id),
-    staffMemberId: String(row.staff_member_id),
-    staffName: (row.staff_name as string) ?? "",
-    staffType: (row.staff_type as StaffType) ?? "OTHER",
-    amountMilli: fromDbAmount(row.amount as never),
-    advanceDate: String(row.advance_date),
-    reason: (row.reason as string) ?? null,
-    status: (row.status as HostPaymentStatus) ?? "RECORDED",
-    voidReason: (row.void_reason as string) ?? null,
-    createdAt: String(row.created_at),
+    id: row.advance_id ?? "",
+    staffMemberId: row.staff_member_id ?? "",
+    staffName: row.staff_name ?? "",
+    staffType: row.staff_type ?? "OTHER",
+    amountMilli: fromDbAmount(row.amount),
+    advanceDate: row.advance_date ?? "",
+    reason: row.reason,
+    status: row.status ?? "RECORDED",
+    voidReason: row.void_reason,
+    createdAt: row.created_at ?? "",
   };
 }
 
-function mapPayout(row: Record<string, unknown>): PayoutSummary {
+export function mapPayout(row: HostPayoutSummaryRow): PayoutSummary {
   return {
-    id: String(row.payout_id),
-    staffMemberId: String(row.staff_member_id),
-    staffName: (row.staff_name as string) ?? "",
-    staffType: (row.staff_type as StaffType) ?? "OTHER",
-    eventId: row.event_id ? String(row.event_id) : null,
-    eventNumber: (row.event_number as string) ?? null,
-    amountMilli: fromDbAmount(row.amount as never),
-    payoutDate: String(row.payout_date),
-    method: (row.payment_method as PaymentMethod) ?? "CASH",
-    reference: (row.reference as string) ?? null,
-    reason: (row.reason as string) ?? null,
-    status: (row.status as HostPaymentStatus) ?? "RECORDED",
-    voidReason: (row.void_reason as string) ?? null,
-    createdAt: String(row.created_at),
+    id: row.payout_id ?? "",
+    staffMemberId: row.staff_member_id ?? "",
+    staffName: row.staff_name ?? "",
+    staffType: row.staff_type ?? "OTHER",
+    eventId: row.event_id,
+    eventNumber: row.event_number,
+    amountMilli: fromDbAmount(row.amount),
+    payoutDate: row.payout_date ?? "",
+    method: row.payment_method ?? "CASH",
+    reference: row.reference,
+    reason: row.reason,
+    status: row.status ?? "RECORDED",
+    voidReason: row.void_reason,
+    createdAt: row.created_at ?? "",
   };
 }
 
-function mapPayroll(row: Record<string, unknown>): PayrollRow {
+export function mapPayroll(row: HostEventPayrollSummaryRow): PayrollRow {
   return {
-    staffMemberId: String(row.staff_member_id),
-    staffName: (row.staff_name as string) ?? "",
-    staffType: (row.staff_type as StaffType) ?? "OTHER",
-    eventId: String(row.event_id),
-    eventNumber: (row.event_number as string) ?? null,
-    eventTitle: (row.event_title as string) ?? null,
-    attendanceCount: Number(row.attendance_count ?? 0),
-    earnedMilli: fromDbAmount(row.earned_total as never),
-    advancesMilli: fromDbAmount(row.advances_total as never),
-    payoutsMilli: fromDbAmount(row.payouts_total as never),
-    dueMilli: fromDbAmount(row.due_total as never),
-    paidMilli: fromDbAmount(row.paid_total as never),
-    lateMilli: fromDbAmount(row.late_total as never),
+    staffMemberId: row.staff_member_id ?? "",
+    staffName: row.staff_name ?? "",
+    staffType: row.staff_type ?? "OTHER",
+    eventId: row.event_id ?? "",
+    eventNumber: row.event_number,
+    eventTitle: row.event_title,
+    attendanceCount: row.attendance_count ?? 0,
+    earnedMilli: fromDbAmount(row.earned_total),
+    advancesMilli: fromDbAmount(row.advances_total),
+    payoutsMilli: fromDbAmount(row.payouts_total),
+    dueMilli: fromDbAmount(row.due_total),
+    paidMilli: fromDbAmount(row.paid_total),
+    lateMilli: fromDbAmount(row.late_total),
   };
 }
 
@@ -247,7 +268,8 @@ export interface RecordAttendanceInput {
   checkIn: string | null;
   checkOut: string | null;
   breakMinutes: number;
-  status: AttendanceStatus;
+  /** Only live statuses can be recorded; voiding is a separate command. */
+  status: AttendanceLiveStatus;
   wageMethod: CompensationMethod;
   wageRateMilli: MilliOMR;
   notes: string;
@@ -339,7 +361,7 @@ export function useStaffAdvances(orgId: string | null, staffMemberId: string | n
         .from("staff_advances_summaries")
         .select("*")
         .eq("organization_id", orgId!)
-        .eq("staff_member_id", staffMemberId)
+        .eq("staff_member_id", staffMemberId!)
         .order("advance_date", { ascending: false });
       if (error) throw error;
       return (data ?? []).map(mapAdvance);
@@ -400,7 +422,7 @@ export function useHostPayouts(orgId: string | null, staffMemberId: string | nul
         .from("host_payout_summaries")
         .select("*")
         .eq("organization_id", orgId!)
-        .eq("staff_member_id", staffMemberId)
+        .eq("staff_member_id", staffMemberId!)
         .order("payout_date", { ascending: false });
       if (error) throw error;
       return (data ?? []).map(mapPayout);
@@ -488,13 +510,13 @@ export function useOrgStaffMembers(orgId: string | null) {
         .eq("organization_id", orgId!)
         .order("name", { ascending: true });
       if (error) throw error;
-      return (data ?? []).map((row: Record<string, unknown>): StaffMemberRow => ({
-        id: String(row.id),
-        name: (row.name as string) ?? "",
-        staffType: (row.staff_type as StaffType) ?? "OTHER",
-        isActive: Boolean(row.is_active),
-        defaultCompensationMethod: (row.default_compensation_method as CompensationMethod) ?? null,
-        defaultRateMilli: fromDbAmount(row.default_rate as never),
+      return (data ?? []).map((row): StaffMemberRow => ({
+        id: row.id,
+        name: row.name,
+        staffType: row.staff_type,
+        isActive: row.is_active,
+        defaultCompensationMethod: row.default_compensation_method,
+        defaultRateMilli: fromDbAmount(row.default_rate),
       }));
     },
   });
@@ -517,16 +539,16 @@ export function useAttendanceGaps(orgId: string | null) {
     enabled: !!orgId,
     queryFn: async () => {
       const { data, error } = await db.rpc("today_attendance_gaps", {
-        p_org_id: orgId,
+        p_org_id: orgId!,
         p_now: new Date().toISOString(),
       });
       if (error) throw error;
-      return (data ?? []).map((row: Record<string, unknown>): AttendanceGap => ({
-        eventId: String(row.event_id),
-        eventTitle: (row.event_title as string) ?? "",
-        eventNumber: (row.event_number as string) ?? "",
-        assignmentCount: Number(row.assignment_count ?? 0),
-        attendanceCount: Number(row.attendance_count ?? 0),
+      return (data ?? []).map((row): AttendanceGap => ({
+        eventId: row.event_id,
+        eventTitle: row.event_title,
+        eventNumber: row.event_number,
+        assignmentCount: row.assignment_count,
+        attendanceCount: row.attendance_count,
       }));
     },
   });

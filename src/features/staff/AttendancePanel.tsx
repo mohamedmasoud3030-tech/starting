@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { MoneyInput } from "@/components/MoneyInput";
 import { formatOMR, parseOptionalOMR, type MilliOMR } from "@/lib/money";
+import { todayInMuscat } from "@/lib/dates";
 import type { CompensationMethod } from "@/lib/dbTypes";
 import {
   attendanceError,
@@ -17,7 +18,7 @@ import {
   useEventAttendance,
   useRecordAttendance,
   useVoidAttendance,
-  type AttendanceStatus,
+  type AttendanceLiveStatus,
   type StaffShift,
 } from "./staff.api";
 import { InlineError } from "@/components/ui/ErrorState";
@@ -78,11 +79,11 @@ export function AttendancePanel({
   // Form state
   const [staffMemberId, setStaffMemberId] = useState("");
   const [shift, setShift] = useState<StaffShift>("MORNING");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayInMuscat());
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [breakMinutes, setBreakMinutes] = useState(0);
-  const [status, setStatus] = useState<AttendanceStatus>("PRESENT");
+  const [status, setStatus] = useState<AttendanceLiveStatus>("PRESENT");
   const [wageMethod, setWageMethod] = useState<CompensationMethod>("PER_EVENT");
   const [wageRateMilli, setWageRateMilli] = useState<MilliOMR>(0);
   const [notes, setNotes] = useState("");
@@ -292,7 +293,7 @@ export function AttendancePanel({
           </div>
 
           <Field label="الحالة" htmlFor="att-status" required>
-            <Select id="att-status" value={status} onChange={(e) => setStatus(e.target.value as AttendanceStatus)}>
+            <Select id="att-status" value={status} onChange={(e) => setStatus(e.target.value as AttendanceLiveStatus)}>
               <option value="PRESENT">حاضر</option>
               <option value="LATE">متأخر</option>
               <option value="PARTIAL">جزئي</option>

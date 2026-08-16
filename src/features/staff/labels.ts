@@ -11,6 +11,10 @@ export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
   LATE: "متأخر",
   PARTIAL: "جزئي",
   ABSENT: "غائب",
+  // Voiding rewrites the row's status itself (migration 0039), so a voided
+  // record surfaces here too; previously this key was missing and the badge
+  // on a voided row rendered blank.
+  VOIDED: "ملغى",
 };
 
 export const COMPENSATION_LABELS: Record<CompensationMethod, string> = {
@@ -37,4 +41,5 @@ export const ATTENDANCE_STATUS_TONE: Record<
   LATE: "warning",
   PARTIAL: "warning",
   ABSENT: "danger",
+  VOIDED: "neutral",
 };

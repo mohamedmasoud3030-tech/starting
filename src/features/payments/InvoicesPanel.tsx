@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { MoneyInput } from "@/components/MoneyInput";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { formatOMR, type MilliOMR } from "@/lib/money";
+import { todayInMuscat } from "@/lib/dates";
 import {
   buildInstallmentSchedule,
   invoiceError,
@@ -39,7 +40,12 @@ export function InvoicesPanel({
   eventNumber: string;
   canReadCost: boolean;
   canMutate: boolean;
-  acceptedRevenueMilli: number;
+  /**
+   * Exact milli-OMR of the accepted quotation, or `null` while the finance
+   * read model is unresolved. Unknown must render as loading — a fabricated
+   * 0 made this panel claim "no accepted quotation" during load.
+   */
+  acceptedRevenueMilli: number | null;
 }) {
   const invoice = useEventInvoice(orgId, eventId);
   const installments = useEventInstallments(orgId, eventId);
@@ -51,11 +57,12 @@ export function InvoicesPanel({
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-${eventNumber}`);
   const [depositMilli, setDepositMilli] = useState<MilliOMR>(0);
   const [count, setCount] = useState(2);
-  const [firstDue, setFirstDue] = useState(() => new Date().toISOString().slice(0, 10));
+  const [firstDue, setFirstDue] = useState(() => todayInMuscat());
   const [intervalDays, setIntervalDays] = useState(30);
 
-  const totalMilli = acceptedRevenueMilli as MilliOMR;
-  const canIssue = canMutate && totalMilli > 0;
+  const financeLoaded = acceptedRevenueMilli !== null;
+  const totalMilli = (acceptedRevenueMilli ?? 0) as MilliOMR;
+  const canIssue = canMutate && financeLoaded && totalMilli > 0;
 
   if (!canReadCost) {
     return (
@@ -115,7 +122,7 @@ export function InvoicesPanel({
     }
   }
 
-  if (invoice.isLoading) {
+  if (invoice.isLoading || !financeLoaded) {
     return <LoadingState label="جارٍ تحميل الفاتورة…" />;
   }
 

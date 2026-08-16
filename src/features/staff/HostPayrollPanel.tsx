@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { MoneyInput } from "@/components/MoneyInput";
 import { formatOMR, type MilliOMR } from "@/lib/money";
+import { todayInMuscat } from "@/lib/dates";
 import type { PaymentMethod } from "@/lib/dbTypes";
 import {
   attendanceError,
@@ -38,7 +39,7 @@ export function HostPayrollPanel({
   const [mode, setMode] = useState<"ADVANCE" | "PAYOUT">("PAYOUT");
   const [staffMemberId, setStaffMemberId] = useState("");
   const [amountMilli, setAmountMilli] = useState<MilliOMR>(0);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayInMuscat());
   const [method, setMethod] = useState<PaymentMethod>("CASH");
   const [reference, setReference] = useState("");
   const [reason, setReason] = useState("");
