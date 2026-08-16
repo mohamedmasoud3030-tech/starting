@@ -338,6 +338,13 @@ export interface EventCommandInput {
  *   through `eventReadinessQuery`, not through the workspace aggregate, so
  *   omitting it left the Home screen showing stale readiness after a staff
  *   assignment or equipment reservation made in the workspace.
+ * - event finance: `event_finance_summaries` derives accepted_revenue /
+ *   expected_cost / outstanding_balance / gross_margin from
+ *   `events.accepted_quotation_id` and event_status from `events.status`
+ *   (migration 0037). `accept_event_quotation`, `cancel_event` and
+ *   `transition_event_status` change those inputs, so the finance read model
+ *   must be refreshed or the payments tab — and the invoice panel, which
+ *   issues at the accepted revenue — keeps a stale figure.
  */
 export function useEventCommand(orgId: string | null, eventId: string) {
   const queryClient = useQueryClient();
@@ -351,6 +358,9 @@ export function useEventCommand(orgId: string | null, eventId: string) {
     void queryClient.invalidateQueries({ queryKey: eventKeys.list(orgId) });
     void queryClient.invalidateQueries({
       queryKey: eventKeys.readiness(orgId, eventId),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["event-finance", orgId, eventId],
     });
   };
   return useMutation({

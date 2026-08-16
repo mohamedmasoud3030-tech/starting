@@ -63,6 +63,24 @@ describe("useEventCommand invalidation", () => {
     expect(keys).toContainEqual(["events", ORG]);
   });
 
+  it("refreshes event finance: accept_event_quotation changes accepted_revenue/outstanding server-side", async () => {
+    // CONFIRMED DEFECT (Phase 3): event_finance_summaries derives
+    // accepted_revenue / expected_cost / outstanding_balance / gross_margin
+    // from events.accepted_quotation_id (migration 0037), and event_status
+    // from events.status. accept_event_quotation and cancel_event /
+    // transition_event_status change those inputs, but useEventCommand never
+    // refreshed ["event-finance", org, event] — the payments tab and the
+    // invoice panel (which issues at acceptedRevenueMilli) kept a stale 0.
+    const { result } = renderHook(() => useEventCommand(ORG, EVENT), { wrapper });
+    await result.current.mutateAsync({
+      name: "accept_event_quotation",
+      args: { p_quotation_id: "q-9", p_idempotency_key: "k-1" },
+      includeEvent: false,
+    });
+
+    expect(invalidatedKeys()).toContainEqual(["event-finance", ORG, EVENT]);
+  });
+
   it("keeps every invalidated key organization-scoped (tenant isolation)", async () => {
     const { result } = renderHook(() => useEventCommand(ORG, EVENT), { wrapper });
     await result.current.mutateAsync({
