@@ -124,7 +124,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-slate-50">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
-        <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between gap-3 px-4 md:px-6">
+        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 md:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-brand-700 text-base font-bold text-white sm:h-11 sm:w-11 sm:text-lg">
               ض
@@ -137,10 +137,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 عمليات الضيافة والمناسبات
               </p>
             </div>
-          </div>
-
-          <div className="hidden rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-800 md:block">
-            وضع عرض عام · صلاحيات كاملة
           </div>
         </div>
       </header>
@@ -198,9 +194,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="mb-3 flex items-center justify-between gap-3 px-2 py-1">
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-slate-900">
-                  وضع عرض عام
+                  {currentOrganization?.display_name ?? currentOrganization?.name ?? "إدارة الضيافة"}
                 </p>
-                <p className="text-xs text-slate-500">صلاحيات كاملة</p>
               </div>
               <button
                 type="button"
