@@ -3,6 +3,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/app/authContext";
 import { DesktopSidebar } from "./DesktopSidebar";
 import { MobileNav } from "./MobileNav";
+import { OfflineBanner } from "./OfflineBanner";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { visibleNavGroups } from "./navConfig";
 
@@ -18,6 +19,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-slate-50">
+      <OfflineBanner />
+
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
         <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 md:px-6">
           <div className="flex min-w-0 items-center gap-3">

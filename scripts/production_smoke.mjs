@@ -92,6 +92,21 @@ async function assertPwaFiles() {
   assert(workerSource.includes("cacheableDestinations"), "Service worker lost static-only cache guard");
   assert(!workerSource.includes("/rest/v1/"), "Service worker must not cache Supabase REST traffic");
   assert(!workerSource.includes("/auth/v1/"), "Service worker must not cache Supabase Auth traffic");
+  // The app must OPEN offline on a site/warehouse phone: navigations need a
+  // cached app-shell fallback, not the browser's offline error page.
+  assert(
+    workerSource.includes('request.mode === "navigate"'),
+    "Service worker must handle navigations to provide an offline app shell",
+  );
+  assert(
+    workerSource.includes("APP_SHELL_URL"),
+    "Service worker must fall back to a cached app shell when offline",
+  );
+  // Non-GET traffic (every command/mutation) must never be intercepted.
+  assert(
+    workerSource.includes('request.method !== "GET"'),
+    "Service worker must never intercept mutations",
+  );
 }
 
 async function assertBuildIsSplit() {
