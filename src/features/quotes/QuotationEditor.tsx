@@ -5,6 +5,7 @@ import { useAuth } from "@/app/AuthContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Dialog } from "@/components/ui/Dialog";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -122,6 +123,7 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
   const [selectedPackage, setSelectedPackage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [issueConfirmationOpen, setIssueConfirmationOpen] = useState(false);
 
   // Edit mode: hydrate from the persisted draft.
   useEffect(() => {
@@ -298,7 +300,21 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
     }
   }
 
+  async function onSaveDraft() {
+    setError("");
+    setBusy("الحفظ");
+    try {
+      const id = await ensureDraft();
+      if (!draftId) await navigate({ to: "/quotes/$quoteId", params: { quoteId: id } });
+      setBusy("");
+    } catch (cause) {
+      setError(arabicQuotationError(cause));
+      setBusy("");
+    }
+  }
+
   async function onIssue() {
+    setIssueConfirmationOpen(false);
     setError("");
     if (lines.length === 0) {
       setError("أضف خدمة واحدة على الأقل قبل الإصدار");
@@ -618,16 +634,19 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
                 <p className="text-sm text-slate-500">الإجمالي</p>
                 <p className="text-3xl font-black text-brand-800">{formatOMR(grandTotalMilli)}</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {savedDraftId && draftId && (
                   <Button variant="danger" onClick={() => void onDiscard()} disabled={busy !== ""}>
-                    حذف المسودة
+                    إلغاء المسودة
                   </Button>
                 )}
+                <Button variant="secondary" onClick={() => void onSaveDraft()} disabled={busy !== "" || !form.prospectName.trim()}>
+                  {busy === "الحفظ" ? "جارٍ الحفظ…" : "حفظ المسودة"}
+                </Button>
                 <Button
                   size="lg"
-                  onClick={() => void onIssue()}
-                  disabled={busy !== "" || lines.length === 0}
+                  onClick={() => setIssueConfirmationOpen(true)}
+                  disabled={busy !== "" || lines.length === 0 || pricingBlocked}
                 >
                   {busy === "الإصدار" ? "جارٍ الإصدار…" : "إصدار عرض السعر"}
                 </Button>
@@ -659,6 +678,24 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
           )}
         </div>
       </div>
+
+      <Dialog
+        open={issueConfirmationOpen}
+        onOpenChange={setIssueConfirmationOpen}
+        title="تأكيد إصدار عرض السعر"
+        description="سيُنشأ رقم رسمي وتصبح الأسعار والخدمات لقطة تجارية غير قابلة للتعديل. راجع الإجمالي قبل المتابعة."
+      >
+        <div className="space-y-5">
+          <div className="rounded-xl bg-slate-50 p-4">
+            <p className="text-sm font-bold text-slate-500">الإجمالي النهائي</p>
+            <p className="mt-1 text-3xl font-black text-slate-900">{formatOMR(grandTotalMilli)}</p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setIssueConfirmationOpen(false)}>العودة للمراجعة</Button>
+            <Button onClick={() => void onIssue()} disabled={busy !== ""}>تأكيد الإصدار</Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

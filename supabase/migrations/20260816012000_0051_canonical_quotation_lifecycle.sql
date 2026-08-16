@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0050 / R11 — One canonical quotation lifecycle
+-- 0051 / R11 — One canonical quotation lifecycle
 --
 -- Retires the physical Quick Quote aggregate after transactionally migrating
 -- every row into quotations/quotation_lines. Drafts and issued commercial
@@ -12,18 +12,6 @@ drop view if exists public.quotation_lines_customer;
 drop function if exists public._view_quotation_lines_customer();
 drop view if exists public.quotations_customer;
 drop function if exists public._view_quotations_customer();
-
--- Rebuild rather than ALTER ... ADD VALUE: native replay harnesses execute each
--- migration file as one transaction, where newly-added enum labels are unsafe
--- to use until commit.
-alter table public.quotations alter column status drop default;
-alter type public.quotation_status rename to quotation_status_r10;
-create type public.quotation_status as enum
-  ('DRAFT','ISSUED','ACCEPTED','CONVERTED','CANCELLED','SUPERSEDED');
-alter table public.quotations alter column status type public.quotation_status
-  using status::text::public.quotation_status;
-alter table public.quotations alter column status set default 'ISSUED';
-drop type public.quotation_status_r10;
 
 -- R10's one replay register remains canonical; quotations become a namespace.
 alter table public.command_idempotency

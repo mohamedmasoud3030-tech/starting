@@ -40,4 +40,4 @@ DRAFT → CANCELLED
 
 ## تقاعد النموذج السابق
 
-الترحيل `20260816012000_0050_canonical_quotation_lifecycle.sql` ينقل كل بيانات `quick_quotes` وأسطرها، يتحقق من العدّ، ثم يزيل الجداول والـRPCs والنوع القديم. لا توجد compatibility views لأن كل المستدعين انتقلوا في الإصدار نفسه.
+الترحيل `20260816012000_0051_canonical_quotation_lifecycle.sql` ينقل كل بيانات `quick_quotes` وأسطرها، يتحقق من العدّ، ثم يزيل الجداول والـRPCs والنوع القديم. لا توجد compatibility views لأن كل المستدعين انتقلوا في الإصدار نفسه.

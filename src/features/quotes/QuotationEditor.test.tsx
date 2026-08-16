@@ -116,6 +116,15 @@ describe("QuotationEditor (عرض سعر سريع)", () => {
     expect(screen.getByRole("button", { name: "إصدار عرض السعر" })).toBeDisabled();
   });
 
+  it("saves and reopens a prospect draft without issuing it", async () => {
+    const user = userEvent.setup();
+    renderWorkspace();
+    await user.type(screen.getByLabelText(/اسم العميل \/ المتوقع/), "مريم");
+    await user.click(screen.getByRole("button", { name: "حفظ المسودة" }));
+    await waitFor(() => expect(rpcCalls.some((call) => call.name === "create_quotation_draft")).toBe(true));
+    expect(rpcCalls.some((call) => call.name === "issue_quotation")).toBe(false);
+  });
+
   it("adds a custom line and updates the live total without any server call", async () => {
     const user = userEvent.setup();
     renderWorkspace();
@@ -156,6 +165,7 @@ describe("QuotationEditor (عرض سعر سريع)", () => {
     await user.click(screen.getByRole("button", { name: "إضافة خدمة" }));
 
     await user.click(screen.getByRole("button", { name: "إصدار عرض السعر" }));
+    await user.click(await screen.findByRole("button", { name: "تأكيد الإصدار" }));
 
     await waitFor(() => {
       const names = rpcCalls.map((c) => c.name);
@@ -179,6 +189,7 @@ describe("QuotationEditor (عرض سعر سريع)", () => {
     await user.type(screen.getByLabelText(/سعر الوحدة/), "50");
     await user.click(screen.getByRole("button", { name: "إضافة خدمة" }));
     await user.click(screen.getByRole("button", { name: "إصدار عرض السعر" }));
+    await user.click(await screen.findByRole("button", { name: "تأكيد الإصدار" }));
     await waitFor(() =>
       expect(rpcCalls.some((c) => c.name === "issue_quotation")).toBe(true),
     );
