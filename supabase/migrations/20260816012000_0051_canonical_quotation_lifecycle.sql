@@ -584,5 +584,186 @@ grant execute on function
   public.cancel_quotation_draft(uuid,uuid,text)
 to authenticated;
 
+-- A converted prospect quotation remains the accepted commercial authority
+-- for its Event. Preserve invoicing after the explicit CONVERTED transition.
+create or replace function public.create_event_invoice(
+  p_org_id uuid,
+  p_event_id uuid,
+  p_invoice_number text,
+  p_due_at timestamptz,
+  p_total_amount numeric,
+  p_installments jsonb,
+  p_note text,
+  p_idempotency_key uuid
+)
+returns public.invoices
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_event public.events;
+  v_invoice public.invoices;
+  v_existing integer;
+  v_sum numeric(14,3) := 0;
+  v_item jsonb;
+  v_kind text;
+  v_due date;
+  v_prev_due date;
+  v_amount numeric(14,3);
+  v_len integer;
+  v_seq integer;
+  v_quote_total numeric(14,3);
+  v_fingerprint text;
+  v_replay jsonb;
+begin
+  if auth.uid() is null then
+    raise exception 'NOT_AUTHENTICATED' using errcode = '42501';
+  end if;
+  if not public.has_org_role(p_org_id, array[
+    'OWNER'::public.app_role, 'MANAGER'::public.app_role, 'ACCOUNTANT'::public.app_role
+  ]) then
+    raise exception 'NOT_AUTHORIZED' using errcode = '42501';
+  end if;
+  perform public.assert_payment_omr(p_total_amount);
+  if nullif(trim(coalesce(p_invoice_number, '')), '') is null then
+    raise exception 'INVOICE_NUMBER_REQUIRED' using errcode = '22023';
+  end if;
+  if p_installments is null or jsonb_typeof(p_installments) <> 'array'
+     or jsonb_array_length(p_installments) < 2 then
+    raise exception 'INVOICE_INSTALLMENTS_REQUIRED' using errcode = '22023';
+  end if;
+
+  v_fingerprint := public.warehouse_fingerprint(jsonb_build_object(
+    'command', 'CREATE_EVENT_INVOICE',
+    'event_id', p_event_id,
+    'invoice_number', trim(p_invoice_number),
+    'due_at', p_due_at,
+    'total_amount', p_total_amount::text,
+    'installments', p_installments,
+    'note', nullif(trim(coalesce(p_note, '')), '')
+  ));
+  v_replay := public.begin_payment_command(p_org_id, p_idempotency_key, v_fingerprint);
+  if v_replay is not null then
+    return jsonb_populate_record(null::public.invoices, v_replay);
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(p_org_id::text || ':' || p_event_id::text, 1)
+  );
+
+  select * into v_event
+    from public.events
+   where organization_id = p_org_id and id = p_event_id
+   for update;
+  if not found then
+    raise exception 'EVENT_NOT_FOUND' using errcode = 'P0002';
+  end if;
+  if v_event.status = 'CANCELLED' then
+    raise exception 'EVENT_CANCELLED';
+  end if;
+  if v_event.accepted_quotation_id is null then
+    raise exception 'INVOICE_REQUIRES_ACCEPTED_QUOTATION' using errcode = '23514';
+  end if;
+
+  select q.total_selling::numeric(14,3)
+    into v_quote_total
+    from public.quotations q
+   where q.organization_id = p_org_id
+     and q.id = v_event.accepted_quotation_id
+     and q.status in ('ACCEPTED','CONVERTED');
+  if not found then
+    raise exception 'INVOICE_REQUIRES_ACCEPTED_QUOTATION' using errcode = '23514';
+  end if;
+  if v_quote_total <> p_total_amount then
+    raise exception 'INVOICE_TOTAL_MISMATCH' using errcode = '23514';
+  end if;
+
+  select count(*) into v_existing
+    from public.invoices
+   where organization_id = p_org_id
+     and event_id = p_event_id
+     and status = 'ISSUED';
+  if v_existing > 0 then
+    raise exception 'INVOICE_ALREADY_EXISTS' using errcode = '23505';
+  end if;
+
+  v_len := jsonb_array_length(p_installments);
+  for i in 0..v_len - 1 loop
+    v_item := p_installments -> i;
+    if v_item ->> 'seq' is null then
+      raise exception 'INVALID_INSTALLMENT_SEQUENCE' using errcode = '22023';
+    end if;
+    v_seq := (v_item ->> 'seq')::integer;
+    if v_seq <> i then
+      raise exception 'INVALID_INSTALLMENT_SEQUENCE' using errcode = '22023';
+    end if;
+
+    v_kind := v_item ->> 'kind';
+    if (i = 0 and v_kind <> 'DEPOSIT')
+       or (i = v_len - 1 and v_kind <> 'FINAL')
+       or (i > 0 and i < v_len - 1 and v_kind <> 'INSTALLMENT') then
+      raise exception 'INVALID_INSTALLMENT_KIND' using errcode = '22023';
+    end if;
+
+    if v_item ->> 'due_date' is null then
+      raise exception 'INSTALLMENT_DUE_DATE_REQUIRED' using errcode = '22023';
+    end if;
+    v_due := (v_item ->> 'due_date')::date;
+    if v_prev_due is not null and v_due < v_prev_due then
+      raise exception 'INSTALLMENT_DATES_OUT_OF_ORDER' using errcode = '22023';
+    end if;
+    v_prev_due := v_due;
+
+    if v_item ->> 'amount' is null then
+      raise exception 'INVALID_INSTALLMENT_AMOUNT' using errcode = '22023';
+    end if;
+    v_amount := (v_item ->> 'amount')::numeric;
+    perform public.assert_wage_rate(v_amount);
+    v_sum := v_sum + v_amount;
+  end loop;
+
+  if v_sum <> p_total_amount then
+    raise exception 'INSTALLMENT_TOTAL_MISMATCH' using errcode = '23514';
+  end if;
+
+  insert into public.invoices (
+    organization_id, event_id, quotation_id, invoice_number, due_at,
+    total_amount, note, created_by
+  ) values (
+    p_org_id, p_event_id, v_event.accepted_quotation_id,
+    trim(p_invoice_number), p_due_at, p_total_amount,
+    nullif(trim(coalesce(p_note, '')), ''), auth.uid()
+  ) returning * into v_invoice;
+
+  for i in 0..v_len - 1 loop
+    v_item := p_installments -> i;
+    insert into public.invoice_installments (
+      organization_id, invoice_id, seq, kind, due_date, amount
+    ) values (
+      p_org_id, v_invoice.id, (v_item ->> 'seq')::integer,
+      (v_item ->> 'kind')::public.invoice_installment_kind,
+      (v_item ->> 'due_date')::date, (v_item ->> 'amount')::numeric(14,3)
+    );
+  end loop;
+
+  perform public.record_audit(
+    p_org_id, 'INVOICE_ISSUED', 'invoice', v_invoice.id::text,
+    jsonb_build_object(
+      'idempotency_key', p_idempotency_key,
+      'event_id', p_event_id,
+      'invoice_number', trim(p_invoice_number),
+      'total_amount', p_total_amount::text
+    )
+  );
+  perform public.finish_payment_command(
+    p_org_id, p_idempotency_key, 'CREATE_EVENT_INVOICE', v_fingerprint,
+    'invoice', v_invoice.id, to_jsonb(v_invoice)
+  );
+  return v_invoice;
+end;
+$$;
+
+
 comment on table public.quotations is 'Canonical quotation aggregate: editable DRAFT, immutable issued snapshot, acceptance and conversion lifecycle.';
 comment on column public.quotation_lines.source_package_id is 'Package provenance snapshot. Package changes never mutate this quotation line.';
