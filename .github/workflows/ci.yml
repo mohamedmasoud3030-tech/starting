@@ -36,6 +36,14 @@ jobs:
       - name: Run production preview smoke proof
         run: npm run smoke:production
 
+      - name: Upload production frontend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Check for whitespace errors
         run: git diff --check
 
