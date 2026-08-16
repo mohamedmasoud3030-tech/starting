@@ -37,7 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          {/* Multi-location operators only; renders nothing for a single org. */}
+          {/* Multi-organization users only; renders nothing for a single org. */}
           <div className="ms-auto flex items-center gap-2">
             <OrganizationSwitcher />
           </div>

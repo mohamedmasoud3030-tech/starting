@@ -30,46 +30,46 @@ describe("OrganizationSwitcher", () => {
     switchOrganization.mockClear();
   });
 
-  it("renders nothing for a single-location operator", () => {
-    mockAuth([membership("org-a", "الفرع الرئيسي", "OWNER")], "org-a");
+  it("renders nothing for a user with a single organization", () => {
+    mockAuth([membership("org-a", "دار الضيافة العصرية", "OWNER")], "org-a");
     const { container } = render(<OrganizationSwitcher />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("lists every location with the role held INSIDE it", async () => {
+  it("lists every organization with the role held INSIDE it", async () => {
     mockAuth(
       [
-        membership("org-a", "الفرع الرئيسي", "OWNER"),
-        membership("org-b", "فرع صحار", "SUPERVISOR"),
+        membership("org-a", "دار الضيافة العصرية", "OWNER"),
+        membership("org-b", "شركة صحار للفعاليات", "SUPERVISOR"),
       ],
       "org-a",
     );
     render(<OrganizationSwitcher />);
 
-    await userEvent.click(screen.getByRole("button", { name: /الفرع الرئيسي/ }));
+    await userEvent.click(screen.getByRole("button", { name: /دار الضيافة العصرية/ }));
 
-    expect(screen.getByRole("menuitemradio", { name: /الفرع الرئيسي/ })).toHaveAttribute(
+    expect(screen.getByRole("menuitemradio", { name: /دار الضيافة العصرية/ })).toHaveAttribute(
       "aria-checked",
       "true",
     );
-    const other = screen.getByRole("menuitemradio", { name: /فرع صحار/ });
+    const other = screen.getByRole("menuitemradio", { name: /شركة صحار للفعاليات/ });
     expect(other).toHaveAttribute("aria-checked", "false");
     // The role shown is the one held in THAT organization.
     expect(other).toHaveTextContent("المشرف");
   });
 
-  it("switches to the chosen location", async () => {
+  it("switches to the chosen organization", async () => {
     mockAuth(
       [
-        membership("org-a", "الفرع الرئيسي", "OWNER"),
-        membership("org-b", "فرع صحار", "SUPERVISOR"),
+        membership("org-a", "دار الضيافة العصرية", "OWNER"),
+        membership("org-b", "شركة صحار للفعاليات", "SUPERVISOR"),
       ],
       "org-a",
     );
     render(<OrganizationSwitcher />);
 
-    await userEvent.click(screen.getByRole("button", { name: /الفرع الرئيسي/ }));
-    await userEvent.click(screen.getByRole("menuitemradio", { name: /فرع صحار/ }));
+    await userEvent.click(screen.getByRole("button", { name: /دار الضيافة العصرية/ }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: /شركة صحار للفعاليات/ }));
 
     expect(switchOrganization).toHaveBeenCalledWith("org-b");
   });

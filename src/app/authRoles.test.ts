@@ -63,19 +63,19 @@ describe("organization-scoped role resolution", () => {
   });
 });
 
-describe("selectCurrentMembership — multi-location selection", () => {
+describe("selectCurrentMembership — multi-organization selection", () => {
   const memberships = [
     {
       membership: { role: "OWNER" as const },
-      organization: { id: "org-b", name: "فرع صحار" },
+      organization: { id: "org-b", name: "شركة صحار للفعاليات" },
     },
     {
       membership: { role: "SUPERVISOR" as const },
-      organization: { id: "org-a", name: "الفرع الرئيسي" },
+      organization: { id: "org-a", name: "دار الضيافة العصرية" },
     },
   ];
 
-  it("honours an explicit selection of another location", () => {
+  it("honours an explicit selection of another organization", () => {
     const current = selectCurrentMembership(memberships, "org-b");
     expect(current?.organization.id).toBe("org-b");
     // Role must come from the SELECTED organization, not the default one.
@@ -94,7 +94,7 @@ describe("selectCurrentMembership — multi-location selection", () => {
     expect(canManageCommercialFor(current?.membership.role ?? null)).toBe(false);
   });
 
-  it("keeps single-location behaviour byte-identical", () => {
+  it("keeps single-organization behaviour byte-identical", () => {
     const single = [
       {
         membership: { role: "OWNER" as const },

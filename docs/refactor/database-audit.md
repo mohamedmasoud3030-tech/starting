@@ -104,13 +104,15 @@ frontend-side mitigation are in the security commit
 
 ---
 
-# Addendum — multi-location readiness audit (2026-08-16, follow-up mission)
+# Addendum — multi-organization membership readiness audit (2026-08-16, follow-up mission)
 
-Question: does exposing a location (organization) switcher in the frontend
-require any schema change, and is tenant isolation still sound when one user
-holds memberships in several organizations?
+Question: does exposing an organization (account/tenant) switcher in the
+frontend require any schema change, and is tenant isolation still sound when
+one user holds memberships in several independent organizations? (Each
+organization is one independent business; there are no branches or locations
+inside an organization.)
 
-## A1. The schema is already fully multi-location — no migration required
+## A1. The schema is already fully multi-tenant — no migration required
 
 Every business table carries `organization_id`. A sweep of all `create table
 public.*` statements found exactly one table without it — `organizations`
@@ -126,17 +128,18 @@ Isolation is enforced per organization, not per session, by
 an ACTIVE organization** for *that specific* organization id, and they are
 `security definer` with `set search_path = ''`.
 
-Consequences for multi-location:
+Consequences for multi-organization membership:
 
 1. A user with memberships in A and B is authorized **independently** in each.
    Holding OWNER in B grants nothing in A.
-2. The role is per membership, so the same person can be OWNER in one branch
-   and SUPERVISOR in another; the frontend now reflects this by deriving
+2. The role is per membership, so the same person can be OWNER in one
+   organization and SUPERVISOR in another; the frontend now reflects this by
+   deriving
    capabilities from the membership inside the *active* organization.
 3. Composite foreign keys (`(organization_id, id)`) make cross-organization
    references impossible at the constraint level, independent of RLS.
 
-**No new migration was added for multi-location, and none is needed.** The gap
+**No new migration was added for organization switching, and none is needed.** The gap
 was purely a frontend one: the UI hard-selected a single membership.
 
 ## A2. Frontend-side isolation defect found and fixed (P0, no schema change)
@@ -149,11 +152,11 @@ cache entries. Fixed in the frontend only (org-scoped keys + cache reset on
 identity change); see `src/app/tenantCache.ts`. **No RLS, RPC, grant or
 migration was modified.**
 
-## A3. Demo-mode re-verification under multi-location
+## A3. Demo-mode re-verification under multi-organization membership
 
 `app_private.is_public_demo_request(p_org_id)` checks the org id **and** the
-org name, so anonymous demo capability cannot follow a location switch into a
-real tenant: a demo visitor has no memberships at all, and the switcher only
+org name, so anonymous demo capability cannot follow an organization switch
+into a real tenant: a demo visitor has no memberships at all, and the switcher only
 ever offers organizations backed by a real ACTIVE membership. The switcher
 therefore does not widen the demo surface.
 

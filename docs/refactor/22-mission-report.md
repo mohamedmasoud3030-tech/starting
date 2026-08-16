@@ -1,4 +1,4 @@
-# Mission report — multi-location, dashboard correctness, IA, UX, PWA
+# Mission report — multi-organization switching, dashboard correctness, IA, UX, PWA
 
 ## Baseline
 
@@ -8,7 +8,7 @@
 | Baseline in original brief | `1494cd7aa62c1d20e8384bb31d426c42b136c665` |
 | Actual `origin/main` | `fc7887bdb3c3d9cad4fcde3ab2428b65c6991f52` (1494cd7 is its direct ancestor) |
 | Canonical baseline used | **`fc7887b`** — confirmed by the owner |
-| Branch | `feat/multi-location-architecture-dashboard-pwa` |
+| Branch | `feat/multi-location-architecture-dashboard-pwa` (historical name; the feature is organization/account switching — organizations have no branches or locations) |
 | Commits | 6, logically isolated |
 
 `fc7887b` is the squash-merge of the previous refactor mission. It was audited,
@@ -52,11 +52,13 @@ redundant mechanisms: org-scoped keys, plus `queryClient.clear()` on
 `identityKey(userId, orgId)` change. `clear()` not `invalidate()`, because
 invalidation keeps stale data mounted while refetching.
 
-### 2. Multi-location (`49b4972`)
+### 2. Organization (account) switching (`49b4972`)
 
 The schema was always multi-tenant, but the frontend hard-selected "first
-membership by name" and documented the switcher as deferred — a multi-location
-operator could not reach their other locations at all. Added
+membership by name" and documented the switcher as deferred — a user belonging
+to several independent organizations could not reach their other organizations
+at all. (Each organization is one independent business; switching is
+account/tenant switching, not branch/location switching.) Added
 `switchOrganization`, a validated preference, and a header switcher that renders
 **only** for users with 2+ memberships. `selectCurrentMembership` honours a
 selection only when it matches a real ACTIVE membership, so a tampered
@@ -96,7 +98,8 @@ Also fixed the mobile bar hardcoded to `grid-cols-4` with 3 targets.
 
 Swept every `create table`: `organization_id` present on all business tables
 (only `organizations`, the tenant root, lacks it). `is_org_member` /
-`has_org_role` authorize per organization id, so multi-location needed **no
+`has_org_role` authorize per organization id, so multi-organization
+membership needed **no
 schema change**. Demo grants cannot follow a switch into a real tenant.
 
 ## Verification (final, on `663d225`)
