@@ -23,15 +23,16 @@ import {
   type MilliOMR,
 } from "@/lib/money";
 import {
-  arabicQuickQuoteError,
-  useCreateQuickQuote,
-  useDiscardQuickQuote,
-  useIssueQuickQuote,
-  useQuickQuote,
-  useQuickQuoteLines,
-  useResetQuickQuoteLines,
-  useSaveQuickQuoteLine,
-  type QuickQuoteDraftValues,
+  arabicQuotationError,
+  useCreateQuotationDraft,
+  useUpdateQuotationDraft,
+  useCancelQuotationDraft,
+  useIssueQuotation,
+  useQuotation,
+  useQuotationLines,
+  useResetQuotationLines,
+  useSaveQuotationLine,
+  type QuotationDraftValues,
 } from "./quotes.api";
 import { computeQuickLineTotalMilli, sumQuickLineTotals } from "./quoteMath";
 
@@ -48,6 +49,9 @@ interface DraftLine {
   quantity: string;
   unitSellingPrice: string;
   isCustom: boolean;
+  expectedUnitCost: string;
+  sourceCatalogItemId: string | null;
+  sourcePackageId: string | null;
 }
 
 interface DraftForm {
@@ -78,7 +82,7 @@ function emptyForm(): DraftForm {
   };
 }
 
-function toDraftValues(form: DraftForm, guestCount: number | null): QuickQuoteDraftValues {
+function toDraftValues(form: DraftForm, guestCount: number | null): QuotationDraftValues {
   return { ...form, guestCount };
 }
 
@@ -94,21 +98,22 @@ function isoToLocalInput(iso: string | null | undefined): string {
 
 let lineCounter = 0;
 
-export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
+export function QuotationEditor({ draftId }: { draftId?: string }) {
   const { currentOrganization, canManageCommercial } = useAuth();
   const orgId = currentOrganization?.id ?? null;
   const navigate = useNavigate();
 
-  const existing = useQuickQuote(orgId, draftId ?? "");
-  const existingLines = useQuickQuoteLines(orgId, draftId ?? "");
+  const existing = useQuotation(orgId, draftId ?? "");
+  const existingLines = useQuotationLines(orgId, draftId ?? "");
   const packages = usePackages(orgId);
   const catalog = useCatalogItems(orgId);
 
-  const createDraft = useCreateQuickQuote(orgId);
-  const saveLine = useSaveQuickQuoteLine(orgId);
-  const resetLines = useResetQuickQuoteLines(orgId);
-  const issue = useIssueQuickQuote(orgId);
-  const discard = useDiscardQuickQuote(orgId);
+  const createDraft = useCreateQuotationDraft(orgId);
+  const updateDraft = useUpdateQuotationDraft(orgId);
+  const saveLine = useSaveQuotationLine(orgId);
+  const resetLines = useResetQuotationLines(orgId);
+  const issue = useIssueQuotation(orgId);
+  const discard = useCancelQuotationDraft(orgId);
 
   const [form, setForm] = useState<DraftForm>(emptyForm);
   const [guestCount, setGuestCount] = useState("");
@@ -122,18 +127,18 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
   useEffect(() => {
     if (draftId && existing.data) {
       setForm({
-        prospectName: existing.data.prospect_name,
-        prospectPhone: existing.data.prospect_phone ?? "",
+        prospectName: existing.data.customer_name_snapshot,
+        prospectPhone: existing.data.customer_phone_snapshot ?? "",
         prospectWhatsapp: existing.data.prospect_whatsapp ?? "",
         prospectCompany: existing.data.prospect_company ?? "",
-        eventTitle: existing.data.event_title ?? "",
-        eventType: existing.data.event_type ?? "",
-        startAt: isoToLocalInput(existing.data.start_at),
-        endAt: isoToLocalInput(existing.data.end_at),
-        venueName: existing.data.venue_name ?? "",
+        eventTitle: existing.data.event_title_snapshot ?? "",
+        eventType: existing.data.event_type_snapshot ?? "",
+        startAt: isoToLocalInput(existing.data.start_at_snapshot),
+        endAt: isoToLocalInput(existing.data.end_at_snapshot),
+        venueName: existing.data.venue_snapshot ?? "",
         notes: existing.data.notes ?? "",
       });
-      setGuestCount(existing.data.guest_count != null ? String(existing.data.guest_count) : "");
+      setGuestCount(existing.data.guest_count_snapshot != null ? String(existing.data.guest_count_snapshot) : "");
     }
   }, [draftId, existing.data]);
 
@@ -150,6 +155,9 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
           quantity: l.quantity,
           unitSellingPrice: l.unit_selling_price,
           isCustom: l.is_custom,
+          expectedUnitCost: l.expected_unit_cost ?? "0.000",
+          sourceCatalogItemId: l.source_catalog_item_id,
+          sourcePackageId: l.source_package_id,
         })),
       );
     }
@@ -185,7 +193,10 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
   }
 
   async function ensureDraft(): Promise<string> {
-    if (savedDraftId) return savedDraftId;
+    if (savedDraftId) {
+      await updateDraft.mutateAsync({ quotationId: savedDraftId, values: toDraftValues(form, guestCountNum) });
+      return savedDraftId;
+    }
     const draft = await createDraft.mutateAsync(toDraftValues(form, guestCountNum));
     setSavedDraftId(draft.id);
     return draft.id;
@@ -219,6 +230,9 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
         quantity,
         unitSellingPrice: price,
         isCustom: true,
+        expectedUnitCost: "0.000",
+        sourceCatalogItemId: null,
+        sourcePackageId: null,
       },
     ]);
     e.currentTarget.reset();
@@ -258,6 +272,9 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
         quantity: toOMRString(fromDbAmount(l.quantity)),
         unitSellingPrice: toOMRString(fromDbAmount(item.selling_price)),
         isCustom: false,
+        expectedUnitCost: item.cost_price == null ? "0.000" : toOMRString(fromDbAmount(item.cost_price)),
+        sourceCatalogItemId: item.id,
+        sourcePackageId: selectedPackage,
       };
     });
     setLines((ls) => [...ls, ...added]);
@@ -276,7 +293,7 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
       await discard.mutateAsync(savedDraftId);
       await navigate({ to: "/quotes" });
     } catch (x) {
-      setError(arabicQuickQuoteError(x));
+      setError(arabicQuotationError(x));
       setBusy("");
     }
   }
@@ -295,7 +312,7 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
       await resetLines.mutateAsync(id);
       for (const line of lines) {
         await saveLine.mutateAsync({
-          quickQuoteId: id,
+          quotationId: id,
           lineId: null,
           description: line.description,
           itemType: line.itemType,
@@ -303,14 +320,17 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
           pricingMethod: line.pricingMethod,
           quantity: line.quantity,
           unitSellingPrice: line.unitSellingPrice,
+          expectedUnitCost: line.expectedUnitCost,
           isCustom: line.isCustom,
+          sourceCatalogItemId: line.sourceCatalogItemId,
+          sourcePackageId: line.sourcePackageId,
         });
       }
       const quote = await issue.mutateAsync(id);
       await navigate({ to: "/quotes/$quoteId", params: { quoteId: id } });
       void quote;
     } catch (x) {
-      setError(arabicQuickQuoteError(x));
+      setError(arabicQuotationError(x));
       setBusy("");
     }
   }
@@ -432,7 +452,7 @@ export function QuickQuoteWorkspace({ draftId }: { draftId?: string }) {
           </Card>
 
           {/* -------------------------------------------------- Step 2 */}
-          <Card id="quick-quote-services" className="scroll-mt-24 p-5">
+          <Card id="quotation-services" className="scroll-mt-24 p-5">
             <h2 className="mb-1 text-xl font-black">
               <span className="text-brand-700">٢.</span> الخدمات والسعر
             </h2>

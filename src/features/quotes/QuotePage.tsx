@@ -1,8 +1,8 @@
 import { useParams } from "@tanstack/react-router";
 import { useAuth } from "@/app/AuthContext";
-import { useQuickQuote } from "./quotes.api";
-import { QuickQuoteWorkspace } from "./QuickQuoteWorkspace";
-import { QuoteReviewPage } from "./QuoteReviewPage";
+import { useQuotation } from "./quotes.api";
+import { QuotationEditor } from "./QuotationEditor";
+import { QuotationReview } from "./QuotationReview";
 
 /**
  * Route shim for /quotes, /quotes/new and /quotes/$quoteId.
@@ -14,15 +14,15 @@ export function QuotePage() {
   const { currentOrganization, canManageCommercial } = useAuth();
   const orgId = currentOrganization?.id ?? null;
 
-  const quote = useQuickQuote(orgId, quoteId ?? "");
+  const quote = useQuotation(orgId, quoteId ?? "");
 
   if (!quoteId) {
-    return <QuickQuoteWorkspace />;
+    return <QuotationEditor />;
   }
   if (quote.isLoading) return <p>جارٍ التحميل…</p>;
   if (!quote.data) return <p>تعذر العثور على عرض السعر.</p>;
   if (quote.data.status === "DRAFT") {
-    return canManageCommercial ? <QuickQuoteWorkspace draftId={quoteId} /> : null;
+    return canManageCommercial ? <QuotationEditor draftId={quoteId} /> : null;
   }
-  return <QuoteReviewPage quoteId={quoteId} />;
+  return <QuotationReview quoteId={quoteId} />;
 }

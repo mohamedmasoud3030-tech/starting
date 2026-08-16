@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { QuickQuoteWorkspace } from "./QuickQuoteWorkspace";
+import { QuotationEditor } from "./QuotationEditor";
 
 // ---------------------------------------------------------------------------
 // Mocks: no real Supabase, no router, fixed auth (OWNER).
@@ -12,11 +12,11 @@ const rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
 const rpcMock = vi.fn(async (name: string, args: Record<string, unknown>) => {
   rpcCalls.push({ name, args });
   const data =
-    name === "create_quick_quote"
-      ? { id: "qq-1", organization_id: "org", status: "DRAFT", prospect_name: args.p_prospect_name }
-      : name === "issue_quick_quote"
+    name === "create_quotation_draft"
+      ? { id: "qt-1", organization_id: "org", status: "DRAFT", customer_name_snapshot: args.p_prospect_name }
+      : name === "issue_quotation"
         ? { id: "qt-1", quotation_number: "QT-2026-00001" }
-        : name === "save_quick_quote_line"
+        : name === "save_quotation_line"
           ? { id: `line-${rpcCalls.length}` }
           : null;
   return { data, error: null };
@@ -48,8 +48,8 @@ function builderFor(table: string) {
         status: "ACTIVE",
       },
     ],
-    quick_quotes: [],
-    quick_quote_lines: [],
+    quotations_customer: [],
+    quotation_lines_customer: [],
   };
   const rows = data[table] ?? [];
   const chain = {
@@ -91,7 +91,7 @@ function renderWorkspace() {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <QuickQuoteWorkspace />
+      <QuotationEditor />
     </QueryClientProvider>,
   );
 }
@@ -101,7 +101,7 @@ beforeEach(() => {
   rpcMock.mockClear();
 });
 
-describe("QuickQuoteWorkspace (عرض سعر سريع)", () => {
+describe("QuotationEditor (عرض سعر سريع)", () => {
   it("is ONE focused page with three clear sections, not a multi-page wizard", () => {
     renderWorkspace();
     expect(screen.getByRole("heading", { name: /١\. بيانات بسيطة/ })).toBeInTheDocument();
@@ -159,13 +159,13 @@ describe("QuickQuoteWorkspace (عرض سعر سريع)", () => {
 
     await waitFor(() => {
       const names = rpcCalls.map((c) => c.name);
-      expect(names).toContain("create_quick_quote");
-      expect(names).toContain("save_quick_quote_line");
-      expect(names).toContain("issue_quick_quote");
-      expect(names[0]).toBe("create_quick_quote");
-      expect(names[names.length - 1]).toBe("issue_quick_quote");
+      expect(names).toContain("create_quotation_draft");
+      expect(names).toContain("save_quotation_line");
+      expect(names).toContain("issue_quotation");
+      expect(names[0]).toBe("create_quotation_draft");
+      expect(names[names.length - 1]).toBe("issue_quotation");
     });
-    expect(rpcCalls.find((c) => c.name === "create_quick_quote")?.args.p_prospect_name).toBe(
+    expect(rpcCalls.find((c) => c.name === "create_quotation_draft")?.args.p_prospect_name).toBe(
       "محمد",
     );
   });
@@ -180,7 +180,7 @@ describe("QuickQuoteWorkspace (عرض سعر سريع)", () => {
     await user.click(screen.getByRole("button", { name: "إضافة خدمة" }));
     await user.click(screen.getByRole("button", { name: "إصدار عرض السعر" }));
     await waitFor(() =>
-      expect(rpcCalls.some((c) => c.name === "issue_quick_quote")).toBe(true),
+      expect(rpcCalls.some((c) => c.name === "issue_quotation")).toBe(true),
     );
     const names = rpcCalls.map((c) => c.name);
     expect(names.some((n) => n === "create_event" || n === "save_customer")).toBe(false);

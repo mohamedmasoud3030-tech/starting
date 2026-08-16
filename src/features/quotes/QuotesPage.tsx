@@ -11,33 +11,35 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import {
-  arabicQuickQuoteError,
-  useDiscardQuickQuote,
-  useQuickQuotes,
-  type QuickQuoteStatus,
+  arabicQuotationError,
+  useCancelQuotationDraft,
+  useQuotations,
+  type QuotationStatus,
 } from "./quotes.api";
 
-const STATUS_LABELS: Record<QuickQuoteStatus, string> = {
+const STATUS_LABELS: Record<QuotationStatus, string> = {
   DRAFT: "مسودة",
   ISSUED: "صادر",
   ACCEPTED: "معتمد",
   CONVERTED: "محوّل لمناسبة",
-  DISCARDED: "ملغي",
+  CANCELLED: "ملغي",
+  SUPERSEDED: "مستبدل",
 };
 
-const STATUS_TONES: Record<QuickQuoteStatus, "neutral" | "success" | "warning" | "danger" | "brand"> = {
+const STATUS_TONES: Record<QuotationStatus, "neutral" | "success" | "warning" | "danger" | "brand"> = {
   DRAFT: "neutral",
   ISSUED: "warning",
   ACCEPTED: "success",
   CONVERTED: "brand",
-  DISCARDED: "danger",
+  CANCELLED: "danger",
+  SUPERSEDED: "neutral",
 };
 
 export function QuotesPage() {
   const { currentOrganization, canManageCommercial } = useAuth();
   const orgId = currentOrganization?.id ?? null;
-  const quotes = useQuickQuotes(orgId);
-  const discard = useDiscardQuickQuote(orgId);
+  const quotes = useQuotations(orgId);
+  const discard = useCancelQuotationDraft(orgId);
   const navigate = useNavigate();
   const [discarding, setDiscarding] = useState<{
     id: string;
@@ -60,14 +62,14 @@ export function QuotesPage() {
       await discard.mutateAsync(discarding.id);
       setDiscarding(null);
     } catch (x) {
-      setError(arabicQuickQuoteError(x));
+      setError(arabicQuotationError(x));
     }
   }
 
   return (
     <div>
       <PageHeader
-        title="عروض الأسعار السريعة"
+        title="عروض الأسعار"
         description="اعمل عرض سعر بسرعة دون الحاجة لتسجيل عميل أو إنشاء مناسبة أولاً"
         actions={
           <Button size="lg" onClick={() => void navigate({ to: "/quotes/new" })}>
@@ -115,7 +117,7 @@ export function QuotesPage() {
                       <p className="font-mono text-sm text-slate-500" dir="ltr">
                         {q.quotation_number ?? "مسودة"}
                       </p>
-                      <h2 className="mt-1 text-lg font-bold">{q.prospect_name}</h2>
+                      <h2 className="mt-1 text-lg font-bold">{q.customer_name_snapshot}</h2>
                       {q.prospect_company && (
                         <p className="text-sm text-slate-500">{q.prospect_company}</p>
                       )}
@@ -123,15 +125,15 @@ export function QuotesPage() {
                     <Badge tone={STATUS_TONES[q.status]}>{STATUS_LABELS[q.status]}</Badge>
                   </div>
                   <div className="mt-4 space-y-1 text-sm text-slate-600">
-                    {q.venue_name && <p>📍 {q.venue_name}</p>}
-                    {q.start_at && (
+                    {q.venue_snapshot && <p>📍 {q.venue_snapshot}</p>}
+                    {q.start_at_snapshot && (
                       <p>
-                        {new Date(q.start_at).toLocaleString("ar-OM", {
+                        {new Date(q.start_at_snapshot).toLocaleString("ar-OM", {
                           timeZone: "Asia/Muscat",
                         })}
                       </p>
                     )}
-                    {q.guest_count != null && <p>{q.guest_count} ضيف</p>}
+                    {q.guest_count_snapshot != null && <p>{q.guest_count_snapshot} ضيف</p>}
                   </div>
                   {q.total_selling != null && (
                     <p className="mt-3 border-t border-slate-100 pt-3 text-lg font-black text-slate-900">
@@ -145,7 +147,7 @@ export function QuotesPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setDiscarding({ id: q.id, name: q.prospect_name })}
+                    onClick={() => setDiscarding({ id: q.id, name: q.customer_name_snapshot })}
                   >
                     <Trash2 className="h-4 w-4" />
                     حذف المسودة
