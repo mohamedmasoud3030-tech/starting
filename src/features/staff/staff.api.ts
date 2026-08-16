@@ -7,6 +7,7 @@ import {
   type MilliOMR,
 } from "@/lib/money";
 import type { CompensationMethod, PaymentMethod, StaffType } from "@/lib/dbTypes";
+import { callRpc } from "@/lib/rpc";
 
 /**
  * S9 staff attendance & host payroll data layer.
@@ -196,16 +197,6 @@ function mapPayroll(row: Record<string, unknown>): PayrollRow {
   };
 }
 
-async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
-  const caller = db.rpc as unknown as (
-    fn: string,
-    a?: Record<string, unknown>,
-  ) => Promise<{ data: T; error: unknown }>;
-  const res = await caller(name, args);
-  if (res.error) throw res.error;
-  return res.data;
-}
-
 /** Exact OMR wage preview (mirrors SQL compute_earned_amount). UI-only; the DB is authoritative. */
 export function computeEarnedMilli(
   wageMethod: CompensationMethod,
@@ -266,7 +257,7 @@ export function useRecordAttendance(orgId: string | null, eventId: string) {
   const q = useQueryClient();
   return useMutation({
     mutationFn: (v: RecordAttendanceInput) =>
-      rpc<Record<string, unknown>>("record_staff_attendance", {
+      callRpc<Record<string, unknown>>("record_staff_attendance", {
         p_org_id: orgId,
         p_event_id: eventId,
         p_staff_member_id: v.staffMemberId,
@@ -286,6 +277,10 @@ export function useRecordAttendance(orgId: string | null, eventId: string) {
       void q.invalidateQueries({ queryKey: ["event-attendance", orgId, eventId] });
       void q.invalidateQueries({ queryKey: ["event-payroll", orgId, eventId] });
       void q.invalidateQueries({ queryKey: ["org-payroll-archive", orgId] });
+      // The dashboard's "attendance gaps" alert reads today_attendance_gaps;
+      // recording (or voiding) attendance opens/closes a gap, so the count
+      // must be refreshed or the Home screen keeps alerting on a fixed gap.
+      void q.invalidateQueries({ queryKey: ["attendance-gaps", orgId] });
     },
   });
 }
@@ -294,7 +289,7 @@ export function useVoidAttendance(orgId: string | null, eventId: string) {
   const q = useQueryClient();
   return useMutation({
     mutationFn: ({ attendanceId, reason }: { attendanceId: string; reason: string }) =>
-      rpc<Record<string, unknown>>("void_staff_attendance", {
+      callRpc<Record<string, unknown>>("void_staff_attendance", {
         p_org_id: orgId,
         p_attendance_id: attendanceId,
         p_reason: reason,
@@ -304,6 +299,10 @@ export function useVoidAttendance(orgId: string | null, eventId: string) {
       void q.invalidateQueries({ queryKey: ["event-attendance", orgId, eventId] });
       void q.invalidateQueries({ queryKey: ["event-payroll", orgId, eventId] });
       void q.invalidateQueries({ queryKey: ["org-payroll-archive", orgId] });
+      // The dashboard's "attendance gaps" alert reads today_attendance_gaps;
+      // recording (or voiding) attendance opens/closes a gap, so the count
+      // must be refreshed or the Home screen keeps alerting on a fixed gap.
+      void q.invalidateQueries({ queryKey: ["attendance-gaps", orgId] });
     },
   });
 }
@@ -357,7 +356,7 @@ export function useRecordAdvance(orgId: string | null) {
       advanceDate: string;
       reason: string;
     }) =>
-      rpc<Record<string, unknown>>("record_staff_advance", {
+      callRpc<Record<string, unknown>>("record_staff_advance", {
         p_org_id: orgId,
         p_staff_member_id: v.staffMemberId,
         p_amount: toDbNumeric(v.amountMilli),
@@ -376,7 +375,7 @@ export function useVoidAdvance(orgId: string | null) {
   const q = useQueryClient();
   return useMutation({
     mutationFn: ({ advanceId, reason }: { advanceId: string; reason: string }) =>
-      rpc<Record<string, unknown>>("void_staff_advance", {
+      callRpc<Record<string, unknown>>("void_staff_advance", {
         p_org_id: orgId,
         p_advance_id: advanceId,
         p_reason: reason,
@@ -421,7 +420,7 @@ export function useRecordPayout(orgId: string | null) {
       reference: string;
       reason: string;
     }) =>
-      rpc<Record<string, unknown>>("record_host_payout", {
+      callRpc<Record<string, unknown>>("record_host_payout", {
         p_org_id: orgId,
         p_staff_member_id: v.staffMemberId,
         p_event_id: v.eventId,
@@ -444,7 +443,7 @@ export function useVoidPayout(orgId: string | null) {
   const q = useQueryClient();
   return useMutation({
     mutationFn: ({ payoutId, reason }: { payoutId: string; reason: string }) =>
-      rpc<Record<string, unknown>>("void_host_payout", {
+      callRpc<Record<string, unknown>>("void_host_payout", {
         p_org_id: orgId,
         p_payout_id: payoutId,
         p_reason: reason,

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase as db } from "@/lib/supabase";
 import { fromDbAmount, toDbNumeric, type MilliOMR } from "@/lib/money";
+import { callRpc } from "@/lib/rpc";
 import { paymentError } from "./payments.api";
 
 /**
@@ -11,17 +12,6 @@ import { paymentError } from "./payments.api";
  * generated database types and stable read models; writes go through the
  * server-authoritative SECURITY DEFINER commands.
  */
-async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
-  // Keep dynamic dispatch local to this helper. The Supabase client itself is
-  // fully generated/typed; only the generic wrapper erases the per-RPC overload.
-  const caller = db.rpc as unknown as (
-    fn: string,
-    a?: Record<string, unknown>,
-  ) => Promise<{ data: T; error: unknown }>;
-  const res = await caller(name, args);
-  if (res.error) throw res.error;
-  return res.data;
-}
 
 export type InvoiceStatus = "ISSUED" | "CANCELLED";
 export type InstallmentKind = "DEPOSIT" | "INSTALLMENT" | "FINAL";
@@ -143,7 +133,7 @@ export function useCreateInvoice(orgId: string | null, eventId: string) {
       installments: InstallmentInput[];
       note: string;
     }) =>
-      rpc<Record<string, unknown>>("create_event_invoice", {
+      callRpc<Record<string, unknown>>("create_event_invoice", {
         p_org_id: orgId,
         p_event_id: eventId,
         p_invoice_number: v.invoiceNumber,
@@ -171,7 +161,7 @@ export function useVoidInvoice(orgId: string | null, eventId: string) {
   const q = useQueryClient();
   return useMutation({
     mutationFn: ({ invoiceId, reason }: { invoiceId: string; reason: string }) =>
-      rpc<Record<string, unknown>>("void_invoice", {
+      callRpc<Record<string, unknown>>("void_invoice", {
         p_org_id: orgId,
         p_invoice_id: invoiceId,
         p_reason: reason,

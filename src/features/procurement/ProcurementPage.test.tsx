@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ProcurementPage } from "./ProcurementPage";
 import { useAuth } from "@/app/authContext";
 import { useEvents } from "@/features/events/events.api";
@@ -22,8 +24,30 @@ vi.mock("./supabaseDataSource", () => ({
     listOrders: vi.fn().mockResolvedValue([]),
     listSuppliers: vi.fn().mockResolvedValue([]),
     listConsumableOptions: vi.fn().mockResolvedValue([]),
+    getSupplier: vi.fn(),
+    createSupplier: vi.fn(),
+    updateSupplier: vi.fn(),
+    deactivateSupplier: vi.fn(),
+    getOrder: vi.fn(),
+    createOrder: vi.fn(),
+    approveOrder: vi.fn(),
+    sendOrder: vi.fn(),
+    confirmOrder: vi.fn(),
+    cancelOrder: vi.fn(),
+    recordReceipt: vi.fn(),
+    getEventProcurement: vi.fn(),
   })),
 }));
+
+// The page participates in cross-feature cache sync (useProcurementDataSource
+// → useQueryClient), so it must render inside a QueryClientProvider — exactly
+// as it does in the real app tree.
+function wrapper({ children }: { children: ReactNode }) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
 
 describe("ProcurementPage", () => {
   it("renders the procurement workspace when organization is active", async () => {
@@ -50,7 +74,7 @@ describe("ProcurementPage", () => {
       isLoading: false,
     } as any);
 
-    render(<ProcurementPage />);
+    render(<ProcurementPage />, { wrapper });
 
     expect(screen.getByText("جارٍ تحميل المشتريات…")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "الموردون والمشتريات" })).toBeInTheDocument();
@@ -80,7 +104,7 @@ describe("ProcurementPage", () => {
       isLoading: false,
     } as any);
 
-    render(<ProcurementPage />);
+    render(<ProcurementPage />, { wrapper });
 
     expect(screen.getByText("اختر منظمة لعرض المشتريات والموردين.")).toBeInTheDocument();
   });

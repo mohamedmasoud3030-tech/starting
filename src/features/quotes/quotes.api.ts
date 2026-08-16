@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { callRpc } from "@/lib/rpc";
 import type { CatalogItemType, PricingMethod } from "@/lib/dbTypes";
 
 const db: SupabaseClient = supabase;
@@ -91,12 +92,6 @@ export interface QuotationDraftValues {
   venueName: string;
   notes: string;
   customerId?: string | null;
-}
-
-async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
-  const { data, error } = await db.rpc(name, args);
-  if (error) throw error;
-  return data as T;
 }
 
 function normalizeDraft(values: QuotationDraftValues) {
@@ -207,7 +202,7 @@ export function usePersistQuotationDraft(orgId: string | null) {
       idempotencyKey: string;
       values: QuotationDraftValues;
       lines: QuotationDraftLineValues[];
-    }) => rpc<QuotationRow>("persist_quotation_draft", {
+    }) => callRpc<QuotationRow>("persist_quotation_draft", {
       p_org_id: orgId,
       p_quotation_id: quotationId,
       p_idempotency_key: idempotencyKey,
@@ -234,7 +229,7 @@ export function usePersistQuotationDraft(orgId: string | null) {
 export function useIssueQuotation(orgId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (quotationId: string) => rpc<QuotationRow>("issue_quotation", {
+    mutationFn: (quotationId: string) => callRpc<QuotationRow>("issue_quotation", {
       p_org_id: orgId,
       p_quotation_id: quotationId,
       p_idempotency_key: crypto.randomUUID(),
@@ -246,7 +241,7 @@ export function useIssueQuotation(orgId: string | null) {
 export function useAcceptQuotation(orgId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (quotationId: string) => rpc<QuotationRow>("accept_quotation", {
+    mutationFn: (quotationId: string) => callRpc<QuotationRow>("accept_quotation", {
       p_org_id: orgId,
       p_quotation_id: quotationId,
       p_idempotency_key: crypto.randomUUID(),
@@ -259,7 +254,7 @@ export function useConvertQuotation(orgId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (args: { quotationId: string; startAt?: string; endAt?: string; venueName?: string; guestCount?: number; eventTitle?: string }) =>
-      rpc<{ id: string }>("convert_quotation_to_event", {
+      callRpc<{ id: string }>("convert_quotation_to_event", {
         p_org_id: orgId,
         p_quotation_id: args.quotationId,
         p_idempotency_key: crypto.randomUUID(),
@@ -272,6 +267,11 @@ export function useConvertQuotation(orgId: string | null) {
     onSuccess: (_event, args) => {
       invalidateQuotation(qc, orgId, args.quotationId);
       void qc.invalidateQueries({ queryKey: ["events", orgId] });
+      // convert_quotation_to_event CREATES a customer row when the quotation
+      // was for an unlinked prospect (migration 0051). Without this refresh
+      // the customers screen kept showing a stale list that omitted the
+      // just-created customer.
+      void qc.invalidateQueries({ queryKey: ["customers", orgId] });
     },
   });
 }
@@ -279,7 +279,7 @@ export function useConvertQuotation(orgId: string | null) {
 export function useCancelQuotationDraft(orgId: string | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (quotationId: string) => rpc<QuotationRow>("cancel_quotation_draft", { p_org_id: orgId, p_quotation_id: quotationId }),
+    mutationFn: (quotationId: string) => callRpc<QuotationRow>("cancel_quotation_draft", { p_org_id: orgId, p_quotation_id: quotationId }),
     onSuccess: (quote) => invalidateQuotation(qc, orgId, quote.id),
   });
 }

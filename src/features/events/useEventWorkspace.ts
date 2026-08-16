@@ -15,7 +15,7 @@ import {
 import { useEventAttendance, useEventPayroll } from "@/features/staff/staff.api";
 import { useEventInstallments, useEventInvoice } from "@/features/payments/invoices.api";
 import { useEventFinance } from "@/features/payments";
-import { createSupabaseProcurementDataSource } from "@/features/procurement";
+import { useProcurementDataSource } from "@/features/procurement";
 import {
   arabicError,
   useEvent,
@@ -44,10 +44,7 @@ export function useEventWorkspace() {
   const perms = eventPermissions(currentRole);
   const { canCost, canCommercial, canFinance, canAttendance } = perms;
 
-  const procurementDataSource = useMemo(
-    () => (orgId ? createSupabaseProcurementDataSource(orgId, currentRole) : null),
-    [orgId, currentRole],
-  );
+  const procurementDataSource = useProcurementDataSource();
   const procurementAccess = useMemo(
     () => ({
       canViewCommercialAmounts: canCost,
@@ -72,7 +69,7 @@ export function useEventWorkspace() {
   /**
    * Tabs are filtered by role, so the active tab is resolved against what the
    * role can actually reach. This keeps the workspace consistent if the role
-   * changes underneath it (e.g. switching to a location where the user holds
+   * changes underneath it (e.g. switching to an organization where the user holds
    * a different role) instead of stranding the user on a refusal screen.
    */
   const visibleTabs = visibleWorkspaceTabs(perms);

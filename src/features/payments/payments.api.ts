@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { callRpc } from "@/lib/rpc";
 import type {
   CustomerPaymentSummaryRow,
   CustomerPaymentRow,
@@ -20,12 +21,6 @@ const db: SupabaseClient = supabase;
  * transport shape declared by the generated types (see `toDbNumeric`); no
  * binary floating-point arithmetic becomes financial truth.
  */
-
-async function rpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
-  const { data, error } = await db.rpc(name, args);
-  if (error) throw error;
-  return data as T;
-}
 
 export interface EventFinance {
   eventId: string;
@@ -134,11 +129,33 @@ export interface RecordPaymentInput {
   notes: string;
 }
 
+/**
+ * Refresh every read model the customer-payments ledger feeds.
+ *
+ * The ledger is the single money source of truth for collected cash, so a
+ * recorded/voided payment changes not only the payment history and event
+ * economics but also the INVOICE read models: `invoice_summaries.paid_total`
+ * / `remaining_balance` and each installment's derived `effective_status`
+ * are computed from RECORDED customer payments (migration 0043). Omitting
+ * the invoice keys left the invoice panel showing stale paid/remaining after
+ * recording a payment.
+ */
+export function invalidatePaymentReadModels(
+  queryClient: QueryClient,
+  orgId: string | null,
+  eventId: string,
+): void {
+  void queryClient.invalidateQueries({ queryKey: ["event-payments", orgId, eventId] });
+  void queryClient.invalidateQueries({ queryKey: ["event-finance", orgId, eventId] });
+  void queryClient.invalidateQueries({ queryKey: ["event-invoice", orgId, eventId] });
+  void queryClient.invalidateQueries({ queryKey: ["event-installments", orgId, eventId] });
+}
+
 export function useRecordPayment(orgId: string | null, eventId: string) {
   const q = useQueryClient();
   return useMutation({
     mutationFn: (v: RecordPaymentInput): Promise<CustomerPaymentRow> =>
-      rpc("record_customer_payment", {
+      callRpc("record_customer_payment", {
         p_org_id: orgId,
         p_event_id: eventId,
         p_amount: toDbNumeric(v.amountMilli),
@@ -148,10 +165,7 @@ export function useRecordPayment(orgId: string | null, eventId: string) {
         p_paid_at: null,
         p_idempotency_key: crypto.randomUUID(),
       }),
-    onSuccess: () => {
-      void q.invalidateQueries({ queryKey: ["event-payments", orgId, eventId] });
-      void q.invalidateQueries({ queryKey: ["event-finance", orgId, eventId] });
-    },
+    onSuccess: () => invalidatePaymentReadModels(q, orgId, eventId),
   });
 }
 
@@ -159,16 +173,13 @@ export function useVoidPayment(orgId: string | null, eventId: string) {
   const q = useQueryClient();
   return useMutation({
     mutationFn: ({ paymentId, reason }: { paymentId: string; reason: string }): Promise<CustomerPaymentRow> =>
-      rpc("void_customer_payment", {
+      callRpc("void_customer_payment", {
         p_org_id: orgId,
         p_payment_id: paymentId,
         p_reason: reason,
         p_idempotency_key: crypto.randomUUID(),
       }),
-    onSuccess: () => {
-      void q.invalidateQueries({ queryKey: ["event-payments", orgId, eventId] });
-      void q.invalidateQueries({ queryKey: ["event-finance", orgId, eventId] });
-    },
+    onSuccess: () => invalidatePaymentReadModels(q, orgId, eventId),
   });
 }
 

@@ -37,7 +37,7 @@ export interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   /**
-   * Switch the active location/organization. Ignored unless the id matches one
+   * Switch the active organization (account/tenant). Ignored unless the id matches one
    * of the user's ACTIVE memberships. Switching drops the whole query cache so
    * no rows from the previous organization can be rendered.
    */
