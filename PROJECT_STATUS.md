@@ -14,12 +14,12 @@
 | Working tree | `git status --short` | clean; 8 commits on `arena/01a00fa3-starting` above `main@375b31d` |
 | Typecheck | `npm run typecheck` | pass, 0 errors |
 | Lint | `npm run lint` | 0 warnings / 0 errors (227 files) |
-| Tests | `npm test` | **69 files / 535 tests — all passing** |
+| Tests | `npm test` | **68 files / 531 tests — all passing** |
 | Build | `npm run build` | pass; fonts self-hosted (15 woff2 in dist); no external font CDN |
 | Production smoke | `npm run smoke:production` | pass (SPA routes, PWA/SW, CSP, Vercel contract, chunk cap) |
 | Dependency audit | `npm audit --audit-level=high` | 0 vulnerabilities |
 | Runtime routes | `curl` on dev server (port 3000) | all 14 routes HTTP 200; manifest/sw 200 |
-| DB replay | `scripts/native-db/run.mjs` on clean PG | **58 migrations ✓ + 14 pgTAP files ✓ (578 planned assertions)** |
+| DB replay | `scripts/native-db/run.mjs` on clean PG | **61 migrations ✓ + 16 pgTAP files ✓ (590 planned assertions)** |
 | Concurrency | 8 `*_concurrency.mjs` harnesses | all PASSED, exit 0 |
 | CI on `main` | GitHub Actions | all recent runs green (frontend + database jobs incl. backup/restore proof and type-drift gate) |
 
