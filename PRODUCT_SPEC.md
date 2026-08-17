@@ -63,14 +63,14 @@ with an active membership. **[V — pgTAP `rls_isolation.test.sql`]**
 ### 3.1 Identity & account lifecycle
 - Supabase email/password auth, no demo login path, no fake users. **[V]**
 - `profiles` row auto-created on auth sign-up (trigger `handle_new_user`). **[I]**
-- Organization creation command `create_organization` exists; since migration
-  0056 it is **not executable by browser roles** (owner/migration-only). **[V]**
+- Self-serve onboarding (migration 0061): `/signup` page, first-login
+  «أنشئ منشأتك» screen — the creator becomes OWNER of their own organization;
+  anonymous visitors stay fully locked out. Password reset via
+  `/forgot-password`. **[V]**
 - Multi-organization switching with role-per-organization display. **[V]**
 - Logout button in header + mobile drawer. **[V]**
-- **[M]** No UI for self-service sign-up, org creation, member invitations, or
-  membership management. Account provisioning is an operational process today.
-  **[U]** Whether self-service signup is intended (Supabase `enable_signup`) is
-  an owner decision — see `PROJECT_STATUS.md`.
+- **[M]** Member invitations/management UI (adding staff to an existing
+  organization) — recommended next milestone, see `PRODUCT_GAPS.md`.
 
 ### 3.2 Operational dashboard (`/home`) **[V]**
 Today's events in `Asia/Muscat`, per-event readiness (staff shortage, equipment
@@ -174,6 +174,8 @@ writes.
 | --- | --- | --- | --- |
 | `/` | redirect → `/home` | — | |
 | `/login` | Sign in | public | "not configured" state without `.env`; Arabic errors |
+| `/signup` | Create account | public | self-serve sign-up; first-login onboarding creates the organization (migration 0061) |
+| `/forgot-password` | Password reset | public | Supabase email reset link |
 | `/home` | Operational dashboard | all members | truncation warning when event list hits cap |
 | `/events` | Events list | all members | search + status filter + create dialog |
 | `/events/$eventId` | Event workspace | all members (tabs per role) | 12 tabs, readiness banner, history |
@@ -234,10 +236,12 @@ All routes are lazy-loaded (`src/routes.lazy.tsx`). **[V]**
 
 ## 7. Product ambiguities requiring owner decisions
 
-1. **Self-service signup** (Supabase `enable_signup`, `create_organization`
-   access) — provisioning is currently an operational process.
-2. **Public demo mode** (migrations 0054/0055) remains installed in the schema;
-   removal from production is an owner decision (defect D2).
+1. **Self-service signup** — implemented in the product (migration 0061: any
+   signed-up user creates their own organization and becomes its OWNER). The
+   remaining operational decision is whether the production Supabase project
+   has email signup enabled (`enable_signup`).
+2. **Public demo mode** — removed from the schema (migration 0059); any future
+   demo would require a fresh, reviewed migration.
 3. **List pagination UX** (D21) and **quote autosave** (D22) — style decisions.
 4. **Event date/time entry timezone** (D17).
 

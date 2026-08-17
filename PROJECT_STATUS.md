@@ -14,7 +14,7 @@
 | Working tree | `git status --short` | clean; 8 commits on `arena/01a00fa3-starting` above `main@375b31d` |
 | Typecheck | `npm run typecheck` | pass, 0 errors |
 | Lint | `npm run lint` | 0 warnings / 0 errors (227 files) |
-| Tests | `npm test` | **68 files / 531 tests — all passing** |
+| Tests | `npm test` | **72 files / 542 tests — all passing** |
 | Build | `npm run build` | pass; fonts self-hosted (15 woff2 in dist); no external font CDN |
 | Production smoke | `npm run smoke:production` | pass (SPA routes, PWA/SW, CSP, Vercel contract, chunk cap) |
 | Dependency audit | `npm audit --audit-level=high` | 0 vulnerabilities |
@@ -32,8 +32,11 @@
   dashboard, WhatsApp share links, owner voice summaries, PWA offline shell.
 - **Security:** RLS on all 36 business tables; cost-data separation at the
   data boundary; command idempotency; append-only ledgers; audit isolation;
-  `create_organization` revoked from browser roles (migration 0056); CSP +
-  security headers; no secrets in the bundle.
+  anonymous visitors hold zero grants (migration 0059); CSP + security
+  headers; no secrets in the bundle.
+- **Identity & onboarding:** self-serve signup (`/signup`), first-login
+  organization creation (migration 0061 — the creator becomes OWNER of their
+  own organization), password reset (`/forgot-password`).
 - **Reliability:** unsaved-draft guard for quotations; error boundary;
   logout control; list-truncation warnings; Muscat-day correctness; exact OMR
   math.
@@ -64,9 +67,13 @@
 
 ## 5. Unknowns that need owner decisions (see also PRODUCT_SPEC §7)
 
-1. Self-service signup policy (`enable_signup`) and who may create
-   organizations.
-2. Whether the public demo period has ended (affects D2 removal).
+1. Production signup setting: whether the production Supabase project accepts
+   public email signups (`enable_signup`). Self-serve onboarding itself is
+   implemented (migration 0061) — any signed-up user creates and owns their
+   own organization.
+2. Production project provisioning: backups schedule, plan, domains, UAT
+   execution (the public demo period ended — its grants were removed by
+   migration 0059).
 3. Production project provisioning: backups schedule, plan, domains, UAT
    execution.
 

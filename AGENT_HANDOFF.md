@@ -34,7 +34,7 @@ Supabase stack):
 ```bash
 DB_URL=postgresql://postgres:postgres@127.0.0.1:5433/postgres node scripts/native-db/run.mjs
 ```
-Replays 56 migrations + 13 pgTAP files (559 planned assertions). A scratch
+Replays 61 migrations + 16 pgTAP files (590 planned assertions). A scratch
 PostgreSQL 18.4 launcher lives **outside the repo** at `/home/user/pg-harness`
 (`node start-pg.mjs`, port 5433, user/password `postgres`). This workspace has
 no Docker, no Supabase CLI, and no network egress beyond npm/GitHub.
@@ -55,7 +55,7 @@ no Docker, no Supabase CLI, and no network egress beyond npm/GitHub.
 - Routes: `src/routes.tsx`; features: `src/features/*`; UI kit:
   `src/components/ui/`; auth: `src/app/AuthContext.tsx`, `authRoles.ts`,
   `tenantCache.ts`; money/time: `src/lib/money.ts`, `dates.ts`.
-- Schema: `supabase/migrations/` (56 files), tests `supabase/tests/` (13 files),
+- Schema: `supabase/migrations/` (61 files), tests `supabase/tests/` (16 files),
   seed intentionally empty.
 - Docs: `PRODUCT_SPEC.md`, `ARCHITECTURE.md`, `DATA_MODEL.md`, `OPERATIONS.md`,
   `PROJECT_STATUS.md`, `PROJECT_DEFECTS.md`, `README.md`, `AGENTS.md`,

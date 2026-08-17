@@ -8,6 +8,9 @@ import { LoginPage } from "./LoginPage";
 // LoginPage only needs `useNavigate`; stub it to avoid mounting a full router.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => () => {},
+  Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
+    <a href={to}>{children}</a>
+  ),
 }));
 
 function renderLogin() {

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -120,6 +120,19 @@ export function LoginPage() {
               {submitting ? "جارٍ الدخول..." : "دخول"}
             </Button>
           </form>
+        </div>
+        <div className="mt-4 space-y-2 text-center text-sm">
+          <p className="text-slate-500">
+            ليس لديك حساب؟{" "}
+            <Link to="/signup" className="font-bold text-brand-700">
+              أنشئ حساباً الآن
+            </Link>
+          </p>
+          <p>
+            <Link to="/forgot-password" className="font-bold text-slate-500 hover:text-slate-700">
+              نسيت كلمة المرور؟
+            </Link>
+          </p>
         </div>
       </div>
     </div>

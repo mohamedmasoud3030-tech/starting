@@ -123,7 +123,7 @@ DB_URL=… npm run db:backup-restore-proof                       # local-only gu
 - **List warning "أول 1000 …":** PostgREST `max_rows` cap reached; pagination
   is planned (defect D21).
 
-## 9. Production migration runbook (releases with migrations 0056–0060)
+## 9. Production migration runbook (releases with migrations 0056–0061)
 
 **Approved sequence — run in this exact order on the production machine:**
 
@@ -156,7 +156,9 @@ repair migration.
   its grants). The demo organization's rows, if any, remain as data.
 - Events can no longer be CLOSED with equipment/consumables outstanding;
   overpayments are rejected; events in execution can be cancelled.
-- `create_organization` is no longer executable from the browser.
+- Self-serve onboarding ships (migration 0061): any signed-up user can create
+  their own organization and becomes its OWNER. Whether the production project
+  accepts public signups (`enable_signup`) remains an owner dashboard setting.
 
 **Immediately after migration, verify on the Vercel project:**
 - `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set (otherwise the app
