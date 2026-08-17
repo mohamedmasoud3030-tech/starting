@@ -122,3 +122,44 @@ DB_URL=… npm run db:backup-restore-proof                       # local-only gu
   the database is authoritative.
 - **List warning "أول 1000 …":** PostgREST `max_rows` cap reached; pagination
   is planned (defect D21).
+
+## 9. Production migration runbook (releases with migrations 0056–0060)
+
+**Approved sequence — run in this exact order on the production machine:**
+
+```bash
+# 1) MANDATORY backup before any migration
+pg_dump \
+  --host=<SUPABASE_DB_HOST> --port=5432 --username=postgres --dbname=postgres \
+  --format=custom --no-owner --no-privileges \
+  --file=hospitality-pre-0056-$(date +%Y-%m-%d).dump
+
+# 2) Apply the 61-migration chain
+supabase link --project-ref livpmxwwxsfnaceczyth
+supabase db push
+
+# 3) Read-only verification (never run pgTAP or seed files on production —
+#    they INSERT test data). Expect: 61 rows, both objects present, no demo role.
+select count(*) from supabase_migrations.schema_migrations;                 -- 61
+select to_regprocedure('public.event_readiness_batch(uuid,uuid[])') is not null; -- t
+select to_regprocedure('public.transition_event_status(uuid,uuid,public.event_status,text)') is not null; -- t
+select not exists (select 1 from pg_roles where rolname = 'public_demo_admin'); -- t
+select count(*) from pg_policies where tablename='events' and policyname='events_update_operational'; -- 1
+```
+
+**Rollback:** database schema does not roll back — restore the `*.dump` from
+step 1 (documented in `docs/operations/backup-restore.md`), or ship a forward
+repair migration.
+
+**What changes in production after this release:**
+- Anonymous visitors lose ALL access (migration 0059 removed the demo role and
+  its grants). The demo organization's rows, if any, remain as data.
+- Events can no longer be CLOSED with equipment/consumables outstanding;
+  overpayments are rejected; events in execution can be cancelled.
+- `create_organization` is no longer executable from the browser.
+
+**Immediately after migration, verify on the Vercel project:**
+- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set (otherwise the app
+  shows the "not configured" state).
+- No `VITE_PUBLIC_DEMO_MODE` variable exists (it was deleted from code).
+- Managed backups are enabled with a defined retention.
