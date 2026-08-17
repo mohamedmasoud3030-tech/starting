@@ -180,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setProfile(null);
     setMemberships([]);
-  }, [hydrate]);
+  }, []);
 
   /**
    * Active organization (independent tenant) for a user who belongs to more

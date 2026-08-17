@@ -63,6 +63,9 @@ export function useQuotationDraft(draftId?: string) {
   const [dirty, setDirty] = useState(false);
   const saveIntentRef = useRef<{ fingerprint: string; idempotencyKey: string } | null>(null);
   const nextLineKeyRef = useRef(createLineKeyFactory());
+  // Stable reference to the latest persistDraft so the debounced autosave
+  // effect can call it without depending on a per-render function identity.
+  const persistDraftRef = useRef<(() => Promise<string>) | null>(null);
 
   // While the draft has unsaved edits, navigating away inside the app or
   // closing/reloading the tab asks the operator first. The flags re-evaluate
@@ -105,8 +108,10 @@ export function useQuotationDraft(draftId?: string) {
     const timer = setTimeout(() => {
       setBusy("الحفظ");
       void (async () => {
+        const persist = persistDraftRef.current;
+        if (!persist) return;
         try {
-          await persistDraft();
+          await persist();
         } catch (cause) {
           setError(arabicQuotationError(cause));
         } finally {
@@ -115,8 +120,6 @@ export function useQuotationDraft(draftId?: string) {
       })();
     }, 1500);
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- persistDraft is
-    // re-created per render; depending on it would reschedule on every render.
   }, [dirty, form, lines, guestCount, savedDraftId, busy, persistableForAutosave]);
 
 
@@ -175,6 +178,7 @@ export function useQuotationDraft(draftId?: string) {
     setDirty(false);
     return quote.id;
   }
+  persistDraftRef.current = persistDraft;
 
   function addCustomLine(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
