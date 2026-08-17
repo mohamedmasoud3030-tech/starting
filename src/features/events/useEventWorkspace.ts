@@ -19,6 +19,7 @@ import { useProcurementDataSource } from "@/features/procurement";
 import {
   arabicError,
   useEvent,
+  useEventAudit,
   useEventCommand,
   useWorkspaceData,
 } from "./events.api";
@@ -58,6 +59,7 @@ export function useEventWorkspace() {
   const data = useWorkspaceData(orgId, eventId, canCost);
   const finance = useEventFinance(orgId, eventId);
   const attendance = useEventAttendance(orgId, eventId);
+  const audit = useEventAudit(orgId, eventId, canCommercial);
   const payroll = useEventPayroll(orgId, eventId);
   const invoice = useEventInvoice(orgId, eventId);
   const invoiceRows = useEventInstallments(orgId, eventId);
@@ -146,7 +148,7 @@ export function useEventWorkspace() {
   const overviewVoiceSummary = useMemo(() => {
     if (!event.data || !data.data) return "";
     const customerName =
-      customers.data?.find((c) => c.id === event.data.customer_id)?.name ?? null;
+      customers.data?.rows.find((c) => c.id === event.data.customer_id)?.name ?? null;
     return buildEventVoiceSummary({
       event: { ...event.data, customer_name: customerName },
       readiness: data.data.readiness,
@@ -220,6 +222,7 @@ export function useEventWorkspace() {
     finance,
     attendance,
     payroll,
+    audit,
     invoice,
     invoiceRows,
     packages,

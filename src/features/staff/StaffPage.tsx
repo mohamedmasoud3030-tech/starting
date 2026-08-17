@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
+import { Plus } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -26,6 +27,7 @@ import {
   type StaffMemberRow,
 } from "./staff.api";
 import { STAFF_TYPE_LABELS } from "./labels";
+import { StaffMemberDialog } from "./StaffMemberDialog";
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_OPTIONS } from "@/features/payments/presentation";
 
 function HostDetail({ orgId, staff }: { orgId: string | null; staff: StaffMemberRow }) {
@@ -190,12 +192,14 @@ function StaffSummaryCard({
   rows,
   open,
   onToggle,
+  onEdit,
 }: {
   orgId: string | null;
   staff: StaffMemberRow;
   rows: PayrollRow[];
   open: boolean;
   onToggle: () => void;
+  onEdit: (staff: StaffMemberRow) => void;
 }) {
   // Event rows are intentionally event-scoped. Staff advances are a global
   // ledger and global payouts may have event_id=NULL, so aggregate those ledgers
@@ -217,25 +221,35 @@ function StaffSummaryCard({
   return (
     <Card>
       <CardBody>
-        <button
-          type="button"
-          className="flex w-full flex-wrap items-center justify-between gap-3 text-right"
-          onClick={onToggle}
-          aria-expanded={open}
-        >
-          <div>
-            <p className="text-lg font-black">{staff.name}</p>
-            <p className="text-sm text-slate-500">{STAFF_TYPE_LABELS[staff.staffType] ?? staff.staffType}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <span>مستحق <b dir="ltr">{formatOMR(dueMilli)}</b></span>
-            <span>سلف <b dir="ltr">{ledgersLoading ? "…" : formatOMR(advancesMilli)}</b></span>
-            <span>صرف <b dir="ltr">{ledgersLoading ? "…" : formatOMR(payoutsMilli)}</b></span>
-            <Badge tone={!ledgersLoading && lateMilli > 0 ? "warning" : "success"}>
-              متبقي <span dir="ltr">{ledgersLoading ? "…" : formatOMR(lateMilli)}</span>
-            </Badge>
-          </div>
-        </button>
+        <div className="flex w-full items-center justify-between gap-2">
+          <button
+            type="button"
+            className="flex flex-1 flex-wrap items-center justify-between gap-3 text-right"
+            onClick={onToggle}
+            aria-expanded={open}
+          >
+            <div>
+              <p className="text-lg font-black">{staff.name}</p>
+              <p className="text-sm text-slate-500">{STAFF_TYPE_LABELS[staff.staffType] ?? staff.staffType}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <span>مستحق <b dir="ltr">{formatOMR(dueMilli)}</b></span>
+              <span>سلف <b dir="ltr">{ledgersLoading ? "…" : formatOMR(advancesMilli)}</b></span>
+              <span>صرف <b dir="ltr">{ledgersLoading ? "…" : formatOMR(payoutsMilli)}</b></span>
+              <Badge tone={!ledgersLoading && lateMilli > 0 ? "warning" : "success"}>
+                متبقي <span dir="ltr">{ledgersLoading ? "…" : formatOMR(lateMilli)}</span>
+              </Badge>
+            </div>
+          </button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onEdit(staff)}
+            aria-label={`تعديل بيانات ${staff.name}`}
+          >
+            تعديل
+          </Button>
+        </div>
 
         {open && (
           <div className="mt-4 space-y-3 border-t pt-4">
@@ -266,12 +280,14 @@ function StaffSummaryCard({
 }
 
 export function StaffPage() {
-  const { currentOrganization, currentRole } = useAuth();
+  const { currentOrganization, currentRole, canManageCommercial } = useAuth();
   const orgId = currentOrganization?.id ?? null;
   const canReadCost = !!currentRole && COST_READER_ROLES.includes(currentRole);
   const staff = useOrgStaffMembers(orgId);
   const archive = useOrgPayrollArchive(orgId);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [rosterOpen, setRosterOpen] = useState(false);
+  const [editing, setEditing] = useState<StaffMemberRow | null>(null);
 
   const byStaff = useMemo(() => {
     const map = new Map<string, PayrollRow[]>();
@@ -297,11 +313,27 @@ export function StaffPage() {
       <PageHeader
         title="المضيفون والأجور"
         description="أرشيف كامل لكل مضيف: المستحق، السلف العامة، كل عمليات الصرف، والمتبقي الحقيقي."
+        actions={
+          canManageCommercial ? (
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setRosterOpen(true);
+              }}
+            >
+              <Plus className="h-5 w-5" />
+              مضيف جديد
+            </Button>
+          ) : undefined
+        }
       />
       {staff.isLoading || archive.isLoading ? (
         <p>جارٍ التحميل…</p>
       ) : (staff.data ?? []).length === 0 ? (
-        <EmptyState title="لا يوجد مضيفون" description="أضف المضيفين من تبويب الفريق في المناسبة." />
+        <EmptyState
+          title="لا يوجد مضيفون"
+          description="أضف أول مضيف لبدء إسناد الفريق وحساب الحضور والأجور."
+        />
       ) : (
         <ul className="space-y-2">
           {(staff.data ?? []).map((member) => (
@@ -312,11 +344,21 @@ export function StaffPage() {
                 rows={byStaff.get(member.id) ?? []}
                 open={expanded === member.id}
                 onToggle={() => setExpanded(expanded === member.id ? null : member.id)}
+                onEdit={(target) => {
+                  setEditing(target);
+                  setRosterOpen(true);
+                }}
               />
             </li>
           ))}
         </ul>
       )}
+      <StaffMemberDialog
+        open={rosterOpen}
+        onOpenChange={setRosterOpen}
+        orgId={orgId}
+        member={editing}
+      />
     </div>
   );
 }

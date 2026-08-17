@@ -47,7 +47,11 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   },
   {
     label: "المشتريات",
-    items: [{ to: "/procurement", label: "الموردون وأوامر الشراء" }],
+    items: [
+      // Every procurement read model is hidden from non-cost roles and every
+      // S5 command requires OWNER/MANAGER, so this surface is cost-role-only.
+      { to: "/procurement", label: "الموردون وأوامر الشراء", financial: true },
+    ],
   },
   {
     label: "الفريق",

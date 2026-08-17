@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { InlineError } from "@/components/ui/ErrorState";
+import { VoidReasonPanel } from "@/components/ui/VoidReasonPanel";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -54,6 +55,7 @@ export function InvoicesPanel({
 
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
+  const [confirmingVoid, setConfirmingVoid] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-${eventNumber}`);
   const [depositMilli, setDepositMilli] = useState<MilliOMR>(0);
   const [count, setCount] = useState(2);
@@ -110,13 +112,12 @@ export function InvoicesPanel({
     }
   }
 
-  async function submitVoid() {
+  async function submitVoid(reason: string) {
     if (!inv) return;
-    const reason = window.prompt("سبب إلغاء الفاتورة");
-    if (!reason || reason.trim().length < 3) return;
     setError("");
     try {
-      await voidInvoice.mutateAsync({ invoiceId: inv.invoiceId, reason: reason.trim() });
+      await voidInvoice.mutateAsync({ invoiceId: inv.invoiceId, reason });
+      setConfirmingVoid(false);
     } catch (cause) {
       setError(invoiceError(cause));
     }
@@ -200,11 +201,27 @@ export function InvoicesPanel({
           <p className="mt-1 text-slate-600">{inv.eventTitle}</p>
         </div>
         {canMutate && (
-          <Button variant="outline" onClick={() => void submitVoid()} disabled={voidInvoice.isPending}>
+          <Button
+            variant="outline"
+            onClick={() => setConfirmingVoid(true)}
+            disabled={voidInvoice.isPending}
+          >
             إلغاء الفاتورة
           </Button>
         )}
       </div>
+
+      {confirmingVoid && (
+        <VoidReasonPanel
+          title="تأكيد إلغاء الفاتورة"
+          description="الإلغاء لا يحذف الفاتورة، بل يثبتها ملغاة بسبب موثق مع بقاء سجل الدفعات."
+          confirmLabel="تأكيد الإلغاء"
+          reasonLabel="سبب إلغاء الفاتورة"
+          busy={voidInvoice.isPending}
+          onConfirm={(reason) => void submitVoid(reason)}
+          onCancel={() => setConfirmingVoid(false)}
+        />
+      )}
 
       {error && <InlineError message={error} />}
 

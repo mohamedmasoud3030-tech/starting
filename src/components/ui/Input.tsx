@@ -1,8 +1,10 @@
 import { forwardRef, type InputHTMLAttributes } from "react";
+import { useFieldErrorId } from "./fieldContext";
 import { cn } from "@/lib/utils";
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function Input({ className, ...props }, ref) {
+    const errorId = useFieldErrorId();
     return (
       <input
         ref={ref}
@@ -13,6 +15,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
           "disabled:cursor-not-allowed disabled:bg-slate-100",
           className,
         )}
+        aria-describedby={props["aria-describedby"] ?? errorId}
         {...props}
       />
     );

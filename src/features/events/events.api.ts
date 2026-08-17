@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
@@ -146,20 +147,59 @@ export const eventKeys = {
 // Reads
 // ---------------------------------------------------------------------------
 
+export interface EventList {
+  /** Rows on the current page (capped by PostgREST `max_rows`). */
+  rows: EventRow[];
+  /** Exact organization total, or null when the count is unavailable. */
+  total: number | null;
+}
+
 export function useEvents(orgId: string | null) {
   return useQuery({
     queryKey: eventKeys.list(orgId),
     enabled: !!orgId,
-    queryFn: async () => {
-      const { data, error } = await db
+    queryFn: async (): Promise<EventList> => {
+      const { data, error, count } = await db
         .from("events")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("organization_id", orgId!)
         .order("start_at");
       if (error) throw error;
-      return data as EventRow[];
+      return { rows: (data ?? []) as EventRow[], total: count ?? null };
     },
   });
+}
+
+/**
+ * Paginated events list for the Events screen (defect D21): "load more"
+ * pattern with exact totals. The dashboard keeps using `useEvents` so
+ * today's-events filtering is never silently capped by pagination.
+ */
+export function useEventsPage(orgId: string | null, pageSize = 50) {
+  const [size, setSize] = useState(pageSize);
+  const query = useQuery({
+    queryKey: ["events-page", orgId, size],
+    enabled: !!orgId,
+    placeholderData: (previous) => previous,
+    queryFn: async (): Promise<EventList> => {
+      const { data, error, count } = await db
+        .from("events")
+        .select("*", { count: "exact" })
+        .eq("organization_id", orgId!)
+        .order("start_at")
+        .range(0, size - 1);
+      if (error) throw error;
+      return { rows: (data ?? []) as EventRow[], total: count ?? null };
+    },
+  });
+  const loaded = query.data?.rows.length ?? 0;
+  const total = query.data?.total ?? null;
+  const hasMore = typeof total === "number" && loaded < total;
+  return {
+    ...query,
+    hasMore,
+    loadMore: () => setSize((current) => current + pageSize),
+  };
 }
 
 export function useEvent(orgId: string | null, id: string) {
@@ -239,7 +279,7 @@ export function useWorkspaceData(
         db.from(assignmentTable).select("*").eq("event_id", eventId),
         db
           .from("equipment_capacity")
-          .select("*")
+          .select("*, catalog_items(name)")
           .eq("organization_id", orgId!)
           .eq("is_active", true),
         db.from("event_equipment_reservations").select("*").eq("event_id", eventId),
@@ -293,6 +333,12 @@ export interface CreateEventInput {
   contactName: string;
   contactPhone: string;
   notes: string;
+  /**
+   * Stable for one dialog session (see useStableIdempotencyKey) so a retry
+   * after a lost response replays the same server command instead of
+   * creating a duplicate event.
+   */
+  idempotencyKey: string;
 }
 
 export function useCreateEvent(orgId: string | null) {
@@ -311,10 +357,12 @@ export function useCreateEvent(orgId: string | null) {
         p_contact_name: v.contactName || null,
         p_contact_phone: v.contactPhone || null,
         p_notes: v.notes || null,
-        p_idempotency_key: crypto.randomUUID(),
+        p_idempotency_key: v.idempotencyKey,
       }),
-    onSuccess: () =>
-      void queryClient.invalidateQueries({ queryKey: eventKeys.list(orgId) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: eventKeys.list(orgId) });
+      void queryClient.invalidateQueries({ queryKey: ["events-page", orgId] });
+    },
   });
 }
 
@@ -352,6 +400,7 @@ export function useEventCommand(orgId: string | null, eventId: string) {
       queryKey: eventKeys.detail(orgId, eventId),
     });
     void queryClient.invalidateQueries({ queryKey: eventKeys.list(orgId) });
+    void queryClient.invalidateQueries({ queryKey: ["events-page", orgId] });
     void queryClient.invalidateQueries({
       queryKey: eventKeys.readiness(orgId, eventId),
     });
@@ -371,16 +420,147 @@ export function useEventCommand(orgId: string | null, eventId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Audit trail for the workspace history tab (defect D31). audit_events is
+// readable by OWNER/MANAGER only, so the query is enabled exclusively for
+// commercial roles to avoid a guaranteed RLS error for other roles.
+// ---------------------------------------------------------------------------
+
+export interface EventAuditRow {
+  id: number;
+  action: string;
+  entity: string;
+  entity_id: string;
+  created_at: string;
+}
+
+export function useEventAudit(
+  orgId: string | null,
+  eventId: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ["event-audit", orgId, eventId],
+    enabled: !!orgId && enabled,
+    queryFn: async (): Promise<EventAuditRow[]> => {
+      const { data, error } = await db
+        .from("audit_events")
+        .select("id, action, entity, entity_id, created_at")
+        .eq("organization_id", orgId!)
+        .eq("entity_id", eventId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as EventAuditRow[];
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Event logistics editing (defect F12)
+// ---------------------------------------------------------------------------
+
+export interface UpdateEventInput {
+  id: string;
+  title: string;
+  eventType: string;
+  startAt: string;
+  endAt: string;
+  guestCount: number;
+  venue: string;
+  contactName: string;
+  contactPhone: string;
+  notes: string;
+}
+
+/**
+ * Edits event logistics through the role-checked RLS UPDATE policy added in
+ * migration 0057 (OWNER/MANAGER/SUPERVISOR; only while status is
+ * DRAFT/QUOTED). Status transitions stay server-command-only, so this path
+ * can never move an event between states.
+ */
+export function useUpdateEvent(orgId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: UpdateEventInput) => {
+      if (!orgId) throw new Error("لا توجد منظمة محددة");
+      const { error } = await db
+        .from("events")
+        .update({
+          title: v.title.trim(),
+          event_type: v.eventType.trim() || "OTHER",
+          start_at: new Date(v.startAt).toISOString(),
+          end_at: new Date(v.endAt).toISOString(),
+          guest_count: v.guestCount,
+          venue_name: v.venue.trim(),
+          contact_name: v.contactName.trim() || null,
+          contact_phone: v.contactPhone.trim() || null,
+          notes: v.notes.trim() || null,
+        })
+        .eq("organization_id", orgId)
+        .eq("id", v.id);
+      if (error) throw error;
+    },
+    onSuccess: (_data, v) => {
+      void queryClient.invalidateQueries({
+        queryKey: eventKeys.detail(orgId, v.id),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["event-workspace", orgId, v.id],
+      });
+      void queryClient.invalidateQueries({ queryKey: eventKeys.list(orgId) });
+    void queryClient.invalidateQueries({ queryKey: ["events-page", orgId] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
 
 export function arabicError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
-  if (message.includes("STAFF_CONFLICT"))
-    return "الموظف مرتبط بمناسبة أخرى في هذا الوقت";
-  if (message.includes("EQUIPMENT_SHORTAGE"))
-    return "الكمية المطلوبة غير متاحة في هذا الوقت";
-  if (message.includes("EVENT_PRICING_LOCKED"))
-    return "تم اعتماد العرض ولا يمكن تعديل التسعير";
-  return message;
+  const entries: ReadonlyArray<readonly [string, string]> = [
+    ["STAFF_CONFLICT", "الموظف مرتبط بمناسبة أخرى في هذا الوقت"],
+    ["EQUIPMENT_SHORTAGE", "الكمية المطلوبة غير متاحة في هذا الوقت"],
+    ["EVENT_PRICING_LOCKED", "تم اعتماد العرض ولا يمكن تعديل التسعير"],
+    ["INVALID_EVENT_WINDOW", "تاريخ النهاية يجب أن يكون بعد البداية"],
+    ["valid_window", "تاريخ النهاية يجب أن يكون بعد البداية"],
+    ["INVALID_GUEST_COUNT", "عدد الضيوف يجب أن يكون واحداً على الأقل"],
+    ["guest_count", "عدد الضيوف يجب أن يكون واحداً على الأقل"],
+    ["CUSTOMER_NOT_IN_ORG", "العميل غير موجود في منشأتك أو غير نشط"],
+    ["CANCELLATION_REASON_REQUIRED", "اكتب سبب الإلغاء بوضوح قبل المتابعة"],
+    ["EVENT_CANNOT_BE_CANCELLED", "لا يمكن إلغاء المناسبة في حالتها الحالية"],
+    ["EVENT_NOT_FOUND", "المناسبة غير موجودة"],
+    ["EVENT_NOT_EDITABLE", "لا يمكن تعديل المناسبة في حالتها الحالية"],
+    // RLS policy violations surface as a generic PostgREST message; the edit
+    // policy's with-check is the only write path that produces this text.
+    ["row-level security", "لا يمكن تعديل المناسبة في حالتها الحالية"],
+    ["EVENT_NOT_PAYABLE", "هذه المناسبة لا تقبل الدفعات حالياً"],
+    [
+      "PAYMENT_REQUIRES_ACCEPTED_QUOTATION",
+      "لا يمكن تسجيل دفعة قبل اعتماد عرض سعر لهذه المناسبة",
+    ],
+    [
+      "RESERVATION_HAS_OUTSTANDING_EQUIPMENT",
+      "لا يمكن تحرير الحجز ومعدات ما زالت في الخارج",
+    ],
+    ["CONSUMABLE_STOCK_SHORTAGE", "رصيد المادة لا يكفي لهذه الكمية"],
+    ["INVALID_COMMERCIAL_VALUE", "الكمية أو السعر المدخل غير صالح"],
+    ["QUOTE_NOT_ALLOWED", "لا يمكن التسعير في الحالة الحالية للمناسبة"],
+    ["EMPTY_QUOTATION", "أضف خدمة واحدة على الأقل قبل إصدار العرض"],
+    ["INVALID_EVENT_TRANSITION", "لا يمكن الانتقال إلى هذه الحالة من الحالة الحالية"],
+    ["USE_CANCEL_EVENT", "استخدم إلغاء المناسبة بدلاً من هذا الانتقال"],
+    [
+      "WAREHOUSE_OUTSTANDING_BLOCKS_CLOSE",
+      "لا يمكن الإغلاق ومعدات ما زالت في الخارج — أكمل إرجاعها أولاً",
+    ],
+    [
+      "CONSUMABLE_OUTSTANDING_BLOCKS_CLOSE",
+      "لا يمكن الإغلاق ومواد ما زالت بعهدة المناسبة — سجّل استهلاكها أو إرجاعها أولاً",
+    ],
+    ["NOT_AUTHORIZED", "غير مصرح لك بهذا الإجراء"],
+  ];
+  for (const [needle, arabic] of entries) {
+    if (message.includes(needle)) return arabic;
+  }
+  return "حدث خطأ غير متوقع في هذه العملية. أعد المحاولة.";
 }

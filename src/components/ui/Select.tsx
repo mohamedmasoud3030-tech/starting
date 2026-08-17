@@ -1,10 +1,12 @@
 import { forwardRef, type SelectHTMLAttributes } from "react";
+import { useFieldErrorId } from "./fieldContext";
 import { cn } from "@/lib/utils";
 
 export const Select = forwardRef<
   HTMLSelectElement,
   SelectHTMLAttributes<HTMLSelectElement>
 >(function Select({ className, children, ...props }, ref) {
+  const errorId = useFieldErrorId();
   return (
     <select
       ref={ref}
@@ -14,6 +16,7 @@ export const Select = forwardRef<
         "disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500",
         className,
       )}
+      aria-describedby={props["aria-describedby"] ?? errorId}
       {...props}
     >
       {children}

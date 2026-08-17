@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { CalendarDays, Home, MoreHorizontal, Users, X } from "lucide-react";
+import { CalendarDays, Home, LogOut, MoreHorizontal, Users, X } from "lucide-react";
+import { useAuth } from "@/app/authContext";
 import { cn } from "@/lib/utils";
 import {
   isActivePath,
@@ -27,6 +28,7 @@ export function MobileNav({
   pathname: string;
   orgName: string;
 }) {
+  const { logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const visibleItems = groups.flatMap((group) => group.items);
@@ -117,6 +119,20 @@ export function MobileNav({
                   </div>
                 </section>
               ))}
+            </div>
+
+            <div className="border-t border-slate-100 pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  void logout();
+                }}
+                className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 text-sm font-bold text-red-700 hover:bg-red-100"
+              >
+                <LogOut className="h-5 w-5" />
+                <span>تسجيل الخروج</span>
+              </button>
             </div>
           </nav>
         </>

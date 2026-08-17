@@ -5,6 +5,7 @@ import {
   type DbAmount,
 } from "@/lib/money";
 import type { QuotationDraftValues, QuotationLineRow } from "./quotes.api";
+import { isoToMuscatWallClock } from "@/lib/dates";
 
 /**
  * Pure domain layer for the quotation draft editor. All transformation and
@@ -66,10 +67,9 @@ export function isoToLocalInput(iso: string | null | undefined): string {
   if (!iso) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate(),
-  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  // Pin the displayed wall clock to the operational timezone (D17): the
+  // owner should re-open the same wall time on any device.
+  return isoToMuscatWallClock(iso);
 }
 
 /** Hydrates the editable form from a persisted draft row (edit mode). */

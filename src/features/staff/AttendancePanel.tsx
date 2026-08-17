@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { VoidReasonPanel } from "@/components/ui/VoidReasonPanel";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { MoneyInput } from "@/components/MoneyInput";
 import { formatOMR, parseOptionalOMR, type MilliOMR } from "@/lib/money";
-import { todayInMuscat } from "@/lib/dates";
+import { isoToMuscatWallClock, muscatWallClockToIso, todayInMuscat } from "@/lib/dates";
 import type { CompensationMethod } from "@/lib/dbTypes";
 import {
   attendanceError,
@@ -46,9 +47,7 @@ interface StaffLike {
 
 function toLocalInput(iso: string | undefined): string {
   if (!iso) return "";
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return isoToMuscatWallClock(iso);
 }
 
 function fmt(iso: string | null): string {
@@ -75,6 +74,7 @@ export function AttendancePanel({
 
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
+  const [voiding, setVoiding] = useState<string | null>(null);
 
   // Form state
   const [staffMemberId, setStaffMemberId] = useState("");
@@ -106,8 +106,8 @@ export function AttendancePanel({
   const earnedPreviewMilli = computeEarnedMilli(
     wageMethod,
     wageRateMilli,
-    status === "ABSENT" ? null : checkIn ? new Date(checkIn).toISOString() : null,
-    status === "ABSENT" ? null : checkOut ? new Date(checkOut).toISOString() : null,
+    status === "ABSENT" ? null : checkIn ? (muscatWallClockToIso(checkIn) ?? new Date(checkIn).toISOString()) : null,
+    status === "ABSENT" ? null : checkOut ? (muscatWallClockToIso(checkOut) ?? new Date(checkOut).toISOString()) : null,
     breakMinutes,
     status,
   );
@@ -149,8 +149,8 @@ export function AttendancePanel({
         assignmentId: selectedAssignment?.id ?? null,
         attendanceDate: date,
         shift,
-        checkIn: status === "ABSENT" ? null : new Date(checkIn).toISOString(),
-        checkOut: status === "ABSENT" ? null : new Date(checkOut).toISOString(),
+        checkIn: status === "ABSENT" ? null : (muscatWallClockToIso(checkIn) ?? new Date(checkIn).toISOString()),
+        checkOut: status === "ABSENT" ? null : (muscatWallClockToIso(checkOut) ?? new Date(checkOut).toISOString()),
         breakMinutes,
         status,
         wageMethod,
@@ -167,12 +167,11 @@ export function AttendancePanel({
     }
   }
 
-  async function submitVoid(id: string) {
-    const reason = window.prompt("سبب إلغاء الحضور");
-    if (!reason || reason.trim().length < 3) return;
+  async function submitVoid(id: string, reason: string) {
     setError("");
     try {
-      await voidAttendance.mutateAsync({ attendanceId: id, reason: reason.trim() });
+      await voidAttendance.mutateAsync({ attendanceId: id, reason });
+      setVoiding(null);
     } catch (cause) {
       setError(attendanceError(cause));
     }
@@ -242,9 +241,20 @@ export function AttendancePanel({
                     )}
                   </div>
                   {a.recordStatus === "RECORDED" && (
-                    <Button variant="outline" disabled={voidAttendance.isPending} onClick={() => void submitVoid(a.id)}>
+                    <Button variant="outline" disabled={voidAttendance.isPending} onClick={() => setVoiding(a.id)}>
                       إلغاء
                     </Button>
+                  )}
+                  {voiding === a.id && (
+                    <VoidReasonPanel
+                      title="تأكيد إلغاء سجل الحضور"
+                      description="يبقى السجل محفوظاً كحقيقة مالية، ويُعلَّم ملغى بسبب موثق."
+                      confirmLabel="تأكيد الإلغاء"
+                      reasonLabel="سبب إلغاء الحضور"
+                      busy={voidAttendance.isPending}
+                      onConfirm={(reason) => void submitVoid(a.id, reason)}
+                      onCancel={() => setVoiding(null)}
+                    />
                   )}
                 </CardBody>
               </Card>

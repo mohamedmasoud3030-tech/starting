@@ -8,14 +8,16 @@ import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
+import { TruncationNotice } from "@/components/ui/TruncationNotice";
 import { ITEM_TYPE_LABELS, PRICING_METHOD_LABELS } from "@/lib/domain";
+import { listIsTruncated } from "@/lib/listCap";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import type { CatalogItemType } from "@/lib/dbTypes";
 import { CatalogItemDialog } from "./CatalogItemDialog";
 import {
   type CatalogListItem,
   useCatalogCategories,
-  useCatalogItems,
+  useCatalogItemsPage,
   useToggleCatalogItem,
 } from "./catalog.api";
 
@@ -24,7 +26,7 @@ export function CatalogPage() {
   const orgId = currentOrganization?.id ?? null;
 
   const categoriesQuery = useCatalogCategories(orgId);
-  const itemsQuery = useCatalogItems(orgId, canReadCost);
+  const itemsQuery = useCatalogItemsPage(orgId, canReadCost);
   const toggleMutation = useToggleCatalogItem(orgId);
 
   const [search, setSearch] = useState("");
@@ -32,7 +34,10 @@ export function CatalogPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CatalogListItem | null>(null);
 
-  const items = itemsQuery.data ?? [];
+  const items = itemsQuery.data?.rows ?? [];
+  const itemsTruncated =
+    itemsQuery.isSuccess &&
+    listIsTruncated(itemsQuery.data?.rows.length ?? 0, itemsQuery.data?.total);
 
   const normalizedSearch = search.trim().toLowerCase();
   const filtered = items.filter((item) => {
@@ -98,6 +103,23 @@ export function CatalogPage() {
           ))}
         </Select>
       </div>
+
+      {itemsTruncated && (
+        <div className="mb-4 space-y-3">
+          <TruncationNotice
+            message={`يتم عرض ${itemsQuery.data?.rows.length ?? 0} من ${itemsQuery.data?.total ?? "…"} صنفاً.`}
+          />
+          {itemsQuery.hasMore && (
+            <Button
+              variant="secondary"
+              onClick={() => itemsQuery.loadMore()}
+              disabled={itemsQuery.isFetching}
+            >
+              {itemsQuery.isFetching ? "جارٍ التحميل…" : "عرض المزيد من الأصناف"}
+            </Button>
+          )}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <EmptyState

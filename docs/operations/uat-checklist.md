@@ -21,7 +21,7 @@ Before UAT, confirm:
       (or `WAREHOUSE`).
 - [ ] The app is running (production build or `npm run dev`).
 - [ ] `npm run build` passes (green build).
-- [ ] `npm test` passes (all 335+ Vitest tests).
+- [ ] `npm test` passes (all 470+ Vitest tests).
 - [ ] Database migrations have been replayed and pgTAP tests pass.
 
 ---

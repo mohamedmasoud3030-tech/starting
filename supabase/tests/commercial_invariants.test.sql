@@ -4,7 +4,7 @@
 -- ============================================================================
 
 begin;
-select plan(15);
+select plan(16);
 
 insert into auth.users
   (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -124,15 +124,19 @@ select is(
 );
 
 -- ---------------------------------------------------------------------------
--- create_organization command
+-- create_organization command (browser role revoked by migration 0056)
 -- ---------------------------------------------------------------------------
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000010","role":"authenticated"}'; -- new user
-select is(
-  (public.create_organization('New Org') is not null),
-  true, 'create_organization succeeds for an authenticated user'
+select throws_ok(
+  $sql$ select public.create_organization('New Org') $sql$,
+  '42501', null, 'create_organization is not executable by the browser role'
 );
 
 set local role postgres;
+select is(
+  (public.create_organization('New Org') is not null),
+  true, 'create_organization still runs for the privileged owner role'
+);
 select is(
   (select count(*)::int from public.organization_memberships m
     join public.organizations o on o.id = m.organization_id

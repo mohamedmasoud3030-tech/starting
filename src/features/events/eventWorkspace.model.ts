@@ -39,6 +39,10 @@ const TAB_REQUIREMENT: Partial<Record<WorkspaceTab, keyof EventPermissions>> = {
   المدفوعات: "canCost",
   الفواتير: "canCost",
   الأجور: "canFinance",
+  // Procurement read models are hidden from non-cost roles and every S5
+  // command requires OWNER/MANAGER — for anyone else this tab can only show
+  // an empty list or a refusal.
+  المشتريات: "canCost",
 };
 
 /** The tabs a role can actually use, in canonical order. */

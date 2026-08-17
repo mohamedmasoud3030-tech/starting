@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/app/AuthContext";
+import { authLoginErrorMessage } from "./authErrors";
 import { LoginPage } from "./LoginPage";
 
 // LoginPage only needs `useNavigate`; stub it to avoid mounting a full router.
@@ -35,5 +36,31 @@ describe("LoginPage", () => {
     expect(
       screen.queryByRole("button", { name: /المدير|الكاشير|المطبخ/ }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("authLoginErrorMessage", () => {
+  it("explains wrong credentials in Arabic", () => {
+    expect(authLoginErrorMessage(new Error("Invalid login credentials"))).toBe(
+      "بيانات الدخول غير صحيحة. تحقق من البريد وكلمة المرور.",
+    );
+  });
+
+  it("explains an unconfirmed email in Arabic", () => {
+    expect(authLoginErrorMessage(new Error("Email not confirmed"))).toBe(
+      "لم يتم تأكيد البريد الإلكتروني بعد. تحقق من بريدك أو تواصل مع المالك.",
+    );
+  });
+
+  it("explains rate limiting in Arabic", () => {
+    expect(authLoginErrorMessage(new Error("Too many requests"))).toBe(
+      "محاولات كثيرة. انتظر قليلاً ثم أعد المحاولة.",
+    );
+  });
+
+  it("falls back to a generic Arabic message and never leaks raw text", () => {
+    const message = authLoginErrorMessage(new Error("some internal failure"));
+    expect(message).toBe("تعذّر تسجيل الدخول. تحقق من البيانات وأعد المحاولة.");
+    expect(message).not.toContain("some internal failure");
   });
 });

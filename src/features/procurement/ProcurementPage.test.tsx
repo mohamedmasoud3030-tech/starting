@@ -70,7 +70,10 @@ describe("ProcurementPage", () => {
     });
 
     vi.mocked(useEvents).mockReturnValue({
-      data: [{ id: "ev-1", title: "مناسبة العيد", event_number: "EV-01" }],
+      data: {
+        rows: [{ id: "ev-1", title: "مناسبة العيد", event_number: "EV-01" }],
+        total: 1,
+      },
       isLoading: false,
     } as any);
 
@@ -78,6 +81,37 @@ describe("ProcurementPage", () => {
 
     expect(screen.getByText("جارٍ تحميل المشتريات…")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "الموردون والمشتريات" })).toBeInTheDocument();
+  });
+
+  it("hides procurement from roles without financial visibility", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: "u1" } as any,
+      session: null,
+      profile: null,
+      currentMembership: null,
+      currentOrganization: { id: "org-1", name: "مكتب مسقط" } as any,
+      currentRole: "WAREHOUSE",
+      memberships: [],
+      loading: false,
+      error: null,
+      canManageCommercial: false,
+      canReadCost: false,
+      canWriteCustomers: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+      switchOrganization: vi.fn(),
+    });
+
+    vi.mocked(useEvents).mockReturnValue({
+      data: { rows: [], total: 0 },
+      isLoading: false,
+    } as any);
+
+    render(<ProcurementPage />, { wrapper });
+
+    expect(
+      screen.getByText("المشتريات والموردون متاحة للصلاحيات المالية فقط."),
+    ).toBeInTheDocument();
   });
 
   it("shows fallback message when no organization is active", () => {

@@ -85,6 +85,13 @@ async function assertPwaFiles() {
     indexSource.includes("viewport-fit=cover"),
     "index.html viewport must enable iOS safe-area layout",
   );
+  // Fonts are self-hosted (@fontsource): no runtime font requests may leave
+  // the deployment, and the service worker can cache them for offline use.
+  assert(
+    !indexSource.includes("fonts.googleapis.com") &&
+      !indexSource.includes("fonts.gstatic.com"),
+    "index.html must not load fonts from an external CDN",
+  );
 
   const workerResponse = await request("/sw.js");
   assert(workerResponse.status === 200, "sw.js is not served");
@@ -146,6 +153,16 @@ async function assertVercelContract() {
   assert(serializedHeaders.includes("X-Content-Type-Options"), "Missing nosniff deployment header");
   assert(serializedHeaders.includes("X-Frame-Options"), "Missing clickjacking deployment header");
   assert(serializedHeaders.includes("Referrer-Policy"), "Missing referrer deployment header");
+
+  // Defense-in-depth CSP: scripts/fonts/images self-hosted, API traffic only
+  // to Supabase, nothing framed, no object embedding.
+  assert(serializedHeaders.includes("Content-Security-Policy"), "Missing CSP deployment header");
+  assert(
+    serializedHeaders.includes("script-src 'self'") &&
+      serializedHeaders.includes("connect-src 'self' https://*.supabase.co") &&
+      serializedHeaders.includes("frame-ancestors 'none'"),
+    "CSP must lock scripts to self, connections to Supabase and forbid framing",
+  );
 }
 
 const viteBinary = process.platform === "win32" ? "node_modules/.bin/vite.cmd" : "node_modules/.bin/vite";

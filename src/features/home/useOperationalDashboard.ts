@@ -1,11 +1,13 @@
 import { useMemo } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/app/authContext";
 import { COST_READER_ROLES } from "@/lib/domain";
+import { supabase } from "@/lib/supabase";
+import { listIsTruncated } from "@/lib/listCap";
 import { useCatalogItems } from "@/features/catalog/catalog.api";
 import { useConsumableStock } from "@/features/consumables/consumables.api";
 import { useCustomers } from "@/features/customers/customers.api";
-import { eventReadinessQuery, useEvents } from "@/features/events/events.api";
+import { useEvents } from "@/features/events/events.api";
 import { usePackages } from "@/features/packages/packages.api";
 import {
   DEFAULT_TIME_ZONE,
@@ -47,7 +49,7 @@ export function useOperationalDashboard() {
 
   const todayEvents = useMemo(
     () =>
-      (events.data ?? []).filter(
+      (events.data?.rows ?? []).filter(
         (event) =>
           event.status !== "CANCELLED" &&
           isSameLocalDay(event.start_at, now, DEFAULT_TIME_ZONE),
@@ -55,31 +57,61 @@ export function useOperationalDashboard() {
     [events.data, now],
   );
 
-  const readinessQueries = useQueries({
-    queries: todayEvents.map((event) => eventReadinessQuery(orgId, event.id)),
+  // Batched readiness (defect D19): one RPC for all of today's events instead
+  // of an N+1 fan-out, so the dashboard stays fast on a site phone.
+  const todayIds = useMemo(
+    () => todayEvents.map((event) => event.id),
+    [todayEvents],
+  );
+  const readinessQuery = useQuery({
+    queryKey: ["event-readiness-batch", orgId, todayIds.join(",")],
+    enabled: !!orgId && events.isSuccess && todayIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("event_readiness_batch", {
+        p_org_id: orgId!,
+        p_event_ids: todayIds,
+      });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        event_id: string;
+        status: string;
+        staff_missing: number;
+        equipment_shortage: number;
+      }>;
+    },
   });
 
   const readinessSettled =
-    events.isSuccess && readinessQueries.every((query) => query.isFetched);
+    events.isSuccess && (todayIds.length === 0 || readinessQuery.isFetched);
   /** Readiness that failed to load is surfaced, never silently treated as ready. */
-  const readinessFailed = readinessQueries.some((query) => query.isError);
+  const readinessFailed = readinessQuery.isError;
 
   const readinessByEventId = useMemo(
     () =>
       Object.fromEntries(
-        todayEvents.map((event, index) => [
-          event.id,
-          (readinessQueries[index]?.data as OperationalReadiness | undefined) ?? null,
-        ]),
+        todayEvents.map((event) => {
+          const row = (readinessQuery.data ?? []).find(
+            (item) => item.event_id === event.id,
+          );
+          return [
+            event.id,
+            row
+              ? ({
+                  status: row.status,
+                  staff_missing: row.staff_missing,
+                  equipment_shortage: row.equipment_shortage,
+                } satisfies OperationalReadiness)
+              : null,
+          ] as const;
+        }),
       ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- readinessQueries is a new array each render; its data is captured via the map below.
-    [todayEvents, readinessQueries.map((q) => q.dataUpdatedAt).join(",")],
+    [todayEvents, readinessQuery.data],
   );
 
   const dashboard = useMemo(
     () =>
       buildOperationalDashboard({
-        events: events.data ?? [],
+        events: events.data?.rows ?? [],
         readinessByEventId,
         stockLines: stock.data?.lines ?? [],
         now,
@@ -115,6 +147,10 @@ export function useOperationalDashboard() {
     attentionSummary,
     /** Any read that failed and would otherwise leave the screen quietly wrong. */
     hasLoadError: events.isError || stock.isError || gaps.isError || readinessFailed,
+    /** The events list is capped by PostgREST max_rows; today's events may be hidden. */
+    eventsTruncated:
+      events.isSuccess &&
+      listIsTruncated(events.data?.rows.length ?? 0, events.data?.total),
     metrics: {
       todayEvents: settledCount(dashboardLoaded, dashboard.todayEvents.length),
       ready: settledCount(dashboardLoaded, dashboard.readyCount),
@@ -123,9 +159,9 @@ export function useOperationalDashboard() {
       attendanceGaps: attendanceGapCount,
     },
     shortcuts: {
-      catalog: settledCount(catalog.isSuccess, catalog.data?.length),
+      catalog: settledCount(catalog.isSuccess, catalog.data?.rows.length),
       packages: settledCount(packages.isSuccess, packages.data?.length),
-      customers: settledCount(customers.isSuccess, customers.data?.length),
+      customers: settledCount(customers.isSuccess, customers.data?.rows.length),
     },
   };
 }

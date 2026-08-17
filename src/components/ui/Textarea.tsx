@@ -1,10 +1,12 @@
 import { forwardRef, type TextareaHTMLAttributes } from "react";
+import { useFieldErrorId } from "./fieldContext";
 import { cn } from "@/lib/utils";
 
 export const Textarea = forwardRef<
   HTMLTextAreaElement,
   TextareaHTMLAttributes<HTMLTextAreaElement>
 >(function Textarea({ className, ...props }, ref) {
+  const errorId = useFieldErrorId();
   return (
     <textarea
       ref={ref}
@@ -15,6 +17,7 @@ export const Textarea = forwardRef<
         "disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500",
         className,
       )}
+      aria-describedby={props["aria-describedby"] ?? errorId}
       {...props}
     />
   );

@@ -1,6 +1,6 @@
 -- pgTAP integration coverage for S1-S3 commands and invariants.
 begin;
-select plan(35);
+select plan(42);
 
 insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at,raw_app_meta_data,raw_user_meta_data,is_super_admin) values
 ('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000001','authenticated','authenticated','s123-owner-a@test.local','x',now(),now(),now(),'{"provider":"email","providers":["email"]}','{}',false),
@@ -68,6 +68,20 @@ select is((select status::text from public.event_staff_assignments where idempot
 set local "request.jwt.claims"='{"sub":"10000000-0000-0000-0000-000000000002","role":"authenticated"}';
 select is((select count(*)::int from public.event_commercial_lines),0,'SUPERVISOR cannot read expected costs');
 select is((select count(*)::int from information_schema.columns where table_schema='public' and table_name='quotations_customer' and column_name in('total_expected_cost','total_expected_profit')),0,'customer quote projection hides cost and profit');
+
+-- ---------------------------------------------------------------------------
+-- Event logistics editing (migration 0057 UPDATE policy)
+-- ---------------------------------------------------------------------------
+set local "request.jwt.claims"='{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated"}';
+select lives_ok($$select public.create_event('10000000-0000-0000-0000-0000000000a1','10000000-0000-0000-0000-0000000000c1','EditTarget','X','2026-10-01 10:00+04','2026-10-01 12:00+04',10,'M',null,null,null,null,'11000000-0000-0000-0000-000000000006')$$,'edit-target Event created');
+select lives_ok($$update public.events set title='Renamed', venue_name='NewVenue' where organization_id='10000000-0000-0000-0000-0000000000a1' and idempotency_key='11000000-0000-0000-0000-000000000006'$$,'OWNER edits DRAFT logistics through the policy');
+select is((select title from public.events where idempotency_key='11000000-0000-0000-0000-000000000006'),'Renamed','edit persisted');
+select throws_ok($$update public.events set status='CLOSED' where organization_id='10000000-0000-0000-0000-0000000000a1' and idempotency_key='11000000-0000-0000-0000-000000000006'$$,'42501',null,'client cannot smuggle a status transition through the edit path');
+select throws_ok($$update public.events set title='x' where organization_id='10000000-0000-0000-0000-0000000000a1' and idempotency_key='11000000-0000-0000-0000-000000000001'$$,'42501',null,'CANCELLED event is not editable');
+set local "request.jwt.claims"='{"sub":"10000000-0000-0000-0000-000000000003","role":"authenticated"}';
+select lives_ok($$update public.events set title='hacked' where organization_id='10000000-0000-0000-0000-0000000000a1' and idempotency_key='11000000-0000-0000-0000-000000000006'$$,'cross-org update is a silent no-op');
+set local "request.jwt.claims"='{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated"}';
+select is((select title from public.events where idempotency_key='11000000-0000-0000-0000-000000000006'),'Renamed','cross-org edit did not modify the row');
 
 select * from finish();
 rollback;

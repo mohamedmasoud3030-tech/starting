@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Field } from "@/components/ui/Field";
 
+import { authLoginErrorMessage } from "./authErrors";
+
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -24,11 +26,7 @@ export function LoginPage() {
       await login(email, password);
       await navigate({ to: "/home" });
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "تعذّر تسجيل الدخول. تحقق من البيانات وأعد المحاولة.",
-      );
+      setError(authLoginErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
