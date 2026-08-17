@@ -17,6 +17,7 @@ export function QuotationReviewStep({
   savedDraftId,
   editMode,
   busy,
+  dirty,
   onDiscard,
   onSaveDraft,
   onRequestIssue,
@@ -30,6 +31,7 @@ export function QuotationReviewStep({
   savedDraftId: string | null;
   editMode: boolean;
   busy: DraftBusy;
+  dirty: boolean;
   onDiscard: () => void;
   onSaveDraft: () => void;
   onRequestIssue: () => void;
@@ -63,6 +65,14 @@ export function QuotationReviewStep({
       {pricingBlocked && (
         <p className="mb-3 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">
           حدد عدد الضيوف أولاً حتى تُحسب الخدمات «لكل ضيف».
+        </p>
+      )}
+      {dirty && (
+        <p
+          role="status"
+          className="mb-3 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800"
+        >
+          لديك تغييرات غير محفوظة — احفظ المسودة قبل مغادرة الصفحة.
         </p>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">

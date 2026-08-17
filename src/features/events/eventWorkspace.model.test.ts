@@ -124,6 +124,7 @@ describe("visibleWorkspaceTabs — no dead-end tabs", () => {
     expect(tabs).not.toContain("المدفوعات");
     expect(tabs).not.toContain("الفواتير");
     expect(tabs).not.toContain("الأجور");
+    expect(tabs).not.toContain("المشتريات");
     // The operational work a warehouse user is actually here to do stays.
     expect(tabs).toEqual(
       expect.arrayContaining(["ملخص", "المخزن", "المواد", "المعدات", "السجل"]),
@@ -135,6 +136,8 @@ describe("visibleWorkspaceTabs — no dead-end tabs", () => {
     expect(tabs).toContain("المدفوعات");
     expect(tabs).toContain("الفواتير");
     expect(tabs).toContain("الأجور");
+    // Read-only financial visibility includes procurement cost summaries.
+    expect(tabs).toContain("المشتريات");
   });
 
   it("keeps the canonical tab order", () => {

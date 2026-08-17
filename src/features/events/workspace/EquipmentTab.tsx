@@ -1,20 +1,131 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { useAuth } from "@/app/authContext";
+import { useCatalogItems } from "@/features/catalog/catalog.api";
+import { useSaveEquipmentCapacity } from "@/features/warehouse/warehouse.api";
 import type { Capacity, Reservation } from "../events.api";
 
+/**
+ * Equipment tab: reservation form + reservations list, plus (defect F11) the
+ * capacity provisioning form — capacity rows previously had no product path
+ * to exist, which left the "اختر المعدة" list permanently empty.
+ *
+ * Provisioning is offered to OWNER/MANAGER only (the UI gate is conservative;
+ * the database policy additionally allows WAREHOUSE).
+ */
 export function EquipmentTab({
+  orgId,
   capacities,
   reservations,
+  canProvision,
   run,
 }: {
+  orgId: string | null;
   capacities: ReadonlyArray<Capacity>;
   reservations: ReadonlyArray<Reservation>;
+  canProvision: boolean;
   run: (name: string, args: Record<string, unknown>) => Promise<void>;
 }) {
+  const { currentOrganization } = useAuth();
+  const orgIdActive = orgId ?? currentOrganization?.id ?? null;
+  const catalog = useCatalogItems(orgIdActive);
+  const saveCapacity = useSaveEquipmentCapacity(orgIdActive);
+
+  const reusableItems = (catalog.data?.rows ?? []).filter(
+    (item) => item.item_type === "REUSABLE_EQUIPMENT" && item.status === "ACTIVE",
+  );
+
+  const [capacityItem, setCapacityItem] = useState("");
+  const [capacityQty, setCapacityQty] = useState("");
+  const [capacityError, setCapacityError] = useState<string | null>(null);
+  const [capacityDone, setCapacityDone] = useState(false);
+
+  const existingCapacity = capacities.find(
+    (c) => c.catalog_item_id === capacityItem,
+  );
+
+  async function submitCapacity() {
+    setCapacityError(null);
+    setCapacityDone(false);
+    if (!capacityItem) {
+      setCapacityError("اختر المعدة أولاً");
+      return;
+    }
+    const quantity = Number(capacityQty);
+    if (!Number.isInteger(quantity) || quantity < 0 || capacityQty.trim() === "") {
+      setCapacityError("أدخل سعة صحيحة (صفر أو أكثر)");
+      return;
+    }
+    try {
+      await saveCapacity.mutateAsync({
+        existingId: existingCapacity?.id ?? null,
+        values: { catalogItemId: capacityItem, totalQuantity: quantity },
+      });
+      setCapacityDone(true);
+      setCapacityItem("");
+      setCapacityQty("");
+    } catch (cause) {
+      setCapacityError(
+        cause instanceof Error && cause.message
+          ? cause.message
+          : "تعذر حفظ السعة",
+      );
+    }
+  }
+
   return (
     <div className="space-y-4">
+      {canProvision && (
+        <Card>
+          <h2 className="mb-3 font-black">سعة المعدات</h2>
+          <p className="mb-3 text-sm text-slate-500">
+            عرّف السعة الكلية لكل معدة قابلة لإعادة الاستخدام — تظهر مباشرة في قائمة الحجز أدناه.
+          </p>
+          <div className="flex flex-wrap items-end gap-2">
+            <Select
+              value={capacityItem}
+              onChange={(e) => setCapacityItem(e.target.value)}
+              aria-label="المعدة"
+              className="min-w-52 flex-1"
+            >
+              <option value="">اختر المعدة</option>
+              {reusableItems.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </Select>
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              inputMode="numeric"
+              aria-label="السعة الكلية"
+              placeholder={existingCapacity ? String(existingCapacity.total_quantity) : "السعة الكلية"}
+              value={capacityQty}
+              onChange={(e) => setCapacityQty(e.target.value)}
+              className="w-40"
+            />
+            <Button type="button" onClick={() => void submitCapacity()} disabled={saveCapacity.isPending}>
+              {saveCapacity.isPending ? "جارٍ الحفظ…" : existingCapacity ? "تحديث السعة" : "حفظ السعة"}
+            </Button>
+          </div>
+          {capacityError && (
+            <p className="mt-2 text-sm font-bold text-red-700" role="alert">
+              {capacityError}
+            </p>
+          )}
+          {capacityDone && (
+            <p className="mt-2 text-sm font-bold text-emerald-700" role="status">
+              تم حفظ السعة بنجاح.
+            </p>
+          )}
+        </Card>
+      )}
+
       <Card>
         <h2 className="mb-3 font-black">حجز معدات</h2>
         <form
@@ -44,7 +155,8 @@ export function EquipmentTab({
       {reservations.map((r) => (
         <Card key={r.id}>
           <p className="font-bold">
-            {capacities.find((c) => c.id === r.equipment_capacity_id)?.catalog_item_id}
+            {capacities.find((c) => c.id === r.equipment_capacity_id)?.catalog_items?.name ??
+              capacities.find((c) => c.id === r.equipment_capacity_id)?.catalog_item_id}
           </p>
           <p>
             {r.quantity} · {r.status}

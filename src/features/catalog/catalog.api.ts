@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { toDbNumeric, type DbAmount } from "@/lib/money";
@@ -149,32 +150,77 @@ export function useCatalogCategories(orgId: string | null) {
   });
 }
 
+export interface CatalogItemList {
+  /** Rows on the current page (capped by PostgREST `max_rows`). */
+  rows: CatalogListItem[];
+  /** Exact organization total, or null when the count is unavailable. */
+  total: number | null;
+}
+
 export function useCatalogItems(orgId: string | null, includeCost = false) {
   return useQuery({
     queryKey: ["catalog-items", orgId, includeCost],
     enabled: !!orgId,
-    queryFn: async (): Promise<CatalogListItem[]> => {
-      if (!orgId) return [];
+    queryFn: async (): Promise<CatalogItemList> => {
+      if (!orgId) return { rows: [], total: null };
       if (includeCost) {
         // Cost-reading roles read the base table (includes cost_price/internal_notes).
-        const { data, error } = await supabase
+        const { data, error, count } = await supabase
           .from("catalog_items")
-          .select("*")
+          .select("*", { count: "exact" })
           .eq("organization_id", orgId)
           .order("name", { ascending: true });
         if (error) throw error;
-        return data ?? [];
+        return { rows: (data ?? []) as CatalogListItem[], total: count ?? null };
       }
       // Operational roles read the non-sensitive projection only.
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from("catalog_items_operational")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("organization_id", orgId)
         .order("name", { ascending: true });
       if (error) throw error;
-      return (data ?? []).flatMap(fromOperationalRow);
+      return { rows: (data ?? []).flatMap(fromOperationalRow), total: count ?? null };
     },
   });
+}
+
+/** Paginated catalog list for the Catalog screen (D21-ext). */
+export function useCatalogItemsPage(orgId: string | null, includeCost = false, pageSize = 50) {
+  const [size, setSize] = useState(pageSize);
+  const query = useQuery({
+    queryKey: ["catalog-items-page", orgId, includeCost, size],
+    enabled: !!orgId,
+    placeholderData: (previous) => previous,
+    queryFn: async (): Promise<CatalogItemList> => {
+      if (includeCost) {
+        const { data, error, count } = await supabase
+          .from("catalog_items")
+          .select("*", { count: "exact" })
+          .eq("organization_id", orgId!)
+          .order("name", { ascending: true })
+          .range(0, size - 1);
+        if (error) throw error;
+        return { rows: (data ?? []) as CatalogListItem[], total: count ?? null };
+      }
+      const { data, error, count } = await supabase
+        .from("catalog_items_operational")
+        .select("*", { count: "exact" })
+        .eq("organization_id", orgId!)
+        .order("name", { ascending: true })
+        .range(0, size - 1);
+      if (error) throw error;
+      return { rows: (data ?? []).flatMap(fromOperationalRow), total: count ?? null };
+    },
+  });
+  const loaded = query.data?.rows.length ?? 0;
+  const total = query.data?.total ?? null;
+  const hasMore = typeof total === "number" && loaded < total;
+  return {
+    ...query,
+    hasMore,
+    loadMore: () => setSize((current) => current + pageSize),
+  };
 }
 
 export function useCreateCatalogItem(orgId: string | null) {

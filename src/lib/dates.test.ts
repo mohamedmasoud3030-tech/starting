@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { todayInMuscat } from "./dates";
+import { isoToMuscatWallClock, muscatWallClockToIso, todayInMuscat } from "./dates";
 
 describe("todayInMuscat", () => {
   it("returns the Muscat calendar day, not the UTC day, after UTC midnight", () => {
@@ -23,5 +23,22 @@ describe("todayInMuscat", () => {
     expect(todayInMuscat(new Date("2026-01-05T12:00:00.000Z"))).toMatch(
       /^\d{4}-\d{2}-\d{2}$/,
     );
+  });
+});
+
+describe("Muscat wall-clock pinning (D17)", () => {
+  it("interprets a wall-clock input as Asia/Muscat (+04:00)", () => {
+    const iso = muscatWallClockToIso("2026-08-20T16:30");
+    expect(iso).toBe("2026-08-20T12:30:00.000Z");
+  });
+
+  it("round-trips the same wall clock on any device", () => {
+    const iso = muscatWallClockToIso("2026-08-20T00:15");
+    expect(isoToMuscatWallClock(iso!)).toBe("2026-08-20T00:15");
+  });
+
+  it("returns null for malformed input instead of inventing a time", () => {
+    expect(muscatWallClockToIso("not-a-date")).toBeNull();
+    expect(muscatWallClockToIso("")).toBeNull();
   });
 });

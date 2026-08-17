@@ -17,7 +17,6 @@ import {
   canWriteCustomersFor,
   selectCurrentMembership,
 } from "./authRoles";
-import { PUBLIC_DEMO_MODE, PUBLIC_DEMO_ORG_ID } from "./publicDemo";
 import {
   readStoredOrganizationId,
   writeStoredOrganizationId,
@@ -82,39 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(data ?? null);
   }, []);
 
-  const loadPublicDemo = useCallback(async () => {
-    const { data: organization, error: organizationError } = await supabase
-      .from("organizations")
-      .select("*")
-      .eq("id", PUBLIC_DEMO_ORG_ID)
-      .eq("is_active", true)
-      .single();
-    if (organizationError) throw organizationError;
-
-    const { data: membership, error: membershipError } = await supabase
-      .from("organization_memberships")
-      .select("*")
-      .eq("organization_id", PUBLIC_DEMO_ORG_ID)
-      .eq("status", "ACTIVE")
-      .eq("role", "OWNER")
-      .limit(1)
-      .maybeSingle();
-    if (membershipError) throw membershipError;
-    if (!membership) throw new Error("تعذّر تحميل مؤسسة العرض العام");
-
-    setUser(null);
-    setSession(null);
-    setProfile(null);
-    setMemberships([{ membership, organization }]);
-  }, []);
-
   const hydrate = useCallback(
     async (activeSession: Session | null) => {
-      if (PUBLIC_DEMO_MODE) {
-        await loadPublicDemo();
-        return;
-      }
-
       if (!activeSession?.user) {
         setUser(null);
         setSession(null);
@@ -129,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loadMemberships(activeSession.user.id),
       ]);
     },
-    [loadProfile, loadMemberships, loadPublicDemo],
+    [loadProfile, loadMemberships],
   );
 
   useEffect(() => {
@@ -143,17 +111,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             "النظام غير مهيأ بعد. يرجى ضبط إعدادات الاتصال في ملف البيئة (.env).",
           );
           setLoading(false);
-          return;
-        }
-
-        if (PUBLIC_DEMO_MODE) {
-          // Public demo deliberately carries no browser user/session. Clearing a
-          // previously persisted session ensures every visitor uses the anon key.
-          const {
-            data: { session: persistedSession },
-          } = await supabase.auth.getSession();
-          if (persistedSession) await supabase.auth.signOut();
-          if (!cancelled) await hydrate(null);
           return;
         }
 
@@ -177,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
       void (async () => {
         try {
-          await hydrate(PUBLIC_DEMO_MODE ? null : newSession);
+          await hydrate(newSession);
         } catch (err) {
           setError(err instanceof Error ? err.message : "حدث خطأ غير متوقع");
         } finally {
@@ -201,10 +158,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           "النظام غير مهيأ بعد. يرجى ضبط إعدادات الاتصال في ملف البيئة (.env).",
         );
       }
-      if (PUBLIC_DEMO_MODE) {
-        await hydrate(null);
-        return;
-      }
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -222,10 +175,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [hydrate]);
 
   const logout = useCallback(async () => {
-    if (PUBLIC_DEMO_MODE) {
-      await hydrate(null);
-      return;
-    }
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);

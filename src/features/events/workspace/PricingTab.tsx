@@ -1,8 +1,13 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Dialog } from "@/components/ui/Dialog";
+import { Field } from "@/components/ui/Field";
+import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { formatOMR, fromDbAmount } from "@/lib/money";
+import { MoneyInput } from "@/components/MoneyInput";
+import { formatOMR, fromDbAmount, parseOMR, parseQuantityMilli } from "@/lib/money";
 import type { EventRow, CommercialLine, Quote } from "../events.api";
 import { CommercialLineForm } from "./CommercialLineForm";
 import { pricingTotals } from "./pricingTotals";
@@ -11,6 +16,107 @@ type PricingDeps = {
   packages: ReadonlyArray<{ package: { id: string; name: string } }>;
   run: (name: string, args: Record<string, unknown>, includeEvent?: boolean) => Promise<void>;
 };
+
+/**
+ * Inline editor for one commercial line (defect D35): replaces the three
+ * blocking `window.prompt` dialogs with real form fields validated through
+ * the same exact-money parsers the rest of the pricing flow uses.
+ */
+function EditLineDialog({
+  line,
+  canCost,
+  open,
+  onClose,
+  run,
+}: {
+  line: CommercialLine;
+  canCost: boolean;
+  open: boolean;
+  onClose: () => void;
+  run: (name: string, args: Record<string, unknown>, includeEvent?: boolean) => Promise<void>;
+}) {
+  const [quantity, setQuantity] = useState(() => String(line.quantity));
+  const [sell, setSell] = useState(() => String(line.unit_selling_price));
+  const [cost, setCost] = useState(() => String(line.expected_unit_cost ?? "0.000"));
+  const [error, setError] = useState<string | null>(null);
+
+  function submit() {
+    setError(null);
+    try {
+      const q = parseQuantityMilli(quantity);
+      const s = parseOMR(sell);
+      const c = parseOMR(cost || "0.000");
+      if (q <= 0) throw new Error("الكمية يجب أن تكون أكبر من صفر");
+      if (s < 0 || c < 0) throw new Error("الأسعار لا يمكن أن تكون سالبة");
+      void run(
+        "save_event_commercial_line",
+        {
+          p_line_id: line.id,
+          p_description: line.description,
+          p_item_type: line.item_type,
+          p_unit: line.unit,
+          p_pricing_method: line.pricing_method,
+          p_quantity: quantity,
+          p_unit_selling_price: sell,
+          p_expected_unit_cost: cost || "0.000",
+          p_notes: null,
+        },
+      ).then(onClose, (cause) =>
+        setError(cause instanceof Error ? cause.message : "تعذر حفظ التعديل"),
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "قيم غير صالحة");
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+      title="تعديل سطر الخدمة"
+      description={line.description}
+    >
+      <div className="grid gap-4">
+        <Field label="الكمية" htmlFor="line-quantity">
+          <Input
+            id="line-quantity"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+          />
+        </Field>
+        <MoneyInput
+          id="line-sell"
+          label="سعر البيع للوحدة"
+          value={parseOMR(sell)}
+          onChange={(millis) => setSell(millis === null ? "" : String(millis / 1000))}
+        />
+        {canCost && (
+          <MoneyInput
+            id="line-cost"
+            label="التكلفة المتوقعة للوحدة"
+            value={parseOMR(cost || "0.000")}
+            onChange={(millis) => setCost(millis === null ? "" : String(millis / 1000))}
+          />
+        )}
+        {error && (
+          <p className="text-sm font-bold text-red-700" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            إلغاء
+          </Button>
+          <Button type="button" onClick={submit}>
+            حفظ التعديل
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
 
 /** Pricing tab: expected revenue/cost/profit, package application, custom
  * lines, and the quotation revision list. */
@@ -30,9 +136,9 @@ export function PricingTab({
   deps: PricingDeps;
 }) {
   const { packages, run } = deps;
+  const [editingLine, setEditingLine] = useState<CommercialLine | null>(null);
   // Exact integer milli-OMR sums — never float reduce + toFixed (AGENTS.md).
   const totals = pricingTotals(lines);
-
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
@@ -104,26 +210,7 @@ export function PricingTab({
                   <Button
                     variant="secondary"
                     className="mt-2"
-                    onClick={() => {
-                      const quantity = window.prompt("الكمية", l.quantity);
-                      const sell = window.prompt("سعر البيع", l.unit_selling_price);
-                      const cost = window.prompt(
-                        "التكلفة المتوقعة",
-                        l.expected_unit_cost ?? "0.000",
-                      );
-                      if (quantity && sell && cost)
-                        void run("save_event_commercial_line", {
-                          p_line_id: l.id,
-                          p_description: l.description,
-                          p_item_type: l.item_type,
-                          p_unit: l.unit,
-                          p_pricing_method: l.pricing_method,
-                          p_quantity: quantity,
-                          p_unit_selling_price: sell,
-                          p_expected_unit_cost: cost,
-                          p_notes: null,
-                        });
-                    }}
+                    onClick={() => setEditingLine(l)}
                   >
                     تعديل
                   </Button>
@@ -181,6 +268,16 @@ export function PricingTab({
           </Card>
         ))}
       </div>
+
+      {editingLine && (
+        <EditLineDialog
+          line={editingLine}
+          canCost={canCost}
+          open={editingLine !== null}
+          onClose={() => setEditingLine(null)}
+          run={run}
+        />
+      )}
     </div>
   );
 }

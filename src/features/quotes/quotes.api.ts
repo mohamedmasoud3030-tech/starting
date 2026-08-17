@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { callRpc } from "@/lib/rpc";
+import { muscatWallClockToIso } from "@/lib/dates";
 import type { CatalogItemType, PricingMethod } from "@/lib/dbTypes";
 
 const db: SupabaseClient = supabase;
@@ -103,8 +104,8 @@ function normalizeDraft(values: QuotationDraftValues) {
     p_prospect_company: values.prospectCompany.trim() || null,
     p_event_title: values.eventTitle.trim() || null,
     p_event_type: values.eventType.trim() || null,
-    p_start_at: values.startAt ? new Date(values.startAt).toISOString() : null,
-    p_end_at: values.endAt ? new Date(values.endAt).toISOString() : null,
+    p_start_at: values.startAt ? (muscatWallClockToIso(values.startAt) ?? new Date(values.startAt).toISOString()) : null,
+    p_end_at: values.endAt ? (muscatWallClockToIso(values.endAt) ?? new Date(values.endAt).toISOString()) : null,
     p_guest_count: values.guestCount,
     p_venue_name: values.venueName.trim() || null,
     p_notes: values.notes.trim() || null,
@@ -258,8 +259,8 @@ export function useConvertQuotation(orgId: string | null) {
         p_org_id: orgId,
         p_quotation_id: args.quotationId,
         p_idempotency_key: crypto.randomUUID(),
-        p_start_at: args.startAt ? new Date(args.startAt).toISOString() : null,
-        p_end_at: args.endAt ? new Date(args.endAt).toISOString() : null,
+        p_start_at: args.startAt ? (muscatWallClockToIso(args.startAt) ?? new Date(args.startAt).toISOString()) : null,
+        p_end_at: args.endAt ? (muscatWallClockToIso(args.endAt) ?? new Date(args.endAt).toISOString()) : null,
         p_venue_name: args.venueName?.trim() || null,
         p_guest_count: args.guestCount ?? null,
         p_event_title: args.eventTitle?.trim() || null,

@@ -73,6 +73,7 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
             savedDraftId={draft.savedDraftId}
             editMode={draft.editMode}
             busy={draft.busy}
+            dirty={draft.dirty}
             onDiscard={() => void draft.onDiscard()}
             onSaveDraft={() => void draft.onSaveDraft()}
             onRequestIssue={() => draft.setIssueConfirmationOpen(true)}

@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { TruncationNotice } from "@/components/ui/TruncationNotice";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import {
@@ -47,6 +48,7 @@ export function HomePage() {
     attendanceGaps,
     attentionSummary,
     hasLoadError,
+    eventsTruncated,
     metrics,
     shortcuts,
   } = useOperationalDashboard();
@@ -63,6 +65,10 @@ export function HomePage() {
 
       {hasLoadError && (
         <ErrorState message="تعذر تحميل جزء من لوحة التشغيل. أعد المحاولة قبل الاعتماد على حالة اليوم." />
+      )}
+
+      {eventsTruncated && (
+        <TruncationNotice message="عدد مناسباتك تجاوز حد العرض. جزء من المناسبات — وقد يشمل مناسبات اليوم — غير معروض في هذه اللوحة." />
       )}
 
       {/*

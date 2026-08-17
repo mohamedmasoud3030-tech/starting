@@ -126,6 +126,9 @@ export interface StaffMemberRow {
   isActive: boolean;
   defaultCompensationMethod: CompensationMethod | null;
   defaultRateMilli: MilliOMR;
+  phone: string | null;
+  whatsapp: string | null;
+  notes: string | null;
 }
 
 /**
@@ -517,7 +520,70 @@ export function useOrgStaffMembers(orgId: string | null) {
         isActive: row.is_active,
         defaultCompensationMethod: row.default_compensation_method,
         defaultRateMilli: fromDbAmount(row.default_rate),
+        phone: row.phone,
+        whatsapp: row.whatsapp,
+        notes: row.notes,
       }));
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Roster provisioning (defect F11): the staff page was read-only, so the
+// team/attendance/payroll features had no data source inside the product.
+// Writes use the existing role-checked RLS policy (staff_members_manage =
+// OWNER/MANAGER) and follow the customers/catalog direct-write pattern.
+// ---------------------------------------------------------------------------
+
+export interface StaffMemberFormValues {
+  name: string;
+  staffType: StaffType;
+  phone: string;
+  whatsapp: string;
+  compensationMethod: CompensationMethod;
+  rateMilli: MilliOMR;
+  isActive: boolean;
+  notes: string;
+}
+
+export function useSaveStaffMember(orgId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      values,
+    }: {
+      id: string | null;
+      values: StaffMemberFormValues;
+    }) => {
+      if (!orgId) throw new Error("لا توجد منظمة محددة");
+      const payload = {
+        organization_id: orgId,
+        name: values.name.trim(),
+        phone: values.phone.trim() || null,
+        whatsapp: values.whatsapp.trim() || null,
+        staff_type: values.staffType,
+        is_active: values.isActive,
+        default_compensation_method: values.compensationMethod,
+        default_rate: toDbNumeric(values.rateMilli),
+        notes: values.notes.trim() || null,
+      };
+      if (id) {
+        const { error } = await db
+          .from("staff_members")
+          .update(payload)
+          .eq("organization_id", orgId)
+          .eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await db.from("staff_members").insert(payload);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      // The roster feeds the staff page AND the event workspace team tab.
+      void qc.invalidateQueries({ queryKey: ["staff-members", orgId] });
+      void qc.invalidateQueries({ queryKey: ["event-workspace", orgId] });
     },
   });
 }

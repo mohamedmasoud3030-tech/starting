@@ -76,7 +76,7 @@ export function PackagesPage() {
             <li key={pkg.package.id}>
               <PackageCard
                 pkg={pkg}
-                catalogItems={itemsQuery.data ?? []}
+                catalogItems={itemsQuery.data?.rows ?? []}
                 editable={canManageCommercial}
                 onEdit={() => {
                   setEditing(pkg);
@@ -92,7 +92,7 @@ export function PackagesPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         orgId={orgId}
-        catalogItems={itemsQuery.data ?? []}
+        catalogItems={itemsQuery.data?.rows ?? []}
         target={editing}
       />
     </div>

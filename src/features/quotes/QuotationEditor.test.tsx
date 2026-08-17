@@ -113,6 +113,9 @@ vi.mock("@/app/authContext", () => ({
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
   Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
+  // The draft editor guards against leaving with unsaved edits; not under
+  // test here, so the blocker is inert.
+  useBlocker: () => {},
 }));
 
 function renderEditor(draftId?: string) {

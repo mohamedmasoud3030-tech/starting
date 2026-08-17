@@ -4,6 +4,7 @@ import { CalendarDays, MapPin, Plus, Search, Users } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { TruncationNotice } from "@/components/ui/TruncationNotice";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
@@ -14,7 +15,11 @@ import { Textarea } from "@/components/ui/Textarea";
 import { useCustomers } from "@/features/customers/customers.api";
 import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
 import { buildEventsListVoiceSummary } from "@/features/ownerVoice/screenSummary";
-import { arabicError, useCreateEvent, useEvents, type EventStatus } from "./events.api";
+import { listIsTruncated } from "@/lib/listCap";
+import { muscatWallClockToIso } from "@/lib/dates";
+import { useStableIdempotencyKey } from "@/lib/useStableIdempotencyKey";
+import { orderEvents, type EventListSortMode } from "./eventsListOrder";
+import { arabicError, useCreateEvent, useEventsPage, type EventStatus } from "./events.api";
 
 const labels: Record<EventStatus, string> = {
   DRAFT: "مسودة", QUOTED: "تم التسعير", CONFIRMED: "مؤكدة", PREPARING: "قيد التجهيز",
@@ -32,7 +37,7 @@ type EventFilter = "ACTIVE" | "UPCOMING" | "CLOSED" | "ALL";
 export function EventsPage() {
   const { currentOrganization } = useAuth();
   const orgId = currentOrganization?.id ?? null;
-  const events = useEvents(orgId);
+  const events = useEventsPage(orgId);
   const customers = useCustomers(orgId);
   const create = useCreateEvent(orgId);
   const navigate = useNavigate();
@@ -40,15 +45,30 @@ export function EventsPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<EventFilter>("ACTIVE");
+  const [sortMode, setSortMode] = useState<EventListSortMode>("UPCOMING");
+  // One idempotency key per dialog session: an ambiguous retry replays the
+  // same server command instead of creating a duplicate event.
+  const createKey = useStableIdempotencyKey(open);
 
   const customerNames = useMemo(
-    () => new Map((customers.data ?? []).map((customer) => [customer.id, customer.name])),
+    () =>
+      new Map(
+        (customers.data?.rows ?? []).map((customer) => [
+          customer.id,
+          customer.name,
+        ]),
+      ),
     [customers.data],
   );
+  const orderedEvents = useMemo(
+    () => orderEvents(events.data?.rows ?? [], sortMode),
+    [events.data, sortMode],
+  );
+
   const visibleEvents = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("ar");
     const now = Date.now();
-    return (events.data ?? []).filter((event) => {
+    return orderedEvents.filter((event) => {
       const matchesFilter = filter === "ALL" ||
         (filter === "ACTIVE" && !["CLOSED", "CANCELLED"].includes(event.status)) ||
         (filter === "UPCOMING" && !["CLOSED", "CANCELLED"].includes(event.status) && new Date(event.start_at).getTime() >= now) ||
@@ -56,7 +76,7 @@ export function EventsPage() {
       const haystack = `${event.event_number} ${event.title} ${event.venue_name} ${customerNames.get(event.customer_id) ?? ""}`.toLocaleLowerCase("ar");
       return matchesFilter && (!term || haystack.includes(term));
     });
-  }, [customerNames, events.data, filter, search]);
+  }, [customerNames, orderedEvents, filter, search]);
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -65,10 +85,13 @@ export function EventsPage() {
     try {
       const event = await create.mutateAsync({
         customerId: String(form.get("customer")), title: String(form.get("title")),
-        eventType: String(form.get("type")), startAt: String(form.get("start")),
-        endAt: String(form.get("end")), guestCount: Number(form.get("guests")),
+        eventType: String(form.get("type")),
+        startAt: muscatWallClockToIso(String(form.get("start"))) ?? String(form.get("start")),
+        endAt: muscatWallClockToIso(String(form.get("end"))) ?? String(form.get("end")),
+        guestCount: Number(form.get("guests")),
         venue: String(form.get("venue")), contactName: String(form.get("contact") ?? ""),
         contactPhone: String(form.get("phone") ?? ""), notes: String(form.get("notes") ?? ""),
+        idempotencyKey: createKey,
       });
       setOpen(false);
       void navigate({ to: "/events/$eventId", params: { eventId: event.id } });
@@ -77,7 +100,11 @@ export function EventsPage() {
     }
   }
 
-  const voiceSummary = events.isSuccess ? buildEventsListVoiceSummary({ events: events.data }) : null;
+  const voiceSummary = events.isSuccess
+    ? buildEventsListVoiceSummary({ events: events.data?.rows ?? [] })
+    : null;
+  const eventsTruncated =
+    events.isSuccess && (events.hasMore || listIsTruncated(events.data?.rows.length ?? 0, events.data?.total));
 
   return (
     <div>
@@ -93,6 +120,17 @@ export function EventsPage() {
           <Search className="pointer-events-none absolute right-3 top-3.5 h-5 w-5 text-slate-400" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" placeholder="ابحث بالرقم، المناسبة، العميل أو الموقع" />
         </label>
+        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex gap-1 overflow-x-auto" role="group" aria-label="ترتيب المناسبات">
+          <button type="button" onClick={() => setSortMode("UPCOMING")} aria-pressed={sortMode === "UPCOMING"}
+            className={`min-h-11 shrink-0 rounded-xl px-3 text-sm font-bold ${sortMode === "UPCOMING" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+            القادمة أولاً
+          </button>
+          <button type="button" onClick={() => setSortMode("CHRONO")} aria-pressed={sortMode === "CHRONO"}
+            className={`min-h-11 shrink-0 rounded-xl px-3 text-sm font-bold ${sortMode === "CHRONO" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+            ترتيب زمني
+          </button>
+        </div>
         <div className="flex gap-1 overflow-x-auto" role="group" aria-label="تصفية المناسبات">
           {([['ACTIVE','النشطة'],['UPCOMING','القادمة'],['CLOSED','المغلقة'],['ALL','الكل']] as const).map(([value, label]) => (
             <button key={value} type="button" onClick={() => setFilter(value)} aria-pressed={filter === value}
@@ -101,10 +139,28 @@ export function EventsPage() {
             </button>
           ))}
         </div>
+        </div>
       </div>
 
+      {eventsTruncated && (
+        <div className="mb-4 space-y-3">
+          <TruncationNotice
+            message={`يتم عرض ${events.data?.rows.length ?? 0} من ${events.data?.total ?? "…"} مناسبة. اعرض المزيد حتى تكتمل القائمة.`}
+          />
+          {events.hasMore && (
+            <Button
+              variant="secondary"
+              onClick={() => events.loadMore()}
+              disabled={events.isFetching}
+            >
+              {events.isFetching ? "جارٍ التحميل…" : "عرض المزيد من المناسبات"}
+            </Button>
+          )}
+        </div>
+      )}
+
       {events.isLoading ? <p className="py-12 text-center text-slate-500">جارٍ تحميل المناسبات…</p> :
-        !events.data?.length ? <EmptyState title="لا توجد مناسبات" description="أنشئ أول مناسبة لبدء التخطيط." action={<Button onClick={() => setOpen(true)}>+ مناسبة جديدة</Button>} /> :
+        !events.data?.rows.length ? <EmptyState title="لا توجد مناسبات" description="أنشئ أول مناسبة لبدء التخطيط." action={<Button onClick={() => setOpen(true)}>+ مناسبة جديدة</Button>} /> :
         visibleEvents.length === 0 ? <EmptyState title="لا توجد نتائج مطابقة" description="غيّر عبارة البحث أو عامل التصفية." /> :
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="hidden grid-cols-[minmax(0,1.5fr)_minmax(9rem,1fr)_minmax(9rem,1fr)_auto] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-sm font-bold text-slate-500 md:grid">
@@ -136,7 +192,7 @@ export function EventsPage() {
 
       <Dialog open={open} onOpenChange={setOpen} title="مناسبة جديدة" description="أنشئ مناسبة مباشرة لعميل مسجل. عروض العملاء المتوقعين تبدأ من شاشة عروض الأسعار.">
         <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-          <Field label="العميل"><Select name="customer" required defaultValue=""><option value="" disabled>اختر العميل</option>{customers.data?.filter((c) => c.is_active).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>
+          <Field label="العميل"><Select name="customer" required defaultValue=""><option value="" disabled>اختر العميل</option>{customers.data?.rows.filter((c) => c.is_active).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>
           <Field label="عنوان المناسبة"><Input name="title" required /></Field>
           <Field label="نوع المناسبة"><Input name="type" placeholder="زفاف، مؤتمر…" required /></Field>
           <Field label="عدد الضيوف"><Input name="guests" type="number" min="1" required /></Field>

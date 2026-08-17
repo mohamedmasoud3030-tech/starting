@@ -221,3 +221,51 @@ export function useReconcileWarehouse(orgId: string | null, eventId: string) {
     onSuccess: invalidate,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Equipment capacity provisioning (defect F11): capacity rows had no product
+// path to exist. The write uses the existing role-checked RLS policy
+// (equipment_capacity_manage = OWNER/MANAGER/WAREHOUSE). A catalog item can
+// carry at most one capacity row (unique(organization_id, catalog_item_id)),
+// so an existing row is updated instead of duplicated.
+// ---------------------------------------------------------------------------
+
+export interface CapacityFormValues {
+  catalogItemId: string;
+  totalQuantity: number;
+}
+
+export function useSaveEquipmentCapacity(orgId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      existingId,
+      values,
+    }: {
+      existingId: string | null;
+      values: CapacityFormValues;
+    }) => {
+      if (!orgId) throw new Error("لا توجد منظمة محددة");
+      if (values.totalQuantity < 0) throw new Error("السعة لا يمكن أن تكون سالبة");
+      if (existingId) {
+        const { error } = await supabase
+          .from("equipment_capacity")
+          .update({ total_quantity: values.totalQuantity, is_active: true })
+          .eq("organization_id", orgId)
+          .eq("id", existingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("equipment_capacity").insert({
+          organization_id: orgId,
+          catalog_item_id: values.catalogItemId,
+          total_quantity: values.totalQuantity,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      // The workspace aggregate (capacities + reservations) reads this table.
+      void qc.invalidateQueries({ queryKey: ["event-workspace", orgId] });
+    },
+  });
+}

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
+import { VoidReasonPanel } from "@/components/ui/VoidReasonPanel";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
@@ -48,6 +49,7 @@ export function EventPaymentsPanel({
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
+  const [voiding, setVoiding] = useState<string | null>(null);
 
   if (!canReadCost) {
     return (
@@ -89,12 +91,11 @@ export function EventPaymentsPanel({
     }
   }
 
-  async function submitVoid(paymentId: string) {
-    const reason = window.prompt("سبب إلغاء الدفعة");
-    if (!reason || reason.trim().length < 3) return;
+  async function submitVoid(paymentId: string, reason: string) {
     setError("");
     try {
-      await voidPayment.mutateAsync({ paymentId, reason: reason.trim() });
+      await voidPayment.mutateAsync({ paymentId, reason });
+      setVoiding(null);
     } catch (cause) {
       setError(paymentError(cause));
     }
@@ -208,10 +209,21 @@ export function EventPaymentsPanel({
                       <Button
                         variant="outline"
                         disabled={voidPayment.isPending}
-                        onClick={() => void submitVoid(p.id)}
+                        onClick={() => setVoiding(p.id)}
                       >
                         إلغاء الدفعة
                       </Button>
+                    )}
+                    {voiding === p.id && (
+                      <VoidReasonPanel
+                        title="تأكيد إلغاء الدفعة"
+                        description="الإلغاء لا يحذف الدفعة من السجل، بل يثبتها ملغاة بسبب موثق."
+                        confirmLabel="تأكيد الإلغاء"
+                        reasonLabel="سبب إلغاء الدفعة"
+                        busy={voidPayment.isPending}
+                        onConfirm={(reason) => void submitVoid(p.id, reason)}
+                        onCancel={() => setVoiding(null)}
+                      />
                     )}
                   </CardBody>
                 </Card>

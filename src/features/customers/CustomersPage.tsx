@@ -11,18 +11,20 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
+import { TruncationNotice } from "@/components/ui/TruncationNotice";
 import { CUSTOMER_TYPE_LABELS } from "@/lib/domain";
+import { listIsTruncated } from "@/lib/listCap";
 import type { CustomerRow, CustomerType } from "@/lib/dbTypes";
 import {
   type CustomerFormValues,
-  useCustomers,
+  useCustomersPage,
   useSaveCustomer,
 } from "./customers.api";
 
 export function CustomersPage() {
   const { currentOrganization, canWriteCustomers } = useAuth();
   const orgId = currentOrganization?.id ?? null;
-  const customersQuery = useCustomers(orgId);
+  const customersQuery = useCustomersPage(orgId);
   const saveMutation = useSaveCustomer(orgId);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -36,7 +38,10 @@ export function CustomersPage() {
     );
   }
 
-  const customers = customersQuery.data ?? [];
+  const customers = customersQuery.data?.rows ?? [];
+  const customersTruncated =
+    customersQuery.isSuccess &&
+    listIsTruncated(customersQuery.data?.rows.length ?? 0, customersQuery.data?.total);
 
   return (
     <div>
@@ -57,6 +62,23 @@ export function CustomersPage() {
           ) : undefined
         }
       />
+
+      {customersTruncated && (
+        <div className="mb-4 space-y-3">
+          <TruncationNotice
+            message={`يتم عرض ${customersQuery.data?.rows.length ?? 0} من ${customersQuery.data?.total ?? "…"} عميلاً.`}
+          />
+          {customersQuery.hasMore && (
+            <Button
+              variant="secondary"
+              onClick={() => customersQuery.loadMore()}
+              disabled={customersQuery.isFetching}
+            >
+              {customersQuery.isFetching ? "جارٍ التحميل…" : "عرض المزيد من العملاء"}
+            </Button>
+          )}
+        </div>
+      )}
 
       {customers.length === 0 ? (
         <EmptyState
@@ -126,6 +148,20 @@ export function CustomersPage() {
         customer={editing}
         saving={saveMutation.isPending}
         onSave={async (values) => {
+          // Duplicate-phone guard (F10): one client must not silently split
+          // into two profiles with the same phone number.
+          if (!editing && values.phone.trim()) {
+            const existing = (customersQuery.data?.rows ?? []).find(
+              (row) =>
+                row.is_active &&
+                (row.phone ?? "").replace(/\s/g, "") === values.phone.trim().replace(/\s/g, ""),
+            );
+            if (existing) {
+              throw new Error(
+                `يوجد عميل بنفس رقم الهاتف: ${existing.name}. عدّل العميل القائم بدلاً من إنشاء نسخة جديدة.`,
+              );
+            }
+          }
           await saveMutation.mutateAsync({
             id: editing?.id ?? null,
             values,

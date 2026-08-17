@@ -195,6 +195,8 @@ export function paymentError(error: unknown): string {
   if (message.includes("IDEMPOTENCY_KEY_PAYLOAD_MISMATCH")) return "تعارض في طلب الدفع — حاول مجدداً";
   if (message.includes("PAYMENT_ALREADY_VOIDED")) return "هذه الدفعة ملغاة بالفعل";
   if (message.includes("PAYMENT_VOID_REASON_REQUIRED")) return "يرجى ذكر سبب الإلغاء";
+  if (message.includes("OVERPAYMENT_EXCEEDS_ACCEPTED"))
+    return "المبلغ يتجاوز المتبقي المستحق — المدفوع الكلي لا يمكن أن يتجاوز قيمة العرض المعتمد";
   if (message.includes("NOT_AUTHORIZED")) return "ليس لديك صلاحية لتنفيذ هذا الإجراء المالي";
   return message;
 }

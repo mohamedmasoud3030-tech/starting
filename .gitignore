@@ -47,3 +47,6 @@ coverage/
 
 # TypeScript build info
 *.tsbuildinfo
+
+# Production env values belong in the hosting platform, not the repo
+.env.production

@@ -88,11 +88,6 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
-vi.mock("./publicDemo", () => ({
-  PUBLIC_DEMO_MODE: false,
-  PUBLIC_DEMO_ORG_ID: "demo-org",
-}));
-
 function Probe() {
   const {
     currentOrganization,

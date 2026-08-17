@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useBlocker, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/app/authContext";
 import { usePackages } from "@/features/packages/packages.api";
 import { useCatalogItems } from "@/features/catalog/catalog.api";
@@ -59,8 +59,18 @@ export function useQuotationDraft(draftId?: string) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<DraftBusy>("");
   const [issueConfirmationOpen, setIssueConfirmationOpen] = useState(false);
+  /** Unsaved edits since the last successful persist (initial load is clean). */
+  const [dirty, setDirty] = useState(false);
   const saveIntentRef = useRef<{ fingerprint: string; idempotencyKey: string } | null>(null);
   const nextLineKeyRef = useRef(createLineKeyFactory());
+
+  // While the draft has unsaved edits, navigating away inside the app or
+  // closing/reloading the tab asks the operator first. The flags re-evaluate
+  // on every render, so the blocker only ever engages while `dirty` is true.
+  useBlocker({
+    shouldBlockFn: () => dirty,
+    enableBeforeUnload: () => dirty,
+  });
 
   // Edit mode: hydrate form + guest count from the persisted draft.
   useEffect(() => {
@@ -78,6 +88,37 @@ export function useQuotationDraft(draftId?: string) {
   }, [draftId, existingLines.data]);
 
   const guestCountNum = guestCount.trim() === "" ? null : Number(guestCount);
+
+  // Debounced autosave (defect D22): once edits settle for 1.5s and the draft
+  // is persistable (a prospect name exists, and every PER_GUEST line has a
+  // guest count), the same atomic persist path used by the save button runs
+  // silently. Idempotency keys make a racing manual save safe.
+  const persistableForAutosave =
+    form.prospectName.trim().length > 0 &&
+    !(
+      lines.some((line) => line.pricingMethod === "PER_GUEST") &&
+      guestCountNum === null
+    );
+
+  useEffect(() => {
+    if (!dirty || busy !== "" || !persistableForAutosave) return;
+    const timer = setTimeout(() => {
+      setBusy("الحفظ");
+      void (async () => {
+        try {
+          await persistDraft();
+        } catch (cause) {
+          setError(arabicQuotationError(cause));
+        } finally {
+          setBusy("");
+        }
+      })();
+    }, 1500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- persistDraft is
+    // re-created per render; depending on it would reschedule on every render.
+  }, [dirty, form, lines, guestCount, savedDraftId, busy, persistableForAutosave]);
+
 
   const lineTotals = useMemo<Array<MilliOMR | null>>(
     () =>
@@ -103,6 +144,7 @@ export function useQuotationDraft(draftId?: string) {
 
   function setField<K extends keyof DraftForm>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
+    setDirty(true);
   }
 
   /**
@@ -130,6 +172,7 @@ export function useQuotationDraft(draftId?: string) {
     });
     setSavedDraftId(quote.id);
     saveIntentRef.current = null;
+    setDirty(false);
     return quote.id;
   }
 
@@ -153,6 +196,7 @@ export function useQuotationDraft(draftId?: string) {
       pricingMethod: String(f.get("pricingMethod")),
     });
     setLines((ls) => [...ls, line]);
+    setDirty(true);
     e.currentTarget.reset();
   }
 
@@ -167,7 +211,7 @@ export function useQuotationDraft(draftId?: string) {
       setError("الباقة لا تحتوي على خدمات");
       return;
     }
-    const catalogById = new Map(catalog.data?.map((c) => [c.id, c]) ?? []);
+    const catalogById = new Map(catalog.data?.rows.map((c) => [c.id, c]) ?? []);
     const missing = pkg.lines.some((l) => !catalogById.has(l.catalog_item_id));
     if (missing) {
       setError("تعذر تحميل تفاصيل بعض خدمات الباقة");
@@ -177,6 +221,7 @@ export function useQuotationDraft(draftId?: string) {
       const added = buildPackageLines(pkg, catalogById, selectedPackage, nextLineKeyRef.current);
       setLines((ls) => [...ls, ...added]);
       setSelectedPackage("");
+      setDirty(true);
     } catch {
       setError("تعذر تحميل تفاصيل بعض خدمات الباقة");
     }
@@ -189,10 +234,12 @@ export function useQuotationDraft(draftId?: string) {
     setLines((current) =>
       current.map((line) => (line.clientKey === clientKey ? { ...line, ...patch } : line)),
     );
+    setDirty(true);
   }
 
   function removeLine(clientKey: string) {
     setLines((ls) => ls.filter((l) => l.clientKey !== clientKey));
+    setDirty(true);
   }
 
   async function onDiscard() {
@@ -201,6 +248,7 @@ export function useQuotationDraft(draftId?: string) {
     setBusy("حذف");
     try {
       await discard.mutateAsync(savedDraftId);
+      setDirty(false);
       await navigate({ to: "/quotes" });
     } catch (x) {
       setError(arabicQuotationError(x));
@@ -253,12 +301,16 @@ export function useQuotationDraft(draftId?: string) {
     form,
     setField,
     guestCount,
-    setGuestCount,
+    setGuestCount: (value: string) => {
+      setGuestCount(value);
+      setDirty(true);
+    },
     guestCountNum,
     lines,
     selectedPackage,
     setSelectedPackage,
     savedDraftId,
+    dirty,
     error,
     busy,
     issueConfirmationOpen,

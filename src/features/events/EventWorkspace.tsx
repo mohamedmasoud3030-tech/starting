@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { InlineError } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { EditEventDialog } from "./workspace/EditEventDialog";
 import { AttendancePanel } from "@/features/staff/AttendancePanel";
 import { HostPayrollPanel } from "@/features/staff/HostPayrollPanel";
 import { WarehousePanel } from "@/features/warehouse/WarehousePanel";
@@ -19,6 +21,9 @@ import { useEventWorkspace } from "./useEventWorkspace";
 
 export function EventWorkspace() {
   const ws = useEventWorkspace();
+  // Hook-first: edit dialog state lives above the early returns (rules of
+  // hooks) even though the dialog only renders for editable events.
+  const [editOpen, setEditOpen] = useState(false);
 
   if (ws.isLoading) {
     return <LoadingState label="جارٍ تحميل المناسبة…" />;
@@ -30,14 +35,30 @@ export function EventWorkspace() {
   const ev = ws.event.data!;
   const d = ws.data.data!;
   const customerName =
-    ws.customers.data?.find((c) => c.id === ev.customer_id)?.name ?? null;
+    ws.customers.data?.rows.find((c) => c.id === ev.customer_id)?.name ?? null;
+  const canEdit =
+    ws.canAttendance && ["DRAFT", "QUOTED"].includes(ev.status);
 
   return (
     <div className="space-y-5">
-      <EventWorkspaceHeader event={ev} voiceSummary={ws.voiceSummary} />
+      <EventWorkspaceHeader
+        event={ev}
+        voiceSummary={ws.voiceSummary}
+        canEdit={canEdit}
+        onEdit={() => setEditOpen(true)}
+      />
       <ReadinessBanner readiness={d.readiness} />
       <WorkspaceTabs tab={ws.tab} tabs={ws.visibleTabs} onChange={ws.setTab} />
       {ws.error && <InlineError message={ws.error} />}
+
+      {editOpen && (
+        <EditEventDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          orgId={ws.orgId}
+          event={ev}
+        />
+      )}
 
       {ws.tab === "ملخص" && (
         <OverviewTab
@@ -65,8 +86,10 @@ export function EventWorkspace() {
 
       {ws.tab === "المعدات" && (
         <EquipmentTab
+          orgId={ws.orgId}
           capacities={d.capacities}
           reservations={d.reservations}
+          canProvision={ws.canCommercial}
           run={ws.run}
         />
       )}
@@ -155,7 +178,12 @@ export function EventWorkspace() {
         />
       )}
 
-      {ws.tab === "السجل" && <HistoryTab history={d.history} />}
+      {ws.tab === "السجل" && (
+        <HistoryTab
+          history={d.history}
+          audit={ws.canCommercial ? (ws.audit.data ?? []) : []}
+        />
+      )}
     </div>
   );
 }

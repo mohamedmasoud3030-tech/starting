@@ -4319,6 +4319,15 @@ export type Database = {
         Args: { p_event_id: string; p_org_id: string }
         Returns: Json
       }
+      event_readiness_batch: {
+        Args: { p_event_ids: string[]; p_org_id: string }
+        Returns: {
+          equipment_shortage: number
+          event_id: string
+          staff_missing: number
+          status: string
+        }[]
+      }
       event_warehouse_summary: {
         Args: { p_event_id: string; p_org_id: string }
         Returns: Json

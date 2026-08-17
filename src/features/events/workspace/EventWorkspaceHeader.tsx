@@ -1,16 +1,22 @@
 import { Link } from "@tanstack/react-router";
+import { Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
 import { EVENT_STATUS_LABELS } from "../eventWorkspace.model";
 import type { EventRow } from "../events.api";
 
-/** Workspace header: back link, event identity, status badge, voice button. */
+/** Workspace header: back link, event identity, status badge, edit and voice. */
 export function EventWorkspaceHeader({
   event,
   voiceSummary,
+  canEdit,
+  onEdit,
 }: {
   event: EventRow;
   voiceSummary: string;
+  canEdit: boolean;
+  onEdit: () => void;
 }) {
   return (
     <>
@@ -34,6 +40,12 @@ export function EventWorkspaceHeader({
           <Badge tone={event.status === "CANCELLED" ? "danger" : "brand"}>
             {EVENT_STATUS_LABELS[event.status]}
           </Badge>
+          {canEdit && (
+            <Button variant="outline" size="sm" onClick={onEdit}>
+              <Pencil className="h-4 w-4" />
+              تعديل البيانات
+            </Button>
+          )}
           <OwnerVoiceButton summary={voiceSummary} />
         </div>
       </div>
