@@ -39,7 +39,7 @@ npm run test:watch
 npm run build          # typecheck + vite build → dist/
 npm run preview        # serve dist/ locally
 npm run smoke:production   # SPA/PWA/SW/CSP/Vercel/chunk-size proof
-npm audit --audit-level=high  # 0 vulnerabilities (also a CI gate)
+npm audit --audit-level=high  # 0 vulnerabilities (one-command local check; to be re-added as a CI step once the GitHub App gains the workflows permission)
 ```
 
 Database (CI-authoritative path; needs Supabase CLI + Docker):
