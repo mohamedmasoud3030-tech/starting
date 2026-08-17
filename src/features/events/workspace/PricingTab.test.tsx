@@ -69,6 +69,29 @@ describe("PricingTab line editing (D35)", () => {
     );
   });
 
+
+  it("seeds and submits exact 3-decimal strings (no float division)", async () => {
+    renderTab();
+    await userEvent.click(screen.getByRole("button", { name: "تعديل" }));
+
+    // MoneyInput seeds from exact milli-OMR: 2.500 not "2.5".
+    expect(screen.getByLabelText("سعر البيع للوحدة")).toHaveValue("2.500");
+    expect(screen.getByLabelText("التكلفة المتوقعة للوحدة")).toHaveValue("1.100");
+
+    const sell = screen.getByLabelText("سعر البيع للوحدة");
+    await userEvent.clear(sell);
+    await userEvent.type(sell, "1.234");
+    await userEvent.click(screen.getByRole("button", { name: "حفظ التعديل" }));
+
+    expect(run).toHaveBeenCalledWith(
+      "save_event_commercial_line",
+      expect.objectContaining({
+        p_unit_selling_price: "1.234",
+        p_expected_unit_cost: "1.100",
+      }),
+    );
+  });
+
   it("rejects a non-positive quantity with a visible error", async () => {
     renderTab();
     await userEvent.click(screen.getByRole("button", { name: "تعديل" }));

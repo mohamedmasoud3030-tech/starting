@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { CalendarDays, MapPin, Plus, Search, Users } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
@@ -50,6 +50,12 @@ export function EventsPage() {
   // same server command instead of creating a duplicate event.
   const createKey = useStableIdempotencyKey(open);
 
+  const activeCustomers = useMemo(
+    () => (customers.data?.rows ?? []).filter((c) => c.is_active),
+    [customers.data],
+  );
+  const hasActiveCustomers = activeCustomers.length > 0;
+
   const customerNames = useMemo(
     () =>
       new Map(
@@ -82,6 +88,10 @@ export function EventsPage() {
     e.preventDefault();
     setError("");
     const form = new FormData(e.currentTarget);
+    if (!hasActiveCustomers) {
+      setError("أنشئ عميلاً أولاً قبل إنشاء مناسبة");
+      return;
+    }
     try {
       const event = await create.mutateAsync({
         customerId: String(form.get("customer")), title: String(form.get("title")),
@@ -192,18 +202,26 @@ export function EventsPage() {
 
       <Dialog open={open} onOpenChange={setOpen} title="مناسبة جديدة" description="أنشئ مناسبة مباشرة لعميل مسجل. عروض العملاء المتوقعين تبدأ من شاشة عروض الأسعار.">
         <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
-          <Field label="العميل"><Select name="customer" required defaultValue=""><option value="" disabled>اختر العميل</option>{customers.data?.rows.filter((c) => c.is_active).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>
-          <Field label="عنوان المناسبة"><Input name="title" required /></Field>
-          <Field label="نوع المناسبة"><Input name="type" placeholder="زفاف، مؤتمر…" required /></Field>
-          <Field label="عدد الضيوف"><Input name="guests" type="number" min="1" required /></Field>
-          <Field label="البداية"><Input name="start" type="datetime-local" required /></Field>
-          <Field label="النهاية"><Input name="end" type="datetime-local" required /></Field>
-          <Field label="الموقع"><Input name="venue" required /></Field>
-          <Field label="اسم جهة الاتصال"><Input name="contact" /></Field>
-          <Field label="هاتف التواصل"><Input name="phone" inputMode="tel" /></Field>
-          <div className="sm:col-span-2"><Field label="ملاحظات"><Textarea name="notes" /></Field></div>
+          {!hasActiveCustomers && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-800 sm:col-span-2">
+              لا يوجد عملاء بعد — أنشئ العميل الأول ثم عدّ لإنشاء المناسبة.{" "}
+              <Link to="/customers" className="text-brand-700 underline">
+                الانتقال إلى العملاء
+              </Link>
+            </div>
+          )}
+          <Field label="العميل" htmlFor="ev-customer"><Select id="ev-customer" name="customer" required defaultValue=""><option value="" disabled>اختر العميل</option>{activeCustomers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select></Field>
+          <Field label="عنوان المناسبة" htmlFor="ev-title"><Input id="ev-title" name="title" required /></Field>
+          <Field label="نوع المناسبة" htmlFor="ev-type"><Input id="ev-type" name="type" placeholder="زفاف، مؤتمر…" required /></Field>
+          <Field label="عدد الضيوف" htmlFor="ev-guests"><Input id="ev-guests" name="guests" type="number" min="1" required /></Field>
+          <Field label="البداية" htmlFor="ev-start"><Input id="ev-start" name="start" type="datetime-local" required /></Field>
+          <Field label="النهاية" htmlFor="ev-end"><Input id="ev-end" name="end" type="datetime-local" required /></Field>
+          <Field label="الموقع" htmlFor="ev-venue"><Input id="ev-venue" name="venue" required /></Field>
+          <Field label="اسم جهة الاتصال" htmlFor="ev-contact"><Input id="ev-contact" name="contact" /></Field>
+          <Field label="هاتف التواصل" htmlFor="ev-phone"><Input id="ev-phone" name="phone" inputMode="tel" /></Field>
+          <div className="sm:col-span-2"><Field label="ملاحظات" htmlFor="ev-notes"><Textarea id="ev-notes" name="notes" /></Field></div>
           {error && <p className="sm:col-span-2 text-sm font-bold text-red-700" role="alert">{error}</p>}
-          <div className="sticky bottom-0 -mx-1 flex justify-end gap-2 bg-white py-2 sm:col-span-2"><Button type="button" variant="secondary" onClick={() => setOpen(false)}>إلغاء</Button><Button type="submit" disabled={create.isPending}>{create.isPending ? "جارٍ الإنشاء…" : "إنشاء المناسبة"}</Button></div>
+          <div className="sticky bottom-0 -mx-1 flex justify-end gap-2 bg-white py-2 sm:col-span-2"><Button type="button" variant="secondary" onClick={() => setOpen(false)}>إلغاء</Button><Button type="submit" disabled={create.isPending || !hasActiveCustomers}>{create.isPending ? "جارٍ الإنشاء…" : "إنشاء المناسبة"}</Button></div>
         </form>
       </Dialog>
     </div>

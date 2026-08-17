@@ -7,7 +7,7 @@ import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { MoneyInput } from "@/components/MoneyInput";
-import { formatOMR, fromDbAmount, parseOMR, parseQuantityMilli } from "@/lib/money";
+import { formatOMR, fromDbAmount, parseOMR, parseOptionalOMR, parseQuantityMilli, toOMRString } from "@/lib/money";
 import type { EventRow, CommercialLine, Quote } from "../events.api";
 import { CommercialLineForm } from "./CommercialLineForm";
 import { pricingTotals } from "./pricingTotals";
@@ -36,8 +36,12 @@ function EditLineDialog({
   run: (name: string, args: Record<string, unknown>, includeEvent?: boolean) => Promise<void>;
 }) {
   const [quantity, setQuantity] = useState(() => String(line.quantity));
-  const [sell, setSell] = useState(() => String(line.unit_selling_price));
-  const [cost, setCost] = useState(() => String(line.expected_unit_cost ?? "0.000"));
+  const [sell, setSell] = useState(() =>
+    toOMRString(fromDbAmount(line.unit_selling_price)),
+  );
+  const [cost, setCost] = useState(() =>
+    toOMRString(fromDbAmount(line.expected_unit_cost ?? 0)),
+  );
   const [error, setError] = useState<string | null>(null);
 
   function submit() {
@@ -89,15 +93,15 @@ function EditLineDialog({
         <MoneyInput
           id="line-sell"
           label="سعر البيع للوحدة"
-          value={parseOMR(sell)}
-          onChange={(millis) => setSell(millis === null ? "" : String(millis / 1000))}
+          value={parseOptionalOMR(sell)}
+          onChange={(millis) => setSell(millis === null ? "" : toOMRString(millis))}
         />
         {canCost && (
           <MoneyInput
             id="line-cost"
             label="التكلفة المتوقعة للوحدة"
-            value={parseOMR(cost || "0.000")}
-            onChange={(millis) => setCost(millis === null ? "" : String(millis / 1000))}
+            value={parseOptionalOMR(cost)}
+            onChange={(millis) => setCost(millis === null ? "" : toOMRString(millis))}
           />
         )}
         {error && (
