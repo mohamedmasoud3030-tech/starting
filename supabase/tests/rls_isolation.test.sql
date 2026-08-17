@@ -9,7 +9,7 @@
 -- ============================================================================
 
 begin;
-select plan(26);
+select plan(28);
 
 -- ---------------------------------------------------------------------------
 -- Fixtures (inserted as the migration owner / postgres, before switching role)
@@ -254,6 +254,19 @@ select throws_ok(
                  '00000000-0000-0000-0000-0000000000c2',
                  1) $sql$,
   '23503', null, 'cross-organization package/catalog reference rejected by FK'
+);
+
+-- ---------------------------------------------------------------------------
+-- Organization-creation bootstrap is not executable by client roles
+-- (migration 0056; see docs/refactor/database-audit.md section 7)
+-- ---------------------------------------------------------------------------
+select ok(
+  not has_function_privilege('authenticated', 'public.create_organization(text, text)', 'EXECUTE'),
+  'create_organization not executable by the authenticated browser role'
+);
+select ok(
+  not has_function_privilege('anon', 'public.create_organization(text, text)', 'EXECUTE'),
+  'create_organization not executable by the anonymous browser role'
 );
 
 select * from finish();

@@ -179,3 +179,112 @@ grant execute on function public.isnt(anyelement, anyelement, text) to public;
 grant execute on function public.lives_ok(text, text) to public;
 grant execute on function public.throws_ok(text, text, text, text) to public;
 grant execute on function public.finish() to public;
+
+-- ============================================================================
+-- Schema-object probes used by the newest official test files.
+-- Real pgTAP defines these as (name[, name] | schema, name[, args], desc);
+-- the shims implement the overloads the official suite actually calls.
+-- ============================================================================
+
+create or replace function public.has_table(schema_name name, object_name name, description text)
+returns text
+language plpgsql
+as $$
+declare
+  okb boolean := to_regclass(format('%I.%I', schema_name, object_name)) is not null;
+  msg text;
+begin
+  if okb then
+    msg := 'ok - ' || description;
+  else
+    msg := 'not ok - ' || description;
+  end if;
+  insert into public._pgtap_results (ok, description) values (okb, msg);
+  return msg;
+end;
+$$;
+
+create or replace function public.hasnt_table(schema_name name, object_name name, description text)
+returns text
+language plpgsql
+as $$
+declare
+  okb boolean := to_regclass(format('%I.%I', schema_name, object_name)) is null;
+  msg text;
+begin
+  if okb then
+    msg := 'ok - ' || description;
+  else
+    msg := 'not ok - ' || description;
+  end if;
+  insert into public._pgtap_results (ok, description) values (okb, msg);
+  return msg;
+end;
+$$;
+
+-- has_function(schema, name, args[], description): matches by name AND exact
+-- argument type list (unnamed types, in declared order), so the official
+-- signature assertions are meaningful rather than name-only.
+create or replace function public.has_function(schema_name name, object_name name, args text[], description text)
+returns text
+language plpgsql
+as $$
+declare
+  okb boolean;
+  msg text;
+begin
+  select exists (
+    select 1
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = schema_name
+      and p.proname = object_name
+      and coalesce((
+        select array_agg(format_type(u.oid, null) order by u.ord)
+        from unnest(p.proargtypes) with ordinality as u(oid, ord)
+      ), '{}'::text[]) is not distinct from coalesce(args, '{}'::text[])
+  ) into okb;
+  if okb then
+    msg := 'ok - ' || description;
+  else
+    msg := 'not ok - ' || description;
+  end if;
+  insert into public._pgtap_results (ok, description) values (okb, msg);
+  return msg;
+end;
+$$;
+
+create or replace function public.hasnt_function(schema_name name, object_name name, args text[], description text)
+returns text
+language plpgsql
+as $$
+declare
+  okb boolean;
+  msg text;
+begin
+  select exists (
+    select 1
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = schema_name
+      and p.proname = object_name
+      and coalesce((
+        select array_agg(format_type(u.oid, null) order by u.ord)
+        from unnest(p.proargtypes) with ordinality as u(oid, ord)
+      ), '{}'::text[]) is not distinct from coalesce(args, '{}'::text[])
+  ) into okb;
+  okb := not okb;
+  if okb then
+    msg := 'ok - ' || description;
+  else
+    msg := 'not ok - ' || description;
+  end if;
+  insert into public._pgtap_results (ok, description) values (okb, msg);
+  return msg;
+end;
+$$;
+
+grant execute on function public.has_table(name, name, text) to public;
+grant execute on function public.hasnt_table(name, name, text) to public;
+grant execute on function public.has_function(name, name, text[], text) to public;
+grant execute on function public.hasnt_function(name, name, text[], text) to public;

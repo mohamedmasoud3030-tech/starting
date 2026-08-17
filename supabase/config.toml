@@ -29,7 +29,8 @@ enabled = true
 sql_paths = ["./seed.sql"]
 
 [realtime]
-enabled = true
+# No realtime subscriptions exist in the product (audit 2026-08-17).
+enabled = false
 
 [studio]
 enabled = true
@@ -37,11 +38,13 @@ port = 54323
 api_url = "http://127.0.0.1"
 
 [local_smtp]
-enabled = true
+# No email sending exists in the product (audit 2026-08-17).
+enabled = false
 port = 54324
 
 [storage]
-enabled = true
+# No file uploads exist in the product (audit 2026-08-17).
+enabled = false
 file_size_limit = "50MiB"
 
 [storage.s3_protocol]
