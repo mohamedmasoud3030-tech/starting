@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/app/authContext";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { formatOMR } from "@/lib/money";
+import { formatOMR, fromDbAmount } from "@/lib/money";
 import {
   rangeForFilter,
   useReportCustomers,
@@ -79,11 +79,11 @@ export function ReportsPage() {
                       </Link>
                     </td>
                     <td className="p-3 text-slate-500">{e.status}</td>
-                    <td className="p-3 font-bold">{formatOMR(fromDbNum(e.revenue))}</td>
-                    <td className="p-3">{formatOMR(fromDbNum(e.collected))}</td>
-                    <td className="p-3">{formatOMR(fromDbNum(e.outstanding))}</td>
-                    <td className="p-3">{formatOMR(fromDbNum(e.actual_cost))}</td>
-                    <td className="p-3 font-bold text-brand-800">{formatOMR(fromDbNum(e.gross_profit))}</td>
+                    <td className="p-3 font-bold">{formatOMR(fromDbAmount(e.revenue))}</td>
+                    <td className="p-3">{formatOMR(fromDbAmount(e.collected))}</td>
+                    <td className="p-3">{formatOMR(fromDbAmount(e.outstanding))}</td>
+                    <td className="p-3">{formatOMR(fromDbAmount(e.actual_cost))}</td>
+                    <td className="p-3 font-bold text-brand-800">{formatOMR(fromDbAmount(e.gross_profit))}</td>
                     <td className="p-3">{e.margin_percent != null ? `${e.margin_percent.toFixed(1)}%` : "—"}</td>
                   </tr>
                 ))
@@ -115,8 +115,8 @@ export function ReportsPage() {
                     <tr key={p.package_id} className="border-b border-slate-100">
                       <td className="p-3 font-bold">{p.package_name}</td>
                       <td className="p-3">{p.usage_count}</td>
-                      <td className="p-3">{formatOMR(fromDbNum(p.commercial_value))}</td>
-                      <td className="p-3 font-bold text-brand-800">{formatOMR(fromDbNum(p.gross_profit))}</td>
+                      <td className="p-3">{formatOMR(fromDbAmount(p.commercial_value))}</td>
+                      <td className="p-3 font-bold text-brand-800">{formatOMR(fromDbAmount(p.gross_profit))}</td>
                       <td className="p-3">{p.margin_percent != null ? `${p.margin_percent.toFixed(1)}%` : "—"}</td>
                     </tr>
                   ))
@@ -151,9 +151,9 @@ export function ReportsPage() {
                         </Link>
                       </td>
                       <td className="p-3">{c.events_count}</td>
-                      <td className="p-3 font-bold">{formatOMR(fromDbNum(c.total_value))}</td>
-                      <td className="p-3">{formatOMR(fromDbNum(c.outstanding))}</td>
-                      <td className="p-3 font-bold text-brand-800">{formatOMR(fromDbNum(c.gross_profit))}</td>
+                      <td className="p-3 font-bold">{formatOMR(fromDbAmount(c.total_value))}</td>
+                      <td className="p-3">{formatOMR(fromDbAmount(c.outstanding))}</td>
+                      <td className="p-3 font-bold text-brand-800">{formatOMR(fromDbAmount(c.gross_profit))}</td>
                     </tr>
                   ))
                 )}
@@ -166,6 +166,4 @@ export function ReportsPage() {
   );
 }
 
-function fromDbNum(value: number | null | undefined): number {
-  return Math.round((value ?? 0) * 1000);
-}
+

@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
-import { formatOMR, fromDbAmount } from "@/lib/money";
+import { formatOMR, fromDbAmount, parseOMR } from "@/lib/money";
 import type { ExpenseCategory, PaymentMethod } from "@/lib/dbTypes";
 import { useEventFinance } from "@/features/payments/payments.api";
 import {
@@ -70,15 +70,22 @@ export function EventFinancePanel({
     e.preventDefault();
     setError("");
     const form = new FormData(e.currentTarget);
-    const amount = form.get("amount");
-    if (!amount || Number(amount) <= 0) {
+    const amount = String(form.get("amount") ?? "");
+    let amountMilli: number;
+    try {
+      amountMilli = parseOMR(amount);
+    } catch {
+      setError("أدخل مبلغاً صحيحاً");
+      return;
+    }
+    if (amountMilli <= 0) {
       setError("أدخل مبلغاً صحيحاً أكبر من صفر");
       return;
     }
     void recordExpense
       .mutateAsync({
         category: String(form.get("category")) as ExpenseCategory,
-        amountMilli: Math.round(Number(amount) * 1000),
+        amountMilli,
         expenseDate: String(form.get("date") ?? ""),
         description: String(form.get("description") ?? ""),
         payee: String(form.get("payee") ?? ""),

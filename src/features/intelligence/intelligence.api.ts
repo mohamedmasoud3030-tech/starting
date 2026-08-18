@@ -107,7 +107,10 @@ export function useManagementMetrics(
         quotes_rejected: row.quotes_rejected as number,
         quote_conversion_rate: row.quote_conversion_rate as number | null,
         avg_quote_value: fromDbAmount(row.avg_quote_value as number),
-        top_packages: (row.top_packages ?? []) as Array<{ name: string; count: number }>,
+        // The SQL aggregates by string `count` (jsonb); sort numerically here
+        // so multi-digit usage counts order correctly.
+        top_packages: ((row.top_packages ?? []) as Array<{ name: string; count: number }>)
+          .sort((a, b) => b.count - a.count),
         revenue: fromDbAmount(row.revenue as number),
         collected: fromDbAmount(row.collected as number),
         outstanding: fromDbAmount(row.outstanding as number),

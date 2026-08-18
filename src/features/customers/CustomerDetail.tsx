@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CUSTOMER_TYPE_LABELS } from "@/lib/domain";
-import { formatOMR } from "@/lib/money";
+import { formatOMR, fromDbAmount } from "@/lib/money";
 import { useCustomer360 } from "@/features/intelligence/intelligence.api";
 
 /**
@@ -102,10 +102,10 @@ export function CustomerDetail() {
         <Card className="p-5">
           <h2 className="font-black">العلاقة المالية</h2>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <FinanceStat label="إجمالي القيمة" value={formatOMR(Math.round((row.total_commercial_value ?? 0) * 1000))} />
-            <FinanceStat label="المحصل" value={formatOMR(Math.round((row.total_collected ?? 0) * 1000))} />
-            <FinanceStat label="المتبقي" value={formatOMR(Math.round((row.outstanding ?? 0) * 1000))} />
-            <FinanceStat label="الربح المحقق" value={formatOMR(Math.round((row.gross_profit ?? 0) * 1000))} tone="brand" />
+            <FinanceStat label="إجمالي القيمة" value={formatOMR(fromDbAmount(row.total_commercial_value))} />
+            <FinanceStat label="المحصل" value={formatOMR(fromDbAmount(row.total_collected))} />
+            <FinanceStat label="المتبقي" value={formatOMR(fromDbAmount(row.outstanding))} />
+            <FinanceStat label="الربح المحقق" value={formatOMR(fromDbAmount(row.gross_profit))} tone="brand" />
           </div>
         </Card>
       )}
