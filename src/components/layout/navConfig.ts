@@ -1,5 +1,6 @@
 export type NavTarget =
   | "/home"
+  | "/dashboard"
   | "/events"
   | "/calendar"
   | "/operations"
@@ -10,6 +11,9 @@ export type NavTarget =
   | "/packages"
   | "/customers"
   | "/staff"
+  | "/reports"
+  | "/integrity"
+  | "/search"
   | "/settings";
 
 export type NavItem = {
@@ -27,7 +31,11 @@ export type NavGroup = {
 export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     label: "الرئيسية",
-    items: [{ to: "/home", label: "لوحة المتابعة" }],
+    items: [
+      { to: "/home", label: "لوحة المتابعة" },
+      { to: "/dashboard", label: "لوحة الإدارة", financial: true },
+      { to: "/search", label: "البحث" },
+    ],
   },
   {
     label: "المناسبات",
@@ -63,6 +71,13 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     label: "الفريق",
     items: [{ to: "/staff", label: "المضيفون والحضور", financial: true }],
+  },
+  {
+    label: "الإدارة والتحليل",
+    items: [
+      { to: "/reports", label: "التقارير", financial: true },
+      { to: "/integrity", label: "مركز السلامة", financial: true },
+    ],
   },
   {
     label: "النظام",

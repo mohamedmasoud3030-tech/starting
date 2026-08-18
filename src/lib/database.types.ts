@@ -4774,6 +4774,32 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      customer_360: {
+        Args: { p_org_id: string }
+        Returns: {
+          accepted_quotes: number
+          completed_events: number
+          customer_id: string
+          customer_type: Database["public"]["Enums"]["customer_type"]
+          days_since_last_event: number
+          events_count: number
+          first_interaction_at: string
+          gross_profit: number
+          is_active: boolean
+          last_event_at: string
+          last_interaction_at: string
+          name: string
+          notes: string
+          outstanding: number
+          phone: string
+          quotes_count: number
+          rejected_quotes: number
+          total_collected: number
+          total_commercial_value: number
+          upcoming_events: number
+          whatsapp: string
+        }[]
+      }
       delete_quotation_line: {
         Args: { p_line_id: string; p_org_id: string; p_quotation_id: string }
         Returns: undefined
@@ -5014,12 +5040,35 @@ export type Database = {
           staff_member_id: string
         }[]
       }
+      global_search: {
+        Args: { p_org_id: string; p_term: string }
+        Returns: {
+          destination: string
+          entity_id: string
+          entity_type: string
+          subtitle: string
+          title: string
+        }[]
+      }
       has_org_role: {
         Args: {
           p_org_id: string
           p_roles: Database["public"]["Enums"]["app_role"][]
         }
         Returns: boolean
+      }
+      integrity_findings: {
+        Args: { p_org_id: string }
+        Returns: {
+          category: string
+          destination: string
+          entity_id: string
+          entity_type: string
+          finding_code: string
+          problem: string
+          severity: string
+          why_it_matters: string
+        }[]
       }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       issue_consumable_to_event: {
@@ -5191,6 +5240,52 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      management_alerts: {
+        Args: { p_limit?: number; p_now?: string; p_org_id: string }
+        Returns: {
+          alert_type: string
+          customer_id: string
+          destination: string
+          detected_at: string
+          entity_id: string
+          entity_type: string
+          event_id: string
+          explanation: string
+          severity: string
+          title: string
+        }[]
+      }
+      management_metrics: {
+        Args: { p_from: string; p_now?: string; p_org_id: string; p_to: string }
+        Returns: {
+          actual_cost: number
+          avg_quote_value: number
+          close_blocked: number
+          collected: number
+          confirmed_upcoming: number
+          events_in_progress: number
+          events_low_readiness: number
+          events_preparing: number
+          events_today: number
+          events_tomorrow: number
+          events_waiting_return: number
+          events_week: number
+          financially_open_completed: number
+          gross_profit: number
+          margin_percent: number
+          outstanding: number
+          overdue_balance: number
+          quote_conversion_rate: number
+          quotes_accepted: number
+          quotes_draft: number
+          quotes_expired: number
+          quotes_rejected: number
+          quotes_waiting: number
+          ready_to_close: number
+          revenue: number
+          top_packages: Json
+        }[]
       }
       next_document_number: {
         Args: { p_kind: string; p_org: string; p_prefix?: string }
@@ -5761,6 +5856,48 @@ export type Database = {
       replace_procurement_lines_internal: {
         Args: { p_lines: Json; p_order_id: string; p_org_id: string }
         Returns: number
+      }
+      report_customers: {
+        Args: { p_org_id: string }
+        Returns: {
+          actual_cost: number
+          collected: number
+          customer_id: string
+          events_count: number
+          gross_profit: number
+          name: string
+          outstanding: number
+          total_value: number
+        }[]
+      }
+      report_events: {
+        Args: { p_from: string; p_org_id: string; p_to: string }
+        Returns: {
+          actual_cost: number
+          collected: number
+          event_id: string
+          event_number: string
+          gross_profit: number
+          guest_count: number
+          margin_percent: number
+          outstanding: number
+          revenue: number
+          start_at: string
+          status: Database["public"]["Enums"]["event_status"]
+          title: string
+        }[]
+      }
+      report_packages: {
+        Args: { p_org_id: string }
+        Returns: {
+          actual_cost: number
+          commercial_value: number
+          gross_profit: number
+          margin_percent: number
+          package_id: string
+          package_name: string
+          usage_count: number
+        }[]
       }
       reserve_event_equipment: {
         Args: {

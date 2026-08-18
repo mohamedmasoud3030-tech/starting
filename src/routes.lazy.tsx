@@ -55,3 +55,23 @@ export const CalendarPage = lazy(async () => ({
 export const OperationsBoard = lazy(async () => ({
   default: (await import("@/features/operations/OperationsBoard")).OperationsBoard,
 }));
+
+export const ManagementDashboard = lazy(async () => ({
+  default: (await import("@/features/intelligence/ManagementDashboard")).ManagementDashboard,
+}));
+
+export const ReportsPage = lazy(async () => ({
+  default: (await import("@/features/intelligence/ReportsPage")).ReportsPage,
+}));
+
+export const IntegrityCenter = lazy(async () => ({
+  default: (await import("@/features/intelligence/IntegrityCenter")).IntegrityCenter,
+}));
+
+export const SearchPage = lazy(async () => ({
+  default: (await import("@/features/intelligence/SearchPage")).SearchPage,
+}));
+
+export const CustomerDetail = lazy(async () => ({
+  default: (await import("@/features/customers/CustomerDetail")).CustomerDetail,
+}));

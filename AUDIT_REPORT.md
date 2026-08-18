@@ -107,9 +107,30 @@ pgTAP 19 ملفاً · types drift مطابق).
 بوابات الجودة كلها خضراء (typecheck 0 · lint 0/0 · test 573/79 · build · smoke ·
 pgTAP 20 ملفاً · types drift مطابق).
 
-### المراحل التالية (لم تبدأ بعد)
+### Phase E — Intelligence: ✅ منفَّذة
 
-- **Phase E — Intelligence:** Management Dashboard + Customer 360 + Smart Alerts + Integrity Center + actionable reporting.
+| المطلب | الحالة |
+| --- | --- |
+| E0/E3. Smart Alerts Engine | ✅ `management_alerts()` — مصدر تنبيهات واحد (server-side)، severity INFO/WARNING/CRITICAL، قابل للتفسير والتوجيه |
+| E1. Management Dashboard | ✅ `/dashboard` — تشغيل/مبيعات/مالية من `management_metrics()` مع فصل صريح Revenue/Collected/Profit |
+| E2. Today Command Center | ✅ قسم «ما يحتاج انتباهي» من نفس دالة التنبيهات |
+| E4. Customer 360 | ✅ `customer_360()` + صفحة `/customers/$customerId` (حقائق مفهومة، بلا score مزيّف) |
+| E5. Global Search | ✅ `global_search()` (bounded LIMIT، org-scoped) + `/search` |
+| E6. Integrity Center | ✅ `integrity_findings()` + `/integrity` (كشف فقط، لا إصلاح تلقائي) |
+| E7. Reports | ✅ `report_events/customers/packages` + `/reports` (استخدام مقابل ربحية للباقات) |
+| E8. Time filters | ✅ `rangeForFilter` (حدود يوم Muscat) |
+| E9. Drill-down | ✅ كل KPI/tanbih Link إلى السجل المصدر |
+| E12. Performance | ✅ لا N+1: دالتا SQL مجمعتان + batch readiness مُعاد استخدامه |
+| E13. Permission | ✅ لوحة الإدارة/التقارير/مركز السلامة معروضة لـ cost roles فقط (financial nav flag)؛ التنبيهات المالية داخل الدالة مشروطة بـ can_read_cost |
+
+**الأدلة:** ترحيلات `0070`–`0072` + `supabase/tests/intelligence.test.sql` (15 تأكيداً:
+عزل منظمات، فصل المالية، بحث محدود/معزول، سلامة بيانات، تقارير) + اختبارات واجهة.
+بوابات الجودة كلها خضراء (typecheck 0 · lint 0/0 · test 578/81 · build · smoke ·
+pgTAP 21 ملفاً · types drift مطابق).
+
+## 🏁 الجاهزية النهائية (Phase E20 — مراجعة شاملة A–E)
+
+راجع `FINAL_READINESS_REPORT.md` للتقرير الكامل.
 
 ---
 

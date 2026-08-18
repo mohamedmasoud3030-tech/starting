@@ -11,15 +11,20 @@ import {
   CalendarPage,
   CatalogPage,
   ConsumablesPage,
+  CustomerDetail,
   CustomersPage,
   EventWorkspace,
   EventsPage,
   HomePage,
+  IntegrityCenter,
+  ManagementDashboard,
   OperationsBoard,
   PackagesPage,
   ProcurementPage,
   QuotePage,
   QuotesPage,
+  ReportsPage,
+  SearchPage,
   SettingsPage,
   StaffPage,
 } from "@/routes.lazy";
@@ -70,6 +75,12 @@ const customersRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/customers",
   component: CustomersPage,
+});
+
+const customerDetailRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/customers/$customerId",
+  component: CustomerDetail,
 });
 
 const eventsRoute = createRoute({
@@ -138,6 +149,30 @@ const operationsRoute = createRoute({
   component: OperationsBoard,
 });
 
+const dashboardRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/dashboard",
+  component: ManagementDashboard,
+});
+
+const reportsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/reports",
+  component: ReportsPage,
+});
+
+const integrityRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/integrity",
+  component: IntegrityCenter,
+});
+
+const searchRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/search",
+  component: SearchPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -153,10 +188,15 @@ const routeTree = rootRoute.addChildren([
     catalogRoute,
     packagesRoute,
     customersRoute,
+    customerDetailRoute,
     staffRoute,
     settingsRoute,
     calendarRoute,
     operationsRoute,
+    dashboardRoute,
+    reportsRoute,
+    integrityRoute,
+    searchRoute,
   ]),
 ]);
 
