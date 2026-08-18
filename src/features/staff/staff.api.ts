@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import {
   fromDbAmount,
@@ -221,6 +221,32 @@ export function mapPayroll(row: HostEventPayrollSummaryRow): PayrollRow {
   };
 }
 
+/** An open punch: the host is inside and wages stay 0.000 until clock-out. */
+export function isOpenPunch(
+  row: Pick<AttendanceSummary, "recordStatus" | "checkIn" | "checkOut" | "status">,
+): boolean {
+  return (
+    row.recordStatus === "RECORDED" &&
+    row.status !== "ABSENT" &&
+    row.checkIn != null &&
+    row.checkOut == null
+  );
+}
+
+function invalidateAttendanceReads(
+  q: QueryClient,
+  orgId: string | null,
+  eventId: string,
+) {
+  void q.invalidateQueries({ queryKey: ["event-attendance", orgId, eventId] });
+  void q.invalidateQueries({ queryKey: ["event-payroll", orgId, eventId] });
+  void q.invalidateQueries({ queryKey: ["org-payroll-archive", orgId] });
+  // The dashboard's "attendance gaps" alert reads today_attendance_gaps;
+  // recording (or voiding) attendance opens/closes a gap, so the count
+  // must be refreshed or the Home screen keeps alerting on a fixed gap.
+  void q.invalidateQueries({ queryKey: ["attendance-gaps", orgId] });
+}
+
 /** Exact OMR wage preview (mirrors SQL compute_earned_amount). UI-only; the DB is authoritative. */
 export function computeEarnedMilli(
   wageMethod: CompensationMethod,
@@ -298,15 +324,7 @@ export function useRecordAttendance(orgId: string | null, eventId: string) {
         p_notes: v.notes || null,
         p_idempotency_key: crypto.randomUUID(),
       }),
-    onSuccess: () => {
-      void q.invalidateQueries({ queryKey: ["event-attendance", orgId, eventId] });
-      void q.invalidateQueries({ queryKey: ["event-payroll", orgId, eventId] });
-      void q.invalidateQueries({ queryKey: ["org-payroll-archive", orgId] });
-      // The dashboard's "attendance gaps" alert reads today_attendance_gaps;
-      // recording (or voiding) attendance opens/closes a gap, so the count
-      // must be refreshed or the Home screen keeps alerting on a fixed gap.
-      void q.invalidateQueries({ queryKey: ["attendance-gaps", orgId] });
-    },
+    onSuccess: () => invalidateAttendanceReads(q, orgId, eventId),
   });
 }
 
@@ -320,15 +338,46 @@ export function useVoidAttendance(orgId: string | null, eventId: string) {
         p_reason: reason,
         p_idempotency_key: crypto.randomUUID(),
       }),
-    onSuccess: () => {
-      void q.invalidateQueries({ queryKey: ["event-attendance", orgId, eventId] });
-      void q.invalidateQueries({ queryKey: ["event-payroll", orgId, eventId] });
-      void q.invalidateQueries({ queryKey: ["org-payroll-archive", orgId] });
-      // The dashboard's "attendance gaps" alert reads today_attendance_gaps;
-      // recording (or voiding) attendance opens/closes a gap, so the count
-      // must be refreshed or the Home screen keeps alerting on a fixed gap.
-      void q.invalidateQueries({ queryKey: ["attendance-gaps", orgId] });
-    },
+    onSuccess: () => invalidateAttendanceReads(q, orgId, eventId),
+  });
+}
+
+export interface ClockStaffInInput {
+  staffMemberId: string;
+  assignmentId: string;
+  shift?: StaffShift | null;
+  notes?: string;
+}
+
+export function useClockStaffIn(orgId: string | null, eventId: string) {
+  const q = useQueryClient();
+  return useMutation({
+    mutationFn: (v: ClockStaffInInput) =>
+      callRpc<Record<string, unknown>>("clock_staff_in", {
+        p_org_id: orgId,
+        p_event_id: eventId,
+        p_staff_member_id: v.staffMemberId,
+        p_assignment_id: v.assignmentId,
+        p_shift: v.shift ?? null,
+        p_notes: v.notes?.trim() ? v.notes : null,
+        p_idempotency_key: crypto.randomUUID(),
+      }),
+    onSuccess: () => invalidateAttendanceReads(q, orgId, eventId),
+  });
+}
+
+export function useClockStaffOut(orgId: string | null, eventId: string) {
+  const q = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { staffMemberId: string; notes?: string }) =>
+      callRpc<Record<string, unknown>>("clock_staff_out", {
+        p_org_id: orgId,
+        p_event_id: eventId,
+        p_staff_member_id: v.staffMemberId,
+        p_notes: v.notes?.trim() ? v.notes : null,
+        p_idempotency_key: crypto.randomUUID(),
+      }),
+    onSuccess: () => invalidateAttendanceReads(q, orgId, eventId),
   });
 }
 
@@ -629,6 +678,12 @@ export function attendanceError(error: unknown): string {
   if (message.includes("EVENT_CANCELLED")) return "لا يمكن تسجيل حضور على مناسبة ملغاة";
   if (message.includes("ABSENT_HAS_NO_TIMES")) return "الغياب لا يسجّل معه وقت دخول أو خروج";
   if (message.includes("ATTENDANCE_REQUIRES_TIMES")) return "يرجى تسجيل وقت الدخول والخروج";
+  if (message.includes("CLOCK_IN_REQUIRED")) return "اضغط دخول أولاً";
+  if (message.includes("ATTENDANCE_SLOT_ALREADY_RECORDED")) return "مسجّل مسبقاً";
+  if (message.includes("ASSIGNMENT_NOT_FOUND")) return "هذا المضيف غير مسند لهذه المناسبة";
+  if (message.includes("ASSIGNMENT_REQUIRED")) return "يوجد أكثر من إسناد — اختر الإسناد";
+  if (message.includes("ASSIGNMENT_MISMATCH")) return "الإسناد لا يطابق هذا المضيف";
+  if (message.includes("STAFF_NOT_FOUND")) return "المضيف غير موجود";
   if (message.includes("CHECKOUT_BEFORE_CHECKIN")) return "وقت الخروج يجب أن يكون بعد الدخول";
   if (message.includes("INVALID_BREAK_MINUTES")) return "دقائق الراحة لا يمكن أن تكون بالسالب";
   if (message.includes("INVALID_WAGE_RATE")) return "أجر الساعة/اليومية غير صالح";

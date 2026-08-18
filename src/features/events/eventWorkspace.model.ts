@@ -123,6 +123,58 @@ export interface VoiceSummaries {
 }
 
 /** The tab-specific voice summary used by the Owner Voice button. */
+/**
+ * After convert, the quotation keeps `converted_event_id` and does NOT write
+ * `event_id` (that column is for quotes issued from an existing event).
+ * The workspace must look up both.
+ */
+export function eventQuotesOrFilter(eventId: string): string {
+  return `event_id.eq.${eventId},converted_event_id.eq.${eventId}`;
+}
+
+/** Prefer the event's accepted quotation, then a converted/accepted snapshot. */
+export function pickLinkedQuote<T extends { id: string; status: string }>(
+  quotes: readonly T[],
+  acceptedQuotationId: string | null,
+): T | null {
+  if (acceptedQuotationId) {
+    const matched = quotes.find((quote) => quote.id === acceptedQuotationId);
+    if (matched) return matched;
+  }
+  return (
+    quotes.find((quote) => quote.status === "CONVERTED") ??
+    quotes.find((quote) => quote.status === "ACCEPTED") ??
+    quotes[0] ??
+    null
+  );
+}
+
+export type JobPathStepId =
+  | "quote"
+  | "accept"
+  | "event"
+  | "run"
+  | "money"
+  | "done";
+
+/** Where the owner is on the quote → profit path. */
+export function jobPathForEventStatus(
+  status: string,
+  financiallyClosed: boolean,
+): JobPathStepId {
+  if (status === "CANCELLED") return "event";
+  if (financiallyClosed || status === "CLOSED") return financiallyClosed ? "done" : "money";
+  if (["DISPATCHED", "IN_PROGRESS", "RETURNING"].includes(status)) return "run";
+  if (["CONFIRMED", "PREPARING", "QUOTED", "DRAFT"].includes(status)) return "event";
+  return "event";
+}
+
+export function jobPathForQuoteStatus(status: string): JobPathStepId {
+  if (status === "CONVERTED") return "event";
+  if (status === "ACCEPTED") return "accept";
+  return "quote";
+}
+
 export function voiceSummaryForTab(
   tab: WorkspaceTab,
   summaries: VoiceSummaries,

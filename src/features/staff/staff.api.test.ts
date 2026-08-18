@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeEarnedMilli } from "./staff.api";
+import { attendanceError, computeEarnedMilli, isOpenPunch } from "./staff.api";
 import type { CompensationMethod } from "@/lib/dbTypes";
 
 describe("computeEarnedMilli", () => {
@@ -51,5 +51,43 @@ describe("computeEarnedMilli", () => {
     expect(
       computeEarnedMilli("PER_HOUR" as CompensationMethod, 2000, null, null, 0, "PRESENT"),
     ).toBe(0);
+  });
+});
+
+describe("isOpenPunch", () => {
+  it("is true only while a live row has check-in and no check-out", () => {
+    expect(
+      isOpenPunch({
+        recordStatus: "RECORDED",
+        status: "PRESENT",
+        checkIn: "2026-08-19T16:00:00+04:00",
+        checkOut: null,
+      }),
+    ).toBe(true);
+    expect(
+      isOpenPunch({
+        recordStatus: "RECORDED",
+        status: "PRESENT",
+        checkIn: "2026-08-19T16:00:00+04:00",
+        checkOut: "2026-08-19T22:00:00+04:00",
+      }),
+    ).toBe(false);
+    expect(
+      isOpenPunch({
+        recordStatus: "VOIDED",
+        status: "VOIDED",
+        checkIn: "2026-08-19T16:00:00+04:00",
+        checkOut: null,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("attendanceError", () => {
+  it("translates punch-clock command errors into Arabic", () => {
+    expect(attendanceError(new Error("CLOCK_IN_REQUIRED"))).toBe("اضغط دخول أولاً");
+    expect(attendanceError(new Error("ATTENDANCE_SLOT_ALREADY_RECORDED"))).toBe(
+      "مسجّل مسبقاً",
+    );
   });
 });

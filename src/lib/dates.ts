@@ -22,6 +22,26 @@ export function todayInMuscat(now: Date = new Date()): string {
   }).format(now);
 }
 
+/** Current hour (0-23) in the Oman operational time zone. */
+export function muscatHour(now: Date = new Date()): number {
+  const hour = new Intl.DateTimeFormat("en-GB", {
+    timeZone: OPERATIONAL_TIME_ZONE,
+    hour: "numeric",
+    hourCycle: "h23",
+  })
+    .formatToParts(now)
+    .find((part) => part.type === "hour");
+  return Number(hour?.value ?? "0");
+}
+
+/**
+ * Default attendance shift used by the phone punch clock.
+ * Matches SQL clock_staff_in: before 16:00 Muscat is MORNING, otherwise EVENING.
+ */
+export function defaultMuscatShift(now: Date = new Date()): "MORNING" | "EVENING" {
+  return muscatHour(now) < 16 ? "MORNING" : "EVENING";
+}
+
 /**
  * Muscat-pinned wall-clock helpers (defect D17).
  *

@@ -4,8 +4,11 @@ import { Card } from "@/components/ui/Card";
 import { ConfirmPanel } from "@/components/ui/ConfirmPanel";
 import { Input } from "@/components/ui/Input";
 import { Field } from "@/components/ui/Field";
+import { JobPath } from "@/components/ui/JobPath";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import type { EventRow, StatusHistoryRow } from "../events.api";
+import type { WorkspaceTab } from "../eventWorkspace.model";
+import { jobPathForEventStatus } from "../eventWorkspace.model";
 import type { ReadinessReport } from "../readinessReport";
 import { EventTimeline } from "./EventTimeline";
 import { ReadinessReportPanel } from "./ReadinessReportPanel";
@@ -24,18 +27,24 @@ export function OverviewTab({
   event,
   customerName,
   canCommercial,
+  canFinance,
   run,
   report,
   history,
   acceptedQuote,
+  financiallyClosed,
+  onOpenTab,
 }: {
   event: EventRow;
   customerName: string | null;
   canCommercial: boolean;
+  canFinance: boolean;
   run: (name: string, args: Record<string, unknown>, includeEvent?: boolean) => Promise<void>;
   report: ReadinessReport;
   history: StatusHistoryRow[];
-  acceptedQuote: { quotation_number: string | null; revision: number; total_selling: string } | null;
+  acceptedQuote: { id?: string; quotation_number: string | null; revision: number; total_selling: string } | null;
+  financiallyClosed: boolean;
+  onOpenTab: (tab: WorkspaceTab) => void;
 }) {
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -89,6 +98,19 @@ export function OverviewTab({
 
   return (
     <div className="space-y-4">
+      <JobPath current={jobPathForEventStatus(event.status, financiallyClosed)} />
+
+      {event.status === "CONFIRMED" && (
+        <p className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm font-bold leading-6 text-brand-900">
+          الخطوة التالية: ابدأ التجهيز، ثم نفّذ المناسبة، وبعدها سجّل التحصيل والمصروف لتعرف الربح.
+        </p>
+      )}
+      {event.status === "CLOSED" && !financiallyClosed && canFinance && (
+        <p className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm font-bold leading-6 text-brand-900">
+          أُغلقت تشغيلياً. سجّل الدفعات والمصروفات ثم أغلق مالياً لمعرفة الربح الحقيقي.
+        </p>
+      )}
+
       <ReadinessReportPanel report={report} />
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -153,6 +175,16 @@ export function OverviewTab({
             <Button onClick={() => (needsOverride ? setOverrideOpen(true) : transition())}>
               {currentStep[2]}
             </Button>
+          )}
+          {canFinance && (
+            <>
+              <Button variant="secondary" onClick={() => onOpenTab("المدفوعات")}>
+                تسجيل دفعة
+              </Button>
+              <Button variant="secondary" onClick={() => onOpenTab("المالية")}>
+                المصروف والربح
+              </Button>
+            </>
           )}
           {canCancel && !confirmingCancel && (
             <Button variant="danger" onClick={() => setConfirmingCancel(true)}>

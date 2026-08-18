@@ -37,6 +37,28 @@ function event(status: EventStatus): EventRow {
 }
 
 const run = vi.fn().mockResolvedValue(undefined);
+const onOpenTab = vi.fn();
+
+function renderOverview(
+  status: EventStatus,
+  extras: Partial<Parameters<typeof OverviewTab>[0]> = {},
+) {
+  return render(
+    <OverviewTab
+      event={event(status)}
+      customerName="مريم"
+      canCommercial={true}
+      canFinance={true}
+      run={run}
+      report={readyReport}
+      history={[]}
+      acceptedQuote={null}
+      financiallyClosed={false}
+      onOpenTab={onOpenTab}
+      {...extras}
+    />,
+  );
+}
 
 describe("OverviewTab — lifecycle controls", () => {
   beforeEach(() => {
@@ -53,17 +75,7 @@ describe("OverviewTab — lifecycle controls", () => {
     ];
     for (const [status, target, label] of steps) {
       run.mockClear();
-      render(
-        <OverviewTab
-          event={event(status)}
-          customerName="مريم"
-          canCommercial={true}
-          run={run}
-          report={readyReport}
-          history={[]}
-          acceptedQuote={null}
-        />,
-      );
+      renderOverview(status);
       await userEvent.click(screen.getByRole("button", { name: label }));
       expect(run).toHaveBeenCalledWith("transition_event_status", {
         p_to: target,
@@ -75,17 +87,7 @@ describe("OverviewTab — lifecycle controls", () => {
 
   it("offers no next step for CLOSED or CANCELLED events", () => {
     for (const status of ["CLOSED", "CANCELLED"] as const) {
-      render(
-        <OverviewTab
-          event={event(status)}
-          customerName="مريم"
-          canCommercial={true}
-          run={run}
-          report={readyReport}
-          history={[]}
-          acceptedQuote={null}
-        />,
-      );
+      renderOverview(status);
       expect(
         screen.queryByRole("button", { name: /بدء|تأكيد|إغلاق/ }),
       ).not.toBeInTheDocument();
@@ -93,17 +95,7 @@ describe("OverviewTab — lifecycle controls", () => {
   });
 
   it("requires a written reason before cancelling (no window.prompt)", async () => {
-    render(
-      <OverviewTab
-        event={event("CONFIRMED")}
-        customerName="مريم"
-        canCommercial={true}
-        run={run}
-        report={readyReport}
-        history={[]}
-        acceptedQuote={null}
-      />,
-    );
+    renderOverview("CONFIRMED");
 
     await userEvent.click(screen.getByRole("button", { name: "إلغاء المناسبة" }));
     expect(screen.getByText("تأكيد إلغاء المناسبة")).toBeInTheDocument();
@@ -125,17 +117,7 @@ describe("OverviewTab — lifecycle controls", () => {
 
   it("offers cancellation for mid-execution statuses too", () => {
     for (const status of ["DISPATCHED", "IN_PROGRESS"] as const) {
-      render(
-        <OverviewTab
-          event={event(status)}
-          customerName="مريم"
-          canCommercial={true}
-          run={run}
-          report={readyReport}
-          history={[]}
-          acceptedQuote={null}
-        />,
-      );
+      renderOverview(status);
       expect(
         screen.getByRole("button", { name: "إلغاء المناسبة" }),
       ).toBeInTheDocument();
@@ -143,18 +125,15 @@ describe("OverviewTab — lifecycle controls", () => {
     }
   });
 
+  it("points a confirmed event to execute then collect profit", () => {
+    renderOverview("CONFIRMED");
+    expect(screen.getByText(/ابدأ التجهيز، ثم نفّذ المناسبة/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "تسجيل دفعة" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "المصروف والربح" })).toBeInTheDocument();
+  });
+
   it("hides cancellation from non-commercial roles", () => {
-    render(
-      <OverviewTab
-        event={event("PREPARING")}
-        customerName="مريم"
-        canCommercial={false}
-        run={run}
-        report={readyReport}
-        history={[]}
-        acceptedQuote={null}
-      />,
-    );
+    renderOverview("PREPARING", { canCommercial: false, canFinance: false });
     expect(
       screen.queryByRole("button", { name: "إلغاء المناسبة" }),
     ).not.toBeInTheDocument();

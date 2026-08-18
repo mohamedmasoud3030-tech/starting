@@ -312,7 +312,7 @@ export function StaffPage() {
     <div className="space-y-4">
       <PageHeader
         title="المضيفون والأجور"
-        description="أرشيف كامل لكل مضيف: المستحق، السلف العامة، كل عمليات الصرف، والمتبقي الحقيقي."
+        description="هنا الأجور والسلف والصرف. تسجيل الشغل يتم من داخل المناسبة بزر دخول الآن / خروج الآن."
         actions={
           canManageCommercial ? (
             <Button

@@ -4388,6 +4388,88 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      clock_staff_in: {
+        Args: {
+          p_assignment_id: string
+          p_event_id: string
+          p_idempotency_key: string
+          p_notes: string
+          p_org_id: string
+          p_shift: Database["public"]["Enums"]["staff_shift"]
+          p_staff_member_id: string
+        }
+        Returns: {
+          assignment_id: string | null
+          attendance_date: string
+          break_minutes: number
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          earned_amount: number
+          event_id: string
+          hours_worked: number
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          recorded_by: string
+          request_fingerprint: string
+          shift: Database["public"]["Enums"]["staff_shift"]
+          staff_member_id: string
+          status: Database["public"]["Enums"]["attendance_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          wage_method: Database["public"]["Enums"]["compensation_method"]
+          wage_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "staff_attendance"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      clock_staff_out: {
+        Args: {
+          p_event_id: string
+          p_idempotency_key: string
+          p_notes: string
+          p_org_id: string
+          p_staff_member_id: string
+        }
+        Returns: {
+          assignment_id: string | null
+          attendance_date: string
+          break_minutes: number
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          earned_amount: number
+          event_id: string
+          hours_worked: number
+          id: string
+          idempotency_key: string
+          notes: string | null
+          organization_id: string
+          recorded_by: string
+          request_fingerprint: string
+          shift: Database["public"]["Enums"]["staff_shift"]
+          staff_member_id: string
+          status: Database["public"]["Enums"]["attendance_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          wage_method: Database["public"]["Enums"]["compensation_method"]
+          wage_rate: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "staff_attendance"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       commercial_total: {
         Args: {
           p_guests: number

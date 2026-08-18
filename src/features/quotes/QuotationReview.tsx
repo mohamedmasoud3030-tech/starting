@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { CheckCircle2, Copy, Eye, FileCheck2, Printer, XCircle } from "lucide-react";
+import { JobPath } from "@/components/ui/JobPath";
+import { jobPathForQuoteStatus } from "@/features/events/eventWorkspace.model";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -207,6 +209,10 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
               <Eye className="h-5 w-5" />
               {previewOpen ? "إخفاء المعاينة" : "معاينة المستند"}
             </Button>
+            <Button onClick={() => printDocument()}>
+              <Printer className="h-5 w-5" />
+              طباعة / حفظ PDF
+            </Button>
             <Badge tone={statusTone()}>
               {statusLabel[q.status] ?? q.status}
             </Badge>
@@ -214,18 +220,30 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
         }
       />
 
+      <JobPath current={jobPathForQuoteStatus(q.status)} />
+
+      {q.status === "ISSUED" && (
+        <p className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm font-bold leading-6 text-brand-900">
+          الخطوة التالية: إذا وافق العميل اضغط «اعتماد العرض»، ثم حوّله إلى مناسبة.
+        </p>
+      )}
+      {q.status === "ACCEPTED" && (
+        <p className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm font-bold leading-6 text-brand-900">
+          الخطوة التالية: حوّل العرض إلى مناسبة لتبدأ التنفيذ والتحصيل.
+        </p>
+      )}
+      {q.status === "CONVERTED" && q.converted_event_id && (
+        <p className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm font-bold leading-6 text-brand-900">
+          اكتمل العرض. أكمل التنفيذ والتحصيل من المناسبة.
+        </p>
+      )}
+
       {error && (
         <InlineError message={error} />
       )}
 
       {previewOpen && (
         <div className="space-y-3">
-          <div className="flex justify-end">
-            <Button onClick={() => printDocument()}>
-              <Printer className="h-5 w-5" />
-              طباعة / حفظ PDF
-            </Button>
-          </div>
           <QuotationDocument
             identity={buildDocumentIdentity(currentOrganization, settings.data ?? null)}
             data={{
@@ -384,9 +402,18 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
       )}
 
       {q.status === "CONVERTED" && (
-        <p className="rounded-xl bg-brand-50 p-3 font-bold text-brand-800">
-          تم تحويل هذا العرض إلى مناسبة.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-brand-50 p-4">
+          <p className="font-bold text-brand-800">تم تحويل هذا العرض إلى مناسبة.</p>
+          {q.converted_event_id && (
+            <Link
+              to="/events/$eventId"
+              params={{ eventId: q.converted_event_id }}
+              className="inline-flex min-h-12 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-bold text-white hover:bg-brand-800"
+            >
+              افتح المناسبة
+            </Link>
+          )}
+        </div>
       )}
       {q.status === "SUPERSEDED" && (
         <p className="rounded-xl bg-slate-100 p-3 font-bold text-slate-600">

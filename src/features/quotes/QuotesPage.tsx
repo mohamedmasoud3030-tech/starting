@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { JobPath } from "@/components/ui/JobPath";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { InlineError } from "@/components/ui/ErrorState";
@@ -83,7 +84,7 @@ export function QuotesPage() {
     <div>
       <PageHeader
         title="عروض الأسعار"
-        description="اعمل عرض سعر بسرعة دون الحاجة لتسجيل عميل أو إنشاء مناسبة أولاً"
+        description="ابدأ من هنا: أنشئ عرضاً، أصدره للعميل، اعتمده بعد الموافقة، ثم حوّله إلى مناسبة"
         actions={
           <Button size="lg" onClick={() => void navigate({ to: "/quotes/new" })}>
             <Plus className="h-5 w-5" />
@@ -91,6 +92,10 @@ export function QuotesPage() {
           </Button>
         }
       />
+
+      <div className="mb-5">
+        <JobPath current="quote" />
+      </div>
 
       {error && (
         <InlineError message={error} className="mb-4" />

@@ -16,6 +16,7 @@ import type { CompensationMethod } from "@/lib/dbTypes";
 import {
   attendanceError,
   computeEarnedMilli,
+  isOpenPunch,
   useEventAttendance,
   useRecordAttendance,
   useVoidAttendance,
@@ -28,7 +29,9 @@ import {
   ATTENDANCE_STATUS_TONE,
   COMPENSATION_LABELS,
   SHIFT_LABELS,
+  STAFF_TYPE_LABELS,
 } from "./labels";
+import { AttendanceClock } from "./AttendanceClock";
 
 interface AssignmentLike {
   id: string;
@@ -36,6 +39,7 @@ interface AssignmentLike {
   assignmentRole: string;
   scheduledStart: string;
   scheduledEnd: string;
+  status: string;
 }
 interface StaffLike {
   id: string;
@@ -88,18 +92,18 @@ export function AttendancePanel({
   const [wageRateMilli, setWageRateMilli] = useState<MilliOMR>(0);
   const [notes, setNotes] = useState("");
 
-  const selectedStaff = staffList.find((s) => s.id === staffMemberId);
   const selectedAssignment = assignments.find((a) => a.staffMemberId === staffMemberId);
 
-  function prefillFromStaff() {
-    const s = selectedStaff;
-    if (!s) return;
-    const method = (s.defaultCompensationMethod as CompensationMethod) ?? "PER_EVENT";
+  function applyStaffDefaults(id: string) {
+    const staff = staffList.find((row) => row.id === id);
+    if (!staff) return;
+    const method = (staff.defaultCompensationMethod as CompensationMethod) ?? "PER_EVENT";
     setWageMethod(method);
-    setWageRateMilli(parseOptionalOMR(s.defaultRate ?? "0.000"));
-    if (selectedAssignment) {
-      setCheckIn(toLocalInput(selectedAssignment.scheduledStart));
-      setCheckOut(toLocalInput(selectedAssignment.scheduledEnd));
+    setWageRateMilli(parseOptionalOMR(staff.defaultRate ?? "0.000"));
+    const assignment = assignments.find((row) => row.staffMemberId === id);
+    if (assignment) {
+      setCheckIn(toLocalInput(assignment.scheduledStart));
+      setCheckOut(toLocalInput(assignment.scheduledEnd));
     }
   }
 
@@ -191,17 +195,26 @@ export function AttendancePanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 id="attendance-heading" className="text-xl font-black">حضور المضيفين</h2>
-          <p className="mt-1 text-slate-600">تثبيت الدخول والخروج لكل وردة، وحساب المستحق بدقة.</p>
+          <p className="mt-1 text-slate-600">
+            اضغط دخول الآن عند وصول المضيف وخروج الآن عند انصرافه. التسجيل اليدوي للتصحيح أو الغياب فقط.
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <p className="font-bold text-slate-700" dir="ltr">
             المستحق: {formatOMR(totalEarned)}
           </p>
-          <Button onClick={() => setOpen(true)} disabled={recordAttendance.isPending}>
-            تسجيل حضور
+          <Button variant="outline" onClick={() => setOpen(true)} disabled={recordAttendance.isPending}>
+            تسجيل يدوي
           </Button>
         </div>
       </div>
+
+      <AttendanceClock
+        orgId={orgId}
+        eventId={eventId}
+        assignments={assignments}
+        staffList={staffList}
+      />
 
       {error && (
         <InlineError message={error} />
@@ -224,6 +237,7 @@ export function AttendancePanel({
                         {ATTENDANCE_STATUS_LABELS[a.status]}
                       </Badge>
                       <Badge tone="brand">{SHIFT_LABELS[a.shift]}</Badge>
+                      {isOpenPunch(a) && <Badge tone="success">داخل الآن</Badge>}
                     </div>
                     <p className="mt-1 text-sm text-slate-500">
                       {a.attendanceDate} · {fmt(a.checkIn)} — {fmt(a.checkOut)}
@@ -275,16 +289,16 @@ export function AttendancePanel({
               id="att-staff"
               value={staffMemberId}
               onChange={(e) => {
-                setStaffMemberId(e.target.value);
-                const s = staffList.find((x) => x.id === e.target.value);
-                if (s) prefillFromStaff();
+                const id = e.target.value;
+                setStaffMemberId(id);
+                if (id) applyStaffDefaults(id);
               }}
               required
             >
               <option value="">اختر المضيف</option>
               {staffList.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.name} · {s.staffType}
+                  {s.name} · {STAFF_TYPE_LABELS[s.staffType] ?? s.staffType}
                 </option>
               ))}
             </Select>

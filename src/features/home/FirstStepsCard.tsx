@@ -5,39 +5,37 @@ const FIRST_STEPS: ReadonlyArray<{
   step: string;
   title: string;
   detail: string;
-  to: "/catalog" | "/customers" | "/quotes" | "/events";
+  to: "/quotes/new" | "/quotes" | "/events";
 }> = [
   {
     step: "١",
-    title: "جهّز دليل الخدمات والأسعار",
-    detail: "أضف الخدمات والمعدات والمواد التي تقدّمها مع أسعار البيع.",
-    to: "/catalog",
+    title: "أنشئ عرض سعر",
+    detail: "اكتب الخدمات والأسعار كما تريد — بلا باقة إلزامية.",
+    to: "/quotes/new",
   },
   {
     step: "٢",
-    title: "أضف أول عميل",
-    detail: "سجّل عميلاً لتبدأ منه عروض الأسعار والمناسبات.",
-    to: "/customers",
+    title: "أصدره وأعطه للعميل",
+    detail: "اطبع العرض أو احفظه PDF بعد الإصدار.",
+    to: "/quotes",
   },
   {
     step: "٣",
-    title: "أنشئ عرض سعر",
-    detail: "قدّم عرضاً لعميلك واعتمده بعد موافقته.",
+    title: "اعتمد ثم حوّل إلى مناسبة",
+    detail: "بعد موافقة العميل يصبح العرض حجزاً للتنفيذ.",
     to: "/quotes",
   },
   {
     step: "٤",
-    title: "حوّل العرض إلى مناسبة",
-    detail: "بعد القبول تصبح المناسبة جاهزة للتنفيذ والإغلاق بالربح.",
+    title: "نفّذ، حصّل، ثم أغلق لتعرف الربح",
+    detail: "الإيراد والتحصيل والمصروف أرقام منفصلة بعد الإغلاق.",
     to: "/events",
   },
 ];
 
 /**
- * First-minutes onboarding shown only when the workspace has no events and no
- * customers yet. It turns a dashboard of zeros into an ordered starting path
- * that mirrors the real dependency chain (catalog → customer → quotation →
- * event).
+ * First-minutes path for a new office: quote → issue → accept/convert →
+ * execute/collect/close. Catalog and packages are optional, not the start.
  */
 export function FirstStepsCard() {
   return (
@@ -49,8 +47,7 @@ export function FirstStepsCard() {
         <div>
           <h2 className="text-lg font-black text-slate-900">ابدأ من هنا</h2>
           <p className="mt-1 text-sm leading-6 text-slate-600">
-            لم تُسجَّل بيانات بعد. أكمل هذه الخطوات بالترتيب لبدء استخدام
-            النظام.
+            المسار الصحيح: عرض سعر ← اعتماد ← مناسبة ← تنفيذ ← تحصيل ← ربح.
           </p>
         </div>
       </div>

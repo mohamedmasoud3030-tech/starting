@@ -12,7 +12,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { renderHook } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useRecordAttendance, useVoidAttendance } from "./staff.api";
+import {
+  useClockStaffIn,
+  useClockStaffOut,
+  useRecordAttendance,
+  useVoidAttendance,
+} from "./staff.api";
 
 vi.mock("@/lib/rpc", () => ({
   callRpc: vi.fn().mockResolvedValue({ id: "attendance-1" }),
@@ -72,5 +77,29 @@ describe("attendance mutations refresh the dashboard gap count", () => {
     const keys = invalidatedKeys();
     expect(keys).toContainEqual(["attendance-gaps", ORG]);
     expect(keys).toContainEqual(["event-attendance", ORG, EVENT]);
+  });
+
+  it("useClockStaffIn refreshes attendance-gaps so Home stops alerting after punch-in", async () => {
+    const { result } = renderHook(() => useClockStaffIn(ORG, EVENT), { wrapper });
+    await result.current.mutateAsync({
+      staffMemberId: "staff-1",
+      assignmentId: "asg-1",
+      shift: "MORNING",
+    });
+
+    const keys = invalidatedKeys();
+    expect(keys).toContainEqual(["attendance-gaps", ORG]);
+    expect(keys).toContainEqual(["event-attendance", ORG, EVENT]);
+    expect(keys).toContainEqual(["event-payroll", ORG, EVENT]);
+  });
+
+  it("useClockStaffOut refreshes payroll after earned wages are written", async () => {
+    const { result } = renderHook(() => useClockStaffOut(ORG, EVENT), { wrapper });
+    await result.current.mutateAsync({ staffMemberId: "staff-1" });
+
+    const keys = invalidatedKeys();
+    expect(keys).toContainEqual(["attendance-gaps", ORG]);
+    expect(keys).toContainEqual(["event-payroll", ORG, EVENT]);
+    expect(keys).toContainEqual(["org-payroll-archive", ORG]);
   });
 });
