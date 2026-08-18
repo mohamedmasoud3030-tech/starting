@@ -35,6 +35,14 @@ export interface EventFinance {
   committedCostMilli: number;
   deliveredCostMilli: number;
   grossMarginMilli: number;
+  /** Actual direct cost sources (each counted once). */
+  staffCostMilli: number;
+  procurementCostMilli: number;
+  expenseCostMilli: number;
+  actualCostMilli: number;
+  actualProfitMilli: number;
+  /** Percentage (0–100) or null when there is no revenue. */
+  marginPercent: number | null;
 }
 
 export interface CustomerPayment {
@@ -66,6 +74,12 @@ export function mapFinance(row: EventFinanceSummaryRow | null | undefined): Even
     committedCostMilli: fromDbAmount(row.committed_cost),
     deliveredCostMilli: fromDbAmount(row.delivered_cost),
     grossMarginMilli: fromDbAmount(row.gross_margin),
+    staffCostMilli: fromDbAmount(row.staff_cost),
+    procurementCostMilli: fromDbAmount(row.procurement_cost),
+    expenseCostMilli: fromDbAmount(row.expense_cost),
+    actualCostMilli: fromDbAmount(row.actual_cost),
+    actualProfitMilli: fromDbAmount(row.actual_profit),
+    marginPercent: row.margin_percent,
   };
 }
 

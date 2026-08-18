@@ -8,15 +8,16 @@ import { WarehousePanel } from "@/features/warehouse/WarehousePanel";
 import { EventConsumablesPanel } from "@/features/consumables/EventConsumablesPanel";
 import { EventPaymentsPanel } from "@/features/payments/EventPaymentsPanel";
 import { InvoicesPanel } from "@/features/payments/InvoicesPanel";
+import { EventFinancePanel } from "@/features/finance/EventFinancePanel";
 import { EventProcurementPanel } from "@/features/procurement/EventProcurementPanel";
 import { EquipmentTab } from "./workspace/EquipmentTab";
 import { EventWorkspaceHeader } from "./workspace/EventWorkspaceHeader";
 import { HistoryTab } from "./workspace/HistoryTab";
 import { OverviewTab } from "./workspace/OverviewTab";
 import { PricingTab } from "./workspace/PricingTab";
-import { ReadinessBanner } from "./workspace/ReadinessBanner";
 import { TeamTab } from "./workspace/TeamTab";
 import { WorkspaceTabs } from "./workspace/WorkspaceTabs";
+import { buildReadinessReport } from "./readinessReport";
 import { useEventWorkspace } from "./useEventWorkspace";
 
 export function EventWorkspace() {
@@ -39,6 +40,19 @@ export function EventWorkspace() {
   const canEdit =
     ws.canAttendance && ["DRAFT", "QUOTED"].includes(ev.status);
 
+  // Pure derivation over already-loaded workspace data (cheap, no hook).
+  const readinessReport = buildReadinessReport({
+    lines: d.lines,
+    assignments: d.assignments,
+    capacities: d.capacities,
+    reservations: d.reservations,
+    hasPayableAcceptedQuotation:
+      (ws.finance.data?.acceptedRevenueMilli ?? 0) > 0,
+    amountPaidMilli: ws.finance.data?.amountPaidMilli ?? 0,
+  });
+
+  const acceptedQuote = d.quotes.find((q) => q.status === "ACCEPTED") ?? d.quotes[0] ?? null;
+
   return (
     <div className="space-y-5">
       <EventWorkspaceHeader
@@ -47,7 +61,6 @@ export function EventWorkspace() {
         canEdit={canEdit}
         onEdit={() => setEditOpen(true)}
       />
-      <ReadinessBanner readiness={d.readiness} />
       <WorkspaceTabs tab={ws.tab} tabs={ws.visibleTabs} onChange={ws.setTab} />
       {ws.error && <InlineError message={ws.error} />}
 
@@ -66,6 +79,9 @@ export function EventWorkspace() {
           customerName={customerName}
           canCommercial={ws.canCommercial}
           run={ws.run}
+          report={readinessReport}
+          history={d.history}
+          acceptedQuote={acceptedQuote}
         />
       )}
 
@@ -145,6 +161,14 @@ export function EventWorkspace() {
               ? (ws.finance.data?.acceptedRevenueMilli ?? 0)
               : null
           }
+        />
+      )}
+
+      {ws.tab === "المالية" && (
+        <EventFinancePanel
+          orgId={ws.orgId}
+          eventId={ws.eventId}
+          canMutate={ws.canFinance}
         />
       )}
 

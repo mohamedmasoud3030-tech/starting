@@ -4,7 +4,7 @@ import {
   toOMRString,
   type DbAmount,
 } from "@/lib/money";
-import type { QuotationDraftValues, QuotationLineRow } from "./quotes.api";
+import type { QuotationDraftValues, QuotationDiscountType, QuotationLineRow } from "./quotes.api";
 import { isoToMuscatWallClock } from "@/lib/dates";
 
 /**
@@ -53,6 +53,61 @@ export function emptyForm(): DraftForm {
     endAt: "",
     venueName: "",
     notes: "",
+  };
+}
+
+export interface DraftPricing {
+  transportRequired: boolean;
+  transportZone: string;
+  transportAmount: string;
+  transportNote: string;
+  surchargeAmount: string;
+  surchargeNote: string;
+  discountType: QuotationDiscountType;
+  discountValue: string;
+  validUntil: string;
+}
+
+export function emptyPricing(): DraftPricing {
+  return {
+    transportRequired: false,
+    transportZone: "",
+    transportAmount: "",
+    transportNote: "",
+    surchargeAmount: "",
+    surchargeNote: "",
+    discountType: "NONE",
+    discountValue: "",
+    validUntil: "",
+  };
+}
+
+/** Hydrates editable pricing, including rows created before pricing columns existed. */
+export function hydratePricingFromDraft(draft: {
+  transport_required?: boolean | null;
+  transport_zone?: string | null;
+  transport_amount?: string | null;
+  transport_note?: string | null;
+  surcharge_amount?: string | null;
+  surcharge_note?: string | null;
+  discount_type?: QuotationDiscountType | null;
+  discount_value?: string | null;
+  valid_until?: string | null;
+}): DraftPricing {
+  const discountType = draft.discount_type ?? "NONE";
+  return {
+    transportRequired: draft.transport_required ?? false,
+    transportZone: draft.transport_zone ?? "",
+    transportAmount:
+      !draft.transport_amount || draft.transport_amount === "0.000" ? "" : draft.transport_amount,
+    transportNote: draft.transport_note ?? "",
+    surchargeAmount:
+      !draft.surcharge_amount || draft.surcharge_amount === "0.000" ? "" : draft.surcharge_amount,
+    surchargeNote: draft.surcharge_note ?? "",
+    discountType,
+    discountValue:
+      discountType === "NONE" || !draft.discount_value ? "" : draft.discount_value,
+    validUntil: isoToLocalInput(draft.valid_until),
   };
 }
 

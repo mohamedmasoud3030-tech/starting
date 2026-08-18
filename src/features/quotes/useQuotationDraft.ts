@@ -4,6 +4,7 @@ import { useAuth } from "@/app/authContext";
 import { usePackages } from "@/features/packages/packages.api";
 import { useCatalogItems } from "@/features/catalog/catalog.api";
 import { parseOMR, parseQuantityMilli, type MilliOMR } from "@/lib/money";
+import { muscatWallClockToIso } from "@/lib/dates";
 import {
   arabicQuotationError,
   useCancelQuotationDraft,
@@ -11,21 +12,29 @@ import {
   usePersistQuotationDraft,
   useQuotation,
   useQuotationLines,
+  useSetQuotationPricing,
 } from "./quotes.api";
-import { computeQuotationLineTotalMilli, sumQuotationLineTotals } from "./quotationMath";
+import {
+  computeGrandTotalMilli,
+  computeQuotationLineTotalMilli,
+  sumQuotationLineTotals,
+} from "./quotationMath";
 import {
   buildPackageLines,
   createCustomLine,
   createLineKeyFactory,
   draftFingerprint,
   emptyForm,
+  emptyPricing,
   guestCountFromDraft,
   hydrateFormFromDraft,
   hydrateLinesFromServer,
+  hydratePricingFromDraft,
   toDraftValues,
   toServerLinePayload,
   type DraftForm,
   type DraftLine,
+  type DraftPricing,
 } from "./quotationDraft.model";
 
 export type DraftBusy = "" | "الحفظ" | "الإصدار" | "حذف";
@@ -50,11 +59,13 @@ export function useQuotationDraft(draftId?: string) {
   const persistDraftMutation = usePersistQuotationDraft(orgId);
   const issue = useIssueQuotation(orgId);
   const discard = useCancelQuotationDraft(orgId);
+  const setPricing = useSetQuotationPricing(orgId);
 
   const [form, setForm] = useState<DraftForm>(emptyForm);
   const [guestCount, setGuestCount] = useState("");
   const [savedDraftId, setSavedDraftId] = useState<string | null>(draftId ?? null);
   const [lines, setLines] = useState<DraftLine[]>([]);
+  const [pricing, setPricingState] = useState<DraftPricing>(emptyPricing);
   const [selectedPackage, setSelectedPackage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<DraftBusy>("");
@@ -89,6 +100,13 @@ export function useQuotationDraft(draftId?: string) {
       setLines(hydrateLinesFromServer(existingLines.data));
     }
   }, [draftId, existingLines.data]);
+
+  // Edit mode: hydrate pricing (transport/surcharge/discount/validity).
+  useEffect(() => {
+    if (draftId && existing.data) {
+      setPricingState(hydratePricingFromDraft(existing.data));
+    }
+  }, [draftId, existing.data]);
 
   const guestCountNum = guestCount.trim() === "" ? null : Number(guestCount);
 
@@ -139,15 +157,59 @@ export function useQuotationDraft(draftId?: string) {
       }),
     [lines, guestCountNum],
   );
-  const grandTotalMilli = useMemo(() => sumQuotationLineTotals(lineTotals), [lineTotals]);
+  const subtotalMilli = useMemo(() => sumQuotationLineTotals(lineTotals), [lineTotals]);
   const pricingBlocked = useMemo(
     () => lineTotals.some((total) => total === null),
     [lineTotals],
   );
+  const grandTotalMilli = useMemo<MilliOMR>(() => {
+    try {
+      const transportMilli =
+        pricing.transportAmount.trim() === "" ? 0 : parseOMR(pricing.transportAmount);
+      const surchargeMilli =
+        pricing.surchargeAmount.trim() === "" ? 0 : parseOMR(pricing.surchargeAmount);
+      return computeGrandTotalMilli(
+        subtotalMilli,
+        transportMilli,
+        surchargeMilli,
+        pricing.discountType,
+        pricing.discountValue,
+      ).grandTotal;
+    } catch {
+      // Invalid transport/surcharge/discount previews fall back to the line
+      // subtotal; the DB is the authority and rejects with a clear Arabic
+      // error at persist time.
+      return subtotalMilli;
+    }
+  }, [subtotalMilli, pricing]);
 
   function setField<K extends keyof DraftForm>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
     setDirty(true);
+  }
+
+  function setPricingField<K extends keyof DraftPricing>(key: K, value: DraftPricing[K]) {
+    setPricingState((p) => ({ ...p, [key]: value }));
+    setDirty(true);
+  }
+
+  /** Persist transport/surcharge/discount/validity for a saved draft. */
+  async function persistPricing(quotationId: string): Promise<void> {
+    await setPricing.mutateAsync({
+      quotationId,
+      input: {
+        transportRequired: pricing.transportRequired,
+        transportZone: pricing.transportZone.trim() || null,
+        transportAmount: pricing.transportAmount.trim() || null,
+        transportNote: pricing.transportNote.trim() || null,
+        surchargeAmount: pricing.surchargeAmount.trim() || null,
+        surchargeNote: pricing.surchargeNote.trim() || null,
+        discountType: pricing.discountType,
+        discountValue:
+          pricing.discountType === "NONE" ? null : pricing.discountValue.trim() || null,
+        validUntil: pricing.validUntil ? (muscatWallClockToIso(pricing.validUntil) ?? new Date(pricing.validUntil).toISOString()) : null,
+      },
+    });
   }
 
   /**
@@ -265,6 +327,7 @@ export function useQuotationDraft(draftId?: string) {
     setBusy("الحفظ");
     try {
       const id = await persistDraft();
+      await persistPricing(id);
       if (!draftId) await navigate({ to: "/quotes/$quoteId", params: { quoteId: id } });
       setBusy("");
     } catch (cause) {
@@ -283,6 +346,7 @@ export function useQuotationDraft(draftId?: string) {
     setBusy("الإصدار");
     try {
       const id = await persistDraft();
+      await persistPricing(id);
       await issue.mutateAsync(id);
       await navigate({ to: "/quotes/$quoteId", params: { quoteId: id } });
     } catch (x) {
@@ -311,6 +375,8 @@ export function useQuotationDraft(draftId?: string) {
     },
     guestCountNum,
     lines,
+    pricing,
+    setPricingField,
     selectedPackage,
     setSelectedPackage,
     savedDraftId,
@@ -321,6 +387,7 @@ export function useQuotationDraft(draftId?: string) {
     setIssueConfirmationOpen,
     // derived
     lineTotals,
+    subtotalMilli,
     grandTotalMilli,
     pricingBlocked,
     // actions

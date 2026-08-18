@@ -66,6 +66,7 @@ export type AppRole = DbEnum<"app_role">;
 export type AssignmentStatus = DbEnum<"assignment_status">;
 export type CatalogItemStatus = DbEnum<"catalog_item_status">;
 export type CatalogItemType = DbEnum<"catalog_item_type">;
+export type ExpenseCategory = DbEnum<"expense_category">;
 export type CompensationMethod = DbEnum<"compensation_method">;
 export type ConsumableMovementKind = DbEnum<"consumable_movement_kind">;
 export type CustomerType = DbEnum<"customer_type">;
@@ -88,6 +89,7 @@ export type StaffType = DbEnum<"staff_type">;
 // ---------------------------------------------------------------------------
 
 export type OrganizationRow = TableRow<"organizations">;
+export type OrganizationSettingsRow = TableRow<"organization_settings">;
 export type MembershipRow = TableRow<"organization_memberships">;
 export type ProfileRow = TableRow<"profiles">;
 
@@ -140,6 +142,9 @@ export type EventProcurementCostSummaryRow =
   ViewRow<"event_procurement_cost_summaries">;
 export type CustomerPaymentSummaryRow = ViewRow<"customer_payment_summaries">;
 export type EventFinanceSummaryRow = ViewRow<"event_finance_summaries">;
+export type EventExpenseSummaryRow = ViewRow<"event_expense_summaries">;
+export type EventExpenseCategorySummaryRow = ViewRow<"event_expense_category_summaries">;
+export type EventFinancialClosureRow = TableRow<"event_financial_closures">;
 
 // S9 staff attendance / payroll read models (migrations 0038-0048). The
 // generated types now cover this slice completely, so the staff data layer

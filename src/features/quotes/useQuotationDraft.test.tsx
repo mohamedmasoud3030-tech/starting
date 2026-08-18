@@ -42,6 +42,7 @@ vi.mock("./quotes.api", () => ({
   usePersistQuotationDraft: () => ({ mutateAsync: persistMock }),
   useIssueQuotation: () => ({ mutateAsync: vi.fn() }),
   useCancelQuotationDraft: () => ({ mutateAsync: vi.fn() }),
+  useSetQuotationPricing: () => ({ mutateAsync: vi.fn() }),
   arabicQuotationError: (cause: unknown) =>
     cause instanceof Error ? cause.message : String(cause),
 }));

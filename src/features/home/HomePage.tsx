@@ -30,6 +30,7 @@ import {
 } from "@/features/ownerVoice/screenSummary";
 import type { AttendanceGap } from "@/features/staff/staff.api";
 import { buildEventWhatsAppUrl } from "./operationalDashboard.model";
+import { FirstStepsCard } from "./FirstStepsCard";
 import { useOperationalDashboard } from "./useOperationalDashboard";
 
 const timeFormatter = new Intl.DateTimeFormat("ar-OM", {
@@ -51,6 +52,7 @@ export function HomePage() {
     eventsTruncated,
     metrics,
     shortcuts,
+    isNewOrganization,
   } = useOperationalDashboard();
 
   const name = profile?.full_name || "أهلاً بك";
@@ -62,6 +64,8 @@ export function HomePage() {
         description="لوحة تشغيل اليوم: المناسبات، الجاهزية والتنبيهات التي تحتاج تدخل"
         actions={<OwnerVoiceButton summary={attentionSummary} />}
       />
+
+      {isNewOrganization && <FirstStepsCard />}
 
       {hasLoadError && (
         <ErrorState message="تعذر تحميل جزء من لوحة التشغيل. أعد المحاولة قبل الاعتماد على حالة اليوم." />

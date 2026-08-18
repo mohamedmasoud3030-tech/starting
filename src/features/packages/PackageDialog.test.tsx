@@ -22,6 +22,8 @@ const target: PackageWithLines = {
     description: null,
     status: "ACTIVE",
     base_guest_count: 100,
+    min_guests: null,
+    max_guests: null,
     created_at: "",
     updated_at: "",
   },

@@ -16,6 +16,7 @@ export const WORKSPACE_TABS = [
   "المشتريات",
   "المدفوعات",
   "الفواتير",
+  "المالية",
   "الحضور",
   "الأجور",
   "السجل",
@@ -38,6 +39,7 @@ export type WorkspaceTab = (typeof WORKSPACE_TABS)[number];
 const TAB_REQUIREMENT: Partial<Record<WorkspaceTab, keyof EventPermissions>> = {
   المدفوعات: "canCost",
   الفواتير: "canCost",
+  المالية: "canCost",
   الأجور: "canFinance",
   // Procurement read models are hidden from non-cost roles and every S5
   // command requires OWNER/MANAGER — for anyone else this tab can only show

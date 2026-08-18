@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { formatOMR } from "@/lib/money";
 import { IssueQuotationDialog } from "./IssueQuotationDialog";
 import { QuotationDetailsStep } from "./QuotationDetailsStep";
+import { QuotationPricingStep } from "./QuotationPricingStep";
 import { QuotationReviewStep } from "./QuotationReviewStep";
 import { QuotationServicesStep } from "./QuotationServicesStep";
 import { ScratchCalculator } from "./ScratchCalculator";
@@ -63,6 +64,10 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
             onUpdateLine={draft.updateLine}
             onRemoveLine={draft.removeLine}
           />
+          <QuotationPricingStep
+            pricing={draft.pricing}
+            onChange={draft.setPricingField}
+          />
           <QuotationReviewStep
             prospectName={draft.form.prospectName}
             guestCount={draft.guestCountNum}
@@ -93,8 +98,14 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
           </Card>
           {draft.lines.length > 0 && (
             <Card className="p-5">
-              <p className="text-sm text-slate-500">إجمالي خدمات العرض</p>
-              <p className="mt-1 text-2xl font-black">{formatOMR(draft.grandTotalMilli)}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-500">المجموع الفرعي</p>
+                <p className="font-bold">{formatOMR(draft.subtotalMilli)}</p>
+              </div>
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <p className="text-sm text-slate-500">الإجمالي النهائي</p>
+                <p className="mt-1 text-2xl font-black">{formatOMR(draft.grandTotalMilli)}</p>
+              </div>
               <Badge tone={draft.pricingBlocked ? "warning" : "success"} className="mt-2">
                 {draft.pricingBlocked ? "ينقص عدد الضيوف" : "جاهز للإصدار"}
               </Badge>

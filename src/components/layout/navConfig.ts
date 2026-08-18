@@ -1,13 +1,20 @@
 export type NavTarget =
   | "/home"
+  | "/dashboard"
   | "/events"
+  | "/calendar"
+  | "/operations"
   | "/quotes"
   | "/procurement"
   | "/consumables"
   | "/catalog"
   | "/packages"
   | "/customers"
-  | "/staff";
+  | "/staff"
+  | "/reports"
+  | "/integrity"
+  | "/search"
+  | "/settings";
 
 export type NavItem = {
   to: NavTarget;
@@ -24,11 +31,19 @@ export type NavGroup = {
 export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     label: "الرئيسية",
-    items: [{ to: "/home", label: "لوحة المتابعة" }],
+    items: [
+      { to: "/home", label: "لوحة المتابعة" },
+      { to: "/dashboard", label: "لوحة الإدارة", financial: true },
+      { to: "/search", label: "البحث" },
+    ],
   },
   {
     label: "المناسبات",
-    items: [{ to: "/events", label: "كل المناسبات" }],
+    items: [
+      { to: "/events", label: "كل المناسبات" },
+      { to: "/calendar", label: "التقويم" },
+      { to: "/operations", label: "لوحة التشغيل" },
+    ],
   },
   {
     label: "المبيعات والعملاء",
@@ -56,6 +71,17 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     label: "الفريق",
     items: [{ to: "/staff", label: "المضيفون والحضور", financial: true }],
+  },
+  {
+    label: "الإدارة والتحليل",
+    items: [
+      { to: "/reports", label: "التقارير", financial: true },
+      { to: "/integrity", label: "مركز السلامة", financial: true },
+    ],
+  },
+  {
+    label: "النظام",
+    items: [{ to: "/settings", label: "إعدادات المنشأة" }],
   },
 ];
 

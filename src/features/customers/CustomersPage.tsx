@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "@tanstack/react-router";
 import { Phone, Plus } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -104,7 +105,13 @@ export function CustomersPage() {
             <li key={c.id}>
               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="mb-2 flex items-start justify-between gap-2">
-                  <h3 className="text-lg font-bold text-slate-900">{c.name}</h3>
+                  <Link
+                    to="/customers/$customerId"
+                    params={{ customerId: c.id }}
+                    className="text-lg font-bold text-slate-900 hover:text-brand-700"
+                  >
+                    {c.name}
+                  </Link>
                   <Badge tone="brand">{CUSTOMER_TYPE_LABELS[c.customer_type]}</Badge>
                 </div>
                 {(c.phone || c.whatsapp) && (

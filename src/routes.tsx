@@ -8,16 +8,24 @@ import {
 import { AuthGate } from "@/app/AuthGate";
 import { LoginPage } from "@/features/auth/LoginPage";
 import {
+  CalendarPage,
   CatalogPage,
   ConsumablesPage,
+  CustomerDetail,
   CustomersPage,
   EventWorkspace,
   EventsPage,
   HomePage,
+  IntegrityCenter,
+  ManagementDashboard,
+  OperationsBoard,
   PackagesPage,
   ProcurementPage,
   QuotePage,
   QuotesPage,
+  ReportsPage,
+  SearchPage,
+  SettingsPage,
   StaffPage,
 } from "@/routes.lazy";
 
@@ -69,6 +77,12 @@ const customersRoute = createRoute({
   component: CustomersPage,
 });
 
+const customerDetailRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/customers/$customerId",
+  component: CustomerDetail,
+});
+
 const eventsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/events",
@@ -117,6 +131,48 @@ const staffRoute = createRoute({
   component: StaffPage,
 });
 
+const settingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings",
+  component: SettingsPage,
+});
+
+const calendarRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/calendar",
+  component: CalendarPage,
+});
+
+const operationsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/operations",
+  component: OperationsBoard,
+});
+
+const dashboardRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/dashboard",
+  component: ManagementDashboard,
+});
+
+const reportsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/reports",
+  component: ReportsPage,
+});
+
+const integrityRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/integrity",
+  component: IntegrityCenter,
+});
+
+const searchRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/search",
+  component: SearchPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -132,7 +188,15 @@ const routeTree = rootRoute.addChildren([
     catalogRoute,
     packagesRoute,
     customersRoute,
+    customerDetailRoute,
     staffRoute,
+    settingsRoute,
+    calendarRoute,
+    operationsRoute,
+    dashboardRoute,
+    reportsRoute,
+    integrityRoute,
+    searchRoute,
   ]),
 ]);
 

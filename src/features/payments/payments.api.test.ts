@@ -16,6 +16,12 @@ describe("mapFinance", () => {
       committed_cost: 50,
       delivered_cost: 20,
       gross_margin: 450,
+      staff_cost: 80,
+      procurement_cost: 50,
+      expense_cost: 25,
+      actual_cost: 155,
+      actual_profit: 345,
+      margin_percent: 69,
     });
     expect(finance).not.toBeNull();
     expect(finance?.acceptedRevenueMilli).toBe(500000);
@@ -23,6 +29,10 @@ describe("mapFinance", () => {
     expect(finance?.outstandingMilli).toBe(349750);
     expect(finance?.committedCostMilli).toBe(50000);
     expect(finance?.grossMarginMilli).toBe(450000);
+    expect(finance?.staffCostMilli).toBe(80000);
+    expect(finance?.actualCostMilli).toBe(155000);
+    expect(finance?.actualProfitMilli).toBe(345000);
+    expect(finance?.marginPercent).toBe(69);
   });
 
   it("returns null when the event has no finance row", () => {

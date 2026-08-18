@@ -10,10 +10,14 @@ const db: SupabaseClient = supabase;
 export type QuotationStatus =
   | "DRAFT"
   | "ISSUED"
+  | "EXPIRED"
   | "ACCEPTED"
+  | "REJECTED"
   | "CONVERTED"
   | "CANCELLED"
   | "SUPERSEDED";
+
+export type QuotationDiscountType = "NONE" | "FIXED" | "PERCENT";
 
 export interface QuotationRow {
   id: string;
@@ -37,10 +41,26 @@ export interface QuotationRow {
   location_snapshot: string | null;
   terms: string | null;
   notes: string | null;
+  subtotal: string;
   total_selling: string;
+  transport_required: boolean;
+  transport_zone: string | null;
+  transport_amount: string;
+  transport_note: string | null;
+  surcharge_amount: string;
+  surcharge_note: string | null;
+  discount_type: QuotationDiscountType;
+  discount_value: string;
+  discount_amount: string;
+  valid_until: string | null;
+  series_id: string | null;
+  superseded_reason: string | null;
   issued_at: string | null;
   accepted_at: string | null;
+  rejected_at: string | null;
+  expired_at: string | null;
   converted_event_id: string | null;
+  is_expired: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -173,6 +193,13 @@ export function arabicQuotationError(error: unknown): string {
   if (message.includes("PACKAGE_NOT_IN_ORG")) return "الباقة غير متوفرة";
   if (message.includes("QUOTATION_NOT_EDITABLE")) return "العرض صادر ولا يمكن تعديل حقائقه التجارية";
   if (message.includes("QUOTATION_NOT_ACCEPTED")) return "اعتمد العرض قبل التحويل إلى مناسبة";
+  if (message.includes("QUOTATION_NOT_REVISABLE")) return "لا يمكن إنشاء نسخة معدلة من هذا العرض";
+  if (message.includes("QUOTATION_REJECT_NOT_ALLOWED")) return "لا يمكن رفض هذا العرض في حالته الحالية";
+  if (message.includes("QUOTATION_EXPIRE_NOT_ALLOWED")) return "لا يمكن إنهاء صلاحية هذا العرض في حالته الحالية";
+  if (message.includes("INVALID_DISCOUNT")) return "قيمة الخصم غير صالحة (النسبة بين 0 و100)";
+  if (message.includes("NEGATIVE_TOTAL")) return "الخصم أكبر من المبلغ — لا يمكن أن يصبح الإجمالي سالباً";
+  if (message.includes("INVALID_TRANSPORT_AMOUNT")) return "مبلغ النقل لا يمكن أن يكون سالباً";
+  if (message.includes("INVALID_SURCHARGE_AMOUNT")) return "الرسوم الإضافية لا يمكن أن تكون سالبة";
   if (message.includes("EVENT_DATE_REQUIRED")) return "تاريخ المناسبة مطلوب للتحويل";
   if (message.includes("VENUE_REQUIRED")) return "الموقع مطلوب للتحويل";
   if (message.includes("INVALID_EVENT_WINDOW")) return "تاريخ النهاية يجب أن يكون بعد البداية";
@@ -281,6 +308,81 @@ export function useCancelQuotationDraft(orgId: string | null) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (quotationId: string) => callRpc<QuotationRow>("cancel_quotation_draft", { p_org_id: orgId, p_quotation_id: quotationId }),
+    onSuccess: (quote) => invalidateQuotation(qc, orgId, quote.id),
+  });
+}
+
+export interface QuotationPricingInput {
+  transportRequired?: boolean | null;
+  transportZone?: string | null;
+  transportAmount?: string | null;
+  transportNote?: string | null;
+  surchargeAmount?: string | null;
+  surchargeNote?: string | null;
+  discountType?: QuotationDiscountType | null;
+  discountValue?: string | null;
+  validUntil?: string | null;
+}
+
+export function useSetQuotationPricing(orgId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ quotationId, input }: { quotationId: string; input: QuotationPricingInput }) =>
+      callRpc<QuotationRow>("set_quotation_pricing", {
+        p_org_id: orgId,
+        p_quotation_id: quotationId,
+        p_idempotency_key: crypto.randomUUID(),
+        p_transport_required: input.transportRequired ?? null,
+        p_transport_zone: input.transportZone ?? null,
+        p_transport_amount: input.transportAmount ?? null,
+        p_transport_note: input.transportNote ?? null,
+        p_surcharge_amount: input.surchargeAmount ?? null,
+        p_surcharge_note: input.surchargeNote ?? null,
+        p_discount_type: input.discountType ?? null,
+        p_discount_value: input.discountValue ?? null,
+        p_valid_until: input.validUntil ?? null,
+      }),
+    onSuccess: (quote) => invalidateQuotation(qc, orgId, quote.id),
+  });
+}
+
+export function useRejectQuotation(orgId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ quotationId, reason }: { quotationId: string; reason?: string }) =>
+      callRpc<QuotationRow>("reject_quotation", {
+        p_org_id: orgId,
+        p_quotation_id: quotationId,
+        p_reason: reason ?? null,
+        p_idempotency_key: crypto.randomUUID(),
+      }),
+    onSuccess: (quote) => invalidateQuotation(qc, orgId, quote.id),
+  });
+}
+
+export function useExpireQuotation(orgId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (quotationId: string) =>
+      callRpc<QuotationRow>("expire_quotation", {
+        p_org_id: orgId,
+        p_quotation_id: quotationId,
+        p_idempotency_key: crypto.randomUUID(),
+      }),
+    onSuccess: (quote) => invalidateQuotation(qc, orgId, quote.id),
+  });
+}
+
+export function useReviseQuotation(orgId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ quotationId, reason }: { quotationId: string; reason?: string }) =>
+      callRpc<QuotationRow>("revise_quotation", {
+        p_org_id: orgId,
+        p_quotation_id: quotationId,
+        p_reason: reason ?? null,
+        p_idempotency_key: crypto.randomUUID(),
+      }),
     onSuccess: (quote) => invalidateQuotation(qc, orgId, quote.id),
   });
 }

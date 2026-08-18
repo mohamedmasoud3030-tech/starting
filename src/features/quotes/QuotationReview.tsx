@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2, FileCheck2 } from "lucide-react";
+import { CheckCircle2, Copy, Eye, FileCheck2, Printer, XCircle } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -11,16 +11,23 @@ import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
 import { buildQuotationVoiceSummary } from "@/features/ownerVoice/screenSummary";
+import { buildDocumentIdentity } from "@/components/documents/documentIdentity";
+import { printDocument } from "@/components/documents/printDocument";
+import { useOrganizationSettings } from "@/features/settings/settings.api";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import { PRICING_METHOD_LABELS } from "@/lib/domain";
 import { InlineError } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { QuotationDocument } from "./QuotationDocument";
 import {
   arabicQuotationError,
   useAcceptQuotation,
   useConvertQuotation,
+  useExpireQuotation,
   useQuotation,
   useQuotationLines,
+  useRejectQuotation,
+  useReviseQuotation,
 } from "./quotes.api";
 
 function isoToLocalInput(iso: string | null | undefined): string {
@@ -40,9 +47,14 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
 
   const quote = useQuotation(orgId, quoteId);
   const lines = useQuotationLines(orgId, quoteId);
+  const settings = useOrganizationSettings(orgId);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const accept = useAcceptQuotation(orgId);
   const convert = useConvertQuotation(orgId);
+  const reject = useRejectQuotation(orgId);
+  const expire = useExpireQuotation(orgId);
+  const revise = useReviseQuotation(orgId);
 
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertForm, setConvertForm] = useState({
@@ -52,6 +64,8 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
     guestCount: "",
     eventTitle: "",
   });
+  const [reviseOpen, setReviseOpen] = useState(false);
+  const [reviseReason, setReviseReason] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
 
@@ -104,12 +118,65 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
     }
   }
 
+  async function onRevise() {
+    if (!q) return;
+    setError("");
+    setBusy("نسخة");
+    try {
+      const revision = await revise.mutateAsync({ quotationId: q.id, reason: reviseReason });
+      setReviseOpen(false);
+      await navigate({ to: "/quotes/$quoteId", params: { quoteId: revision.id } });
+    } catch (x) {
+      setError(arabicQuotationError(x));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function onReject() {
+    if (!q) return;
+    setError("");
+    setBusy("رفض");
+    try {
+      await reject.mutateAsync({ quotationId: q.id });
+    } catch (x) {
+      setError(arabicQuotationError(x));
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function onExpire() {
+    if (!q) return;
+    setError("");
+    setBusy("صلاحية");
+    try {
+      await expire.mutateAsync(q.id);
+    } catch (x) {
+      setError(arabicQuotationError(x));
+    } finally {
+      setBusy("");
+    }
+  }
+
   const statusLabel: Record<string, string> = {
     DRAFT: "مسودة",
-    ISSUED: "صادر",
+    ISSUED: "مُرسل",
+    EXPIRED: "منتهي الصلاحية",
     ACCEPTED: "معتمد",
+    REJECTED: "مرفوض",
     CONVERTED: "محوّل لمناسبة",
+    CANCELLED: "ملغي",
+    SUPERSEDED: "مستبدل",
   };
+
+  function statusTone(): "neutral" | "success" | "warning" | "danger" | "brand" {
+    if (q?.status === "ACCEPTED") return "success";
+    if (q?.status === "CONVERTED") return "brand";
+    if (q?.status === "REJECTED" || q?.status === "CANCELLED") return "danger";
+    if (q?.status === "DRAFT" || q?.status === "EXPIRED" || q?.status === "SUPERSEDED") return "neutral";
+    return "warning";
+  }
 
   if (quote.isLoading || lines.isLoading) {
     return <LoadingState label="جارٍ التحميل…" />;
@@ -136,15 +203,11 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
         actions={
           <>
             <OwnerVoiceButton summary={voiceSummary} />
-            <Badge
-              tone={
-                q.status === "ACCEPTED"
-                  ? "success"
-                  : q.status === "CONVERTED"
-                    ? "brand"
-                    : "warning"
-              }
-            >
+            <Button variant="outline" onClick={() => setPreviewOpen((v) => !v)}>
+              <Eye className="h-5 w-5" />
+              {previewOpen ? "إخفاء المعاينة" : "معاينة المستند"}
+            </Button>
+            <Badge tone={statusTone()}>
               {statusLabel[q.status] ?? q.status}
             </Badge>
           </>
@@ -153,6 +216,39 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
 
       {error && (
         <InlineError message={error} />
+      )}
+
+      {previewOpen && (
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <Button onClick={() => printDocument()}>
+              <Printer className="h-5 w-5" />
+              طباعة / حفظ PDF
+            </Button>
+          </div>
+          <QuotationDocument
+            identity={buildDocumentIdentity(currentOrganization, settings.data ?? null)}
+            data={{
+              quotationNumber: q.quotation_number,
+              customerName: q.customer_name_snapshot,
+              customerPhone: q.customer_phone_snapshot,
+              eventTitle: q.event_title_snapshot,
+              guestCount: q.guest_count_snapshot,
+              startAt: q.start_at_snapshot,
+              venue: q.venue_snapshot,
+              subtotal: q.subtotal,
+              transportAmount: q.transport_amount,
+              transportNote: q.transport_note,
+              surchargeAmount: q.surcharge_amount,
+              discountAmount: q.discount_amount,
+              totalSelling: q.total_selling,
+              revision: q.revision,
+              issuedAt: q.issued_at,
+              validUntil: q.valid_until,
+            }}
+            lines={lines.data ?? []}
+          />
+        </div>
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -221,19 +317,62 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
             ))
           )}
         </div>
-        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
-          <p className="text-base text-slate-500">الإجمالي</p>
-          <p className="text-2xl font-black text-brand-800">{formatOMR(fromDbAmount(q.total_selling))}</p>
+        <div className="mt-4 space-y-1 border-t border-slate-100 pt-4 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">المجموع الفرعي</span>
+            <span className="font-bold">{formatOMR(fromDbAmount(q.subtotal))}</span>
+          </div>
+          {fromDbAmount(q.transport_amount) > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">النقل</span>
+              <span className="font-bold">{formatOMR(fromDbAmount(q.transport_amount))}</span>
+            </div>
+          )}
+          {fromDbAmount(q.surcharge_amount) > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500">رسوم إضافية</span>
+              <span className="font-bold">{formatOMR(fromDbAmount(q.surcharge_amount))}</span>
+            </div>
+          )}
+          {fromDbAmount(q.discount_amount) > 0 && (
+            <div className="flex items-center justify-between text-red-600">
+              <span className="text-slate-500">الخصم</span>
+              <span className="font-bold">-{formatOMR(fromDbAmount(q.discount_amount))}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+            <span className="text-base text-slate-500">الإجمالي النهائي</span>
+            <span className="text-2xl font-black text-brand-800">{formatOMR(fromDbAmount(q.total_selling))}</span>
+          </div>
         </div>
       </Card>
+
+      {q.is_expired && q.status === "ISSUED" && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">
+          انتهت صلاحية هذا العرض وفق تاريخ «صالح حتى» — يمكنك تجديده أو إنهاؤه رسمياً.
+        </p>
+      )}
 
       {canManageCommercial && (
         <div className="flex flex-wrap justify-end gap-3">
           {q.status === "ISSUED" && (
-            <Button size="lg" onClick={() => void onAccept()} disabled={busy !== ""}>
-              <FileCheck2 className="h-5 w-5" />
-              {busy === "اعتماد" ? "جارٍ الاعتماد…" : "اعتماد العرض"}
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => setReviseOpen(true)} disabled={busy !== ""}>
+                <Copy className="h-5 w-5" />
+                نسخة معدلة (Revision)
+              </Button>
+              <Button variant="outline" onClick={() => void onExpire()} disabled={busy !== ""}>
+                إنهاء الصلاحية
+              </Button>
+              <Button variant="danger" onClick={() => void onReject()} disabled={busy !== ""}>
+                <XCircle className="h-5 w-5" />
+                رفض العرض
+              </Button>
+              <Button size="lg" onClick={() => void onAccept()} disabled={busy !== ""}>
+                <FileCheck2 className="h-5 w-5" />
+                {busy === "اعتماد" ? "جارٍ الاعتماد…" : "اعتماد العرض"}
+              </Button>
+            </>
           )}
           {q.status === "ACCEPTED" && (
             <Button size="lg" onClick={openConvert} disabled={busy !== ""}>
@@ -247,6 +386,11 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
       {q.status === "CONVERTED" && (
         <p className="rounded-xl bg-brand-50 p-3 font-bold text-brand-800">
           تم تحويل هذا العرض إلى مناسبة.
+        </p>
+      )}
+      {q.status === "SUPERSEDED" && (
+        <p className="rounded-xl bg-slate-100 p-3 font-bold text-slate-600">
+          استُبدل هذا الإصدار بنسخة أحدث{q.superseded_reason ? ` — ${q.superseded_reason}` : ""}.
         </p>
       )}
 
@@ -302,6 +446,31 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
             </Button>
             <Button onClick={() => void onConvert()} disabled={busy !== ""}>
               {busy === "تحويل" ? "جارٍ التحويل…" : "تأكيد التحويل"}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={reviseOpen}
+        onOpenChange={setReviseOpen}
+        title="نسخة معدلة"
+        description="سيُنشأ إصدار جديد (Revision) من هذا العرض ويبقى الإصدار الحالي محفوظاً دون تغيير."
+      >
+        <div className="grid gap-3">
+          <Field label="سبب التعديل (اختياري)" htmlFor="revise-reason">
+            <Input
+              id="revise-reason"
+              value={reviseReason}
+              onChange={(e) => setReviseReason(e.target.value)}
+            />
+          </Field>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setReviseOpen(false)}>
+              إلغاء
+            </Button>
+            <Button onClick={() => void onRevise()} disabled={busy !== ""}>
+              {busy === "نسخة" ? "جارٍ الإنشاء…" : "إنشاء النسخة المعدلة"}
             </Button>
           </div>
         </div>

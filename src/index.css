@@ -81,3 +81,42 @@ input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
+/* ---------------------------------------------------------------------------
+ * Official-document printing.
+ *
+ * When the user triggers printDocument(), only the element(s) carrying
+ * [data-document] are shown on paper. The browser's "Save as PDF" then yields a
+ * real PDF with correct Arabic RTL. Colors/borders are preserved so the
+ * letterhead keeps its identity.
+ * ------------------------------------------------------------------------- */
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  [data-document],
+  [data-document] * {
+    visibility: visible;
+  }
+
+  [data-document] {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
