@@ -59,6 +59,8 @@ export interface CommercialLine {
   total_selling: string;
   total_expected_cost?: string;
   is_custom: boolean;
+  source_catalog_item_id?: string | null;
+  source_package_id?: string | null;
 }
 
 export interface Quote {

@@ -13,8 +13,10 @@
 import {
   MoneyError,
   multiplyOMR,
+  parseOMR,
   type MilliOMR,
 } from "@/lib/money";
+import type { QuotationDiscountType } from "./quotes.api";
 
 export type QuickPricingMethod =
   | "FIXED"
@@ -80,4 +82,54 @@ export function sumQuotationLineTotals(
     (sum, total) => (total === null ? sum : sum + total),
     0,
   );
+}
+
+/** Parse a percentage string ("10", "7.5", "7.50") to an integer scaled by 1000. */
+function parsePercentScaled(value: string): number {
+  const text = value.trim();
+  if (!/^\d+(\.\d{1,3})?$/.test(text)) {
+    throw new MoneyError("نسبة الخصم غير صالحة");
+  }
+  const [intPart, fracPart = ""] = text.split(".");
+  const frac = (fracPart + "000").slice(0, 3);
+  const scaled = Number(intPart) * 1000 + Number(frac);
+  if (!Number.isSafeInteger(scaled) || scaled > 100_000) {
+    throw new MoneyError("نسبة الخصم خارج النطاق المسموح");
+  }
+  return scaled;
+}
+
+/**
+ * Client-side mirror of the DB `quotation_pricing()`: computes the discount
+ * amount (fixed or percentage) and the grand total from the line subtotal plus
+ * transport and surcharges. Exact integer arithmetic only — the database
+ * remains the persisted authority; this only previews the same result.
+ */
+export function computeGrandTotalMilli(
+  subtotal: MilliOMR,
+  transport: MilliOMR,
+  surcharge: MilliOMR,
+  discountType: QuotationDiscountType,
+  discountValueText: string,
+): { discountAmount: MilliOMR; grandTotal: MilliOMR } {
+  let discountAmount: MilliOMR = 0;
+  if (discountType === "FIXED") {
+    discountAmount = parseOMR(discountValueText);
+  } else if (discountType === "PERCENT") {
+    // subtotal × percentScaled / 100000, round half away from zero.
+    const percentScaled = parsePercentScaled(discountValueText);
+    const product = BigInt(subtotal) * BigInt(percentScaled);
+    const quotient = product / 100_000n;
+    const remainder = product % 100_000n;
+    const rounded = remainder >= 50_000n ? quotient + 1n : quotient;
+    const asNumber = Number(rounded);
+    if (!Number.isSafeInteger(asNumber)) {
+      throw new MoneyError("نتيجة الحساب خارج نطاق الدقة");
+    }
+    discountAmount = asNumber;
+  }
+  return {
+    discountAmount,
+    grandTotal: subtotal + transport + surcharge - discountAmount,
+  };
 }

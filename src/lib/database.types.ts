@@ -791,6 +791,142 @@ export type Database = {
           },
         ]
       }
+      event_expenses: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at: string
+          description: string
+          event_id: string
+          expense_date: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          payee: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          recorded_by: string
+          reference: string | null
+          request_fingerprint: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          description: string
+          event_id: string
+          expense_date: string
+          id?: string
+          idempotency_key: string
+          organization_id: string
+          payee?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          recorded_by: string
+          reference?: string | null
+          request_fingerprint: string
+          status?: Database["public"]["Enums"]["customer_payment_status"]
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          description?: string
+          event_id?: string
+          expense_date?: string
+          id?: string
+          idempotency_key?: string
+          organization_id?: string
+          payee?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          recorded_by?: string
+          reference?: string | null
+          request_fingerprint?: string
+          status?: Database["public"]["Enums"]["customer_payment_status"]
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_expenses_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      event_financial_closures: {
+        Row: {
+          close_note: string | null
+          closed_at: string
+          closed_by: string
+          collected_at_close: number | null
+          costs_at_close: number | null
+          created_at: string
+          event_id: string
+          id: string
+          margin_at_close: number | null
+          organization_id: string
+          outstanding_at_close: number | null
+          profit_at_close: number | null
+          reopen_reason: string | null
+          reopened_at: string | null
+          reopened_by: string | null
+          revenue_at_close: number | null
+        }
+        Insert: {
+          close_note?: string | null
+          closed_at?: string
+          closed_by: string
+          collected_at_close?: number | null
+          costs_at_close?: number | null
+          created_at?: string
+          event_id: string
+          id?: string
+          margin_at_close?: number | null
+          organization_id: string
+          outstanding_at_close?: number | null
+          profit_at_close?: number | null
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          revenue_at_close?: number | null
+        }
+        Update: {
+          close_note?: string | null
+          closed_at?: string
+          closed_by?: string
+          collected_at_close?: number | null
+          costs_at_close?: number | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          margin_at_close?: number | null
+          organization_id?: string
+          outstanding_at_close?: number | null
+          profit_at_close?: number | null
+          reopen_reason?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          revenue_at_close?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_financial_closures_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       event_staff_assignments: {
         Row: {
           assignment_role: Database["public"]["Enums"]["staff_type"]
@@ -894,6 +1030,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "event_status_history_organization_id_event_id_fkey"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      event_transition_overrides: {
+        Row: {
+          actor_id: string
+          created_at: string
+          event_id: string
+          from_status: Database["public"]["Enums"]["event_status"]
+          id: number
+          organization_id: string
+          reason: string
+          to_status: Database["public"]["Enums"]["event_status"]
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          event_id: string
+          from_status: Database["public"]["Enums"]["event_status"]
+          id?: never
+          organization_id: string
+          reason: string
+          to_status: Database["public"]["Enums"]["event_status"]
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          event_id?: string
+          from_status?: Database["public"]["Enums"]["event_status"]
+          id?: never
+          organization_id?: string
+          reason?: string
+          to_status?: Database["public"]["Enums"]["event_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_transition_overrides_organization_id_event_id_fkey"
             columns: ["organization_id", "event_id"]
             isOneToOne: false
             referencedRelation: "events"
@@ -1286,6 +1463,98 @@ export type Database = {
           },
         ]
       }
+      organization_settings: {
+        Row: {
+          accent_color: string | null
+          address_line1: string | null
+          city: string | null
+          commercial_registration: string | null
+          country: string | null
+          created_at: string
+          document_footer: string | null
+          document_terms: string | null
+          email: string | null
+          event_number_prefix: string
+          invoice_number_prefix: string
+          logo_url: string | null
+          manager_name: string | null
+          manager_title: string | null
+          name_en: string | null
+          organization_id: string
+          phone_primary: string | null
+          phone_secondary: string | null
+          po_box: string | null
+          postal_code: string | null
+          primary_color: string | null
+          quotation_number_prefix: string
+          region: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          address_line1?: string | null
+          city?: string | null
+          commercial_registration?: string | null
+          country?: string | null
+          created_at?: string
+          document_footer?: string | null
+          document_terms?: string | null
+          email?: string | null
+          event_number_prefix?: string
+          invoice_number_prefix?: string
+          logo_url?: string | null
+          manager_name?: string | null
+          manager_title?: string | null
+          name_en?: string | null
+          organization_id: string
+          phone_primary?: string | null
+          phone_secondary?: string | null
+          po_box?: string | null
+          postal_code?: string | null
+          primary_color?: string | null
+          quotation_number_prefix?: string
+          region?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          address_line1?: string | null
+          city?: string | null
+          commercial_registration?: string | null
+          country?: string | null
+          created_at?: string
+          document_footer?: string | null
+          document_terms?: string | null
+          email?: string | null
+          event_number_prefix?: string
+          invoice_number_prefix?: string
+          logo_url?: string | null
+          manager_name?: string | null
+          manager_title?: string | null
+          name_en?: string | null
+          organization_id?: string
+          phone_primary?: string | null
+          phone_secondary?: string | null
+          po_box?: string | null
+          postal_code?: string | null
+          primary_color?: string | null
+          quotation_number_prefix?: string
+          region?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
@@ -1373,6 +1642,8 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          max_guests: number | null
+          min_guests: number | null
           name: string
           name_en: string | null
           organization_id: string
@@ -1384,6 +1655,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          max_guests?: number | null
+          min_guests?: number | null
           name: string
           name_en?: string | null
           organization_id: string
@@ -1395,6 +1668,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          max_guests?: number | null
+          min_guests?: number | null
           name?: string
           name_en?: string | null
           organization_id?: string
@@ -1813,11 +2088,16 @@ export type Database = {
           customer_id: string | null
           customer_name_snapshot: string
           customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
           end_at_snapshot: string | null
           event_id: string | null
           event_number_snapshot: string | null
           event_title_snapshot: string
           event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
           guest_count_snapshot: number | null
           id: string
           idempotency_key: string
@@ -1829,14 +2109,26 @@ export type Database = {
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
           revision: number
+          series_id: string | null
           start_at_snapshot: string | null
           status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
           terms: string | null
           total_expected_cost: number
           total_expected_profit: number
           total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
           updated_at: string
+          valid_until: string | null
           venue_snapshot: string | null
         }
         Insert: {
@@ -1850,11 +2142,16 @@ export type Database = {
           customer_id?: string | null
           customer_name_snapshot: string
           customer_phone_snapshot?: string | null
+          discount_amount?: number
+          discount_type?: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value?: number
           end_at_snapshot?: string | null
           event_id?: string | null
           event_number_snapshot?: string | null
           event_title_snapshot: string
           event_type_snapshot?: string
+          expired_at?: string | null
+          expired_by?: string | null
           guest_count_snapshot?: number | null
           id?: string
           idempotency_key: string
@@ -1866,14 +2163,26 @@ export type Database = {
           prospect_company?: string | null
           prospect_whatsapp?: string | null
           quotation_number?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
           revision: number
+          series_id?: string | null
           start_at_snapshot?: string | null
           status?: Database["public"]["Enums"]["quotation_status"]
+          subtotal?: number
+          superseded_reason?: string | null
+          surcharge_amount?: number
+          surcharge_note?: string | null
           terms?: string | null
           total_expected_cost?: number
           total_expected_profit?: number
           total_selling?: number
+          transport_amount?: number
+          transport_note?: string | null
+          transport_required?: boolean
+          transport_zone?: string | null
           updated_at?: string
+          valid_until?: string | null
           venue_snapshot?: string | null
         }
         Update: {
@@ -1887,11 +2196,16 @@ export type Database = {
           customer_id?: string | null
           customer_name_snapshot?: string
           customer_phone_snapshot?: string | null
+          discount_amount?: number
+          discount_type?: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value?: number
           end_at_snapshot?: string | null
           event_id?: string | null
           event_number_snapshot?: string | null
           event_title_snapshot?: string
           event_type_snapshot?: string
+          expired_at?: string | null
+          expired_by?: string | null
           guest_count_snapshot?: number | null
           id?: string
           idempotency_key?: string
@@ -1903,14 +2217,26 @@ export type Database = {
           prospect_company?: string | null
           prospect_whatsapp?: string | null
           quotation_number?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
           revision?: number
+          series_id?: string | null
           start_at_snapshot?: string | null
           status?: Database["public"]["Enums"]["quotation_status"]
+          subtotal?: number
+          superseded_reason?: string | null
+          surcharge_amount?: number
+          surcharge_note?: string | null
           terms?: string | null
           total_expected_cost?: number
           total_expected_profit?: number
           total_selling?: number
+          transport_amount?: number
+          transport_note?: string | null
+          transport_required?: boolean
+          transport_zone?: string | null
           updated_at?: string
+          valid_until?: string | null
           venue_snapshot?: string | null
         }
         Relationships: [
@@ -2312,9 +2638,41 @@ export type Database = {
         }
         Relationships: []
       }
+      event_expense_category_summaries: {
+        Row: {
+          category: Database["public"]["Enums"]["expense_category"] | null
+          count: number | null
+          event_id: string | null
+          organization_id: string | null
+          total: number | null
+        }
+        Relationships: []
+      }
+      event_expense_summaries: {
+        Row: {
+          amount: number | null
+          category: Database["public"]["Enums"]["expense_category"] | null
+          created_at: string | null
+          description: string | null
+          event_id: string | null
+          event_number: string | null
+          expense_date: string | null
+          id: string | null
+          organization_id: string | null
+          payee: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          reference: string | null
+          status: Database["public"]["Enums"]["customer_payment_status"] | null
+          void_reason: string | null
+          voided_at: string | null
+        }
+        Relationships: []
+      }
       event_finance_summaries: {
         Row: {
           accepted_revenue: number | null
+          actual_cost: number | null
+          actual_profit: number | null
           amount_paid: number | null
           committed_cost: number | null
           delivered_cost: number | null
@@ -2323,9 +2681,13 @@ export type Database = {
           event_status: Database["public"]["Enums"]["event_status"] | null
           expected_cost: number | null
           expected_profit: number | null
+          expense_cost: number | null
           gross_margin: number | null
+          margin_percent: number | null
           organization_id: string | null
           outstanding_balance: number | null
+          procurement_cost: number | null
+          staff_cost: number | null
         }
         Relationships: []
       }
@@ -2750,13 +3112,20 @@ export type Database = {
           customer_id: string | null
           customer_name_snapshot: string | null
           customer_phone_snapshot: string | null
+          discount_amount: number | null
+          discount_type:
+            | Database["public"]["Enums"]["quotation_discount_type"]
+            | null
+          discount_value: number | null
           end_at_snapshot: string | null
           event_id: string | null
           event_number_snapshot: string | null
           event_title_snapshot: string | null
           event_type_snapshot: string | null
+          expired_at: string | null
           guest_count_snapshot: number | null
           id: string | null
+          is_expired: boolean | null
           issued_at: string | null
           location_snapshot: string | null
           notes: string | null
@@ -2764,12 +3133,23 @@ export type Database = {
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
+          rejected_at: string | null
           revision: number | null
+          series_id: string | null
           start_at_snapshot: string | null
           status: Database["public"]["Enums"]["quotation_status"] | null
+          subtotal: number | null
+          superseded_reason: string | null
+          surcharge_amount: number | null
+          surcharge_note: string | null
           terms: string | null
           total_selling: number | null
+          transport_amount: number | null
+          transport_note: string | null
+          transport_required: boolean | null
+          transport_zone: string | null
           updated_at: string | null
+          valid_until: string | null
           venue_snapshot: string | null
         }
         Relationships: []
@@ -3017,10 +3397,42 @@ export type Database = {
           wasted_quantity: number
         }[]
       }
+      _view_event_expense_category_summaries: {
+        Args: never
+        Returns: {
+          category: Database["public"]["Enums"]["expense_category"]
+          count: number
+          event_id: string
+          organization_id: string
+          total: number
+        }[]
+      }
+      _view_event_expense_summaries: {
+        Args: never
+        Returns: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at: string
+          description: string
+          event_id: string
+          event_number: string
+          expense_date: string
+          id: string
+          organization_id: string
+          payee: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          reference: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          void_reason: string
+          voided_at: string
+        }[]
+      }
       _view_event_finance_summaries: {
         Args: never
         Returns: {
           accepted_revenue: number
+          actual_cost: number
+          actual_profit: number
           amount_paid: number
           committed_cost: number
           delivered_cost: number
@@ -3029,9 +3441,13 @@ export type Database = {
           event_status: Database["public"]["Enums"]["event_status"]
           expected_cost: number
           expected_profit: number
+          expense_cost: number
           gross_margin: number
+          margin_percent: number
           organization_id: string
           outstanding_balance: number
+          procurement_cost: number
+          staff_cost: number
         }[]
       }
       _view_event_procurement_cost_summaries: {
@@ -3364,13 +3780,18 @@ export type Database = {
           customer_id: string
           customer_name_snapshot: string
           customer_phone_snapshot: string
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
           end_at_snapshot: string
           event_id: string
           event_number_snapshot: string
           event_title_snapshot: string
           event_type_snapshot: string
+          expired_at: string
           guest_count_snapshot: number
           id: string
+          is_expired: boolean
           issued_at: string
           location_snapshot: string
           notes: string
@@ -3378,12 +3799,23 @@ export type Database = {
           prospect_company: string
           prospect_whatsapp: string
           quotation_number: string
+          rejected_at: string
           revision: number
+          series_id: string
           start_at_snapshot: string
           status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string
+          surcharge_amount: number
+          surcharge_note: string
           terms: string
           total_selling: number
+          transport_amount: number
+          transport_note: string
+          transport_required: boolean
+          transport_zone: string
           updated_at: string
+          valid_until: string
           venue_snapshot: string
         }[]
       }
@@ -3502,11 +3934,16 @@ export type Database = {
           customer_id: string | null
           customer_name_snapshot: string
           customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
           end_at_snapshot: string | null
           event_id: string | null
           event_number_snapshot: string | null
           event_title_snapshot: string
           event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
           guest_count_snapshot: number | null
           id: string
           idempotency_key: string
@@ -3518,14 +3955,26 @@ export type Database = {
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
           revision: number
+          series_id: string | null
           start_at_snapshot: string | null
           status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
           terms: string | null
           total_expected_cost: number
           total_expected_profit: number
           total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
           updated_at: string
+          valid_until: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -3552,11 +4001,16 @@ export type Database = {
           customer_id: string | null
           customer_name_snapshot: string
           customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
           end_at_snapshot: string | null
           event_id: string | null
           event_number_snapshot: string | null
           event_title_snapshot: string
           event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
           guest_count_snapshot: number | null
           id: string
           idempotency_key: string
@@ -3568,14 +4022,26 @@ export type Database = {
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
           revision: number
+          series_id: string | null
           start_at_snapshot: string | null
           status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
           terms: string | null
           total_expected_cost: number
           total_expected_profit: number
           total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
           updated_at: string
+          valid_until: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -3840,11 +4306,16 @@ export type Database = {
           customer_id: string | null
           customer_name_snapshot: string
           customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
           end_at_snapshot: string | null
           event_id: string | null
           event_number_snapshot: string | null
           event_title_snapshot: string
           event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
           guest_count_snapshot: number | null
           id: string
           idempotency_key: string
@@ -3856,19 +4327,63 @@ export type Database = {
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
           revision: number
+          series_id: string | null
           start_at_snapshot: string | null
           status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
           terms: string | null
           total_expected_cost: number
           total_expected_profit: number
           total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
           updated_at: string
+          valid_until: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
           from: "*"
           to: "quotations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      close_event_financially: {
+        Args: {
+          p_event_id: string
+          p_idempotency_key?: string
+          p_note?: string
+          p_org_id: string
+        }
+        Returns: {
+          close_note: string | null
+          closed_at: string
+          closed_by: string
+          collected_at_close: number | null
+          costs_at_close: number | null
+          created_at: string
+          event_id: string
+          id: string
+          margin_at_close: number | null
+          organization_id: string
+          outstanding_at_close: number | null
+          profit_at_close: number | null
+          reopen_reason: string | null
+          reopened_at: string | null
+          reopened_by: string | null
+          revenue_at_close: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_financial_closures"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -4172,11 +4687,16 @@ export type Database = {
           customer_id: string | null
           customer_name_snapshot: string
           customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
           end_at_snapshot: string | null
           event_id: string | null
           event_number_snapshot: string | null
           event_title_snapshot: string
           event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
           guest_count_snapshot: number | null
           id: string
           idempotency_key: string
@@ -4188,14 +4708,26 @@ export type Database = {
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
           revision: number
+          series_id: string | null
           start_at_snapshot: string | null
           status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
           terms: string | null
           total_expected_cost: number
           total_expected_profit: number
           total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
           updated_at: string
+          valid_until: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -4286,6 +4818,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      document_number_prefix: {
+        Args: { p_kind: string; p_org_id: string }
+        Returns: string
+      }
       equipment_availability: {
         Args: {
           p_capacity_id: string
@@ -4315,6 +4851,18 @@ export type Database = {
         Args: { p_event_id: string; p_org_id: string }
         Returns: Json
       }
+      event_financial_readiness: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: {
+          check_key: string
+          detail: string
+          ok: boolean
+        }[]
+      }
+      event_financially_ready: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: boolean
+      }
       event_readiness: {
         Args: { p_event_id: string; p_org_id: string }
         Returns: Json
@@ -4331,6 +4879,73 @@ export type Database = {
       event_warehouse_summary: {
         Args: { p_event_id: string; p_org_id: string }
         Returns: Json
+      }
+      expire_quotation: {
+        Args: {
+          p_idempotency_key?: string
+          p_org_id: string
+          p_quotation_id: string
+        }
+        Returns: {
+          accepted_at: string | null
+          accepted_by: string | null
+          cancellation_reason: string | null
+          converted_at: string | null
+          converted_event_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_name_snapshot: string
+          customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
+          end_at_snapshot: string | null
+          event_id: string | null
+          event_number_snapshot: string | null
+          event_title_snapshot: string
+          event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
+          guest_count_snapshot: number | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          location_snapshot: string | null
+          notes: string | null
+          organization_id: string
+          prospect_company: string | null
+          prospect_whatsapp: string | null
+          quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          revision: number
+          series_id: string | null
+          start_at_snapshot: string | null
+          status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
+          terms: string | null
+          total_expected_cost: number
+          total_expected_profit: number
+          total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
+          updated_at: string
+          valid_until: string | null
+          venue_snapshot: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       finish_command: {
         Args: {
@@ -4458,11 +5073,16 @@ export type Database = {
           customer_id: string | null
           customer_name_snapshot: string
           customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
           end_at_snapshot: string | null
           event_id: string | null
           event_number_snapshot: string | null
           event_title_snapshot: string
           event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
           guest_count_snapshot: number | null
           id: string
           idempotency_key: string
@@ -4474,14 +5094,26 @@ export type Database = {
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
           revision: number
+          series_id: string | null
           start_at_snapshot: string | null
           status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
           terms: string | null
           total_expected_cost: number
           total_expected_profit: number
           total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
           updated_at: string
+          valid_until: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -4510,11 +5142,16 @@ export type Database = {
           customer_id: string | null
           customer_name_snapshot: string
           customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
           end_at_snapshot: string | null
           event_id: string | null
           event_number_snapshot: string | null
           event_title_snapshot: string
           event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
           guest_count_snapshot: number | null
           id: string
           idempotency_key: string
@@ -4526,14 +5163,26 @@ export type Database = {
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
           revision: number
+          series_id: string | null
           start_at_snapshot: string | null
           status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
           terms: string | null
           total_expected_cost: number
           total_expected_profit: number
           total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
           updated_at: string
+          valid_until: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -4544,7 +5193,7 @@ export type Database = {
         }
       }
       next_document_number: {
-        Args: { p_kind: string; p_org: string; p_prefix: string }
+        Args: { p_kind: string; p_org: string; p_prefix?: string }
         Returns: string
       }
       persist_quotation_draft: {
@@ -4577,11 +5226,16 @@ export type Database = {
           customer_id: string | null
           customer_name_snapshot: string
           customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
           end_at_snapshot: string | null
           event_id: string | null
           event_number_snapshot: string | null
           event_title_snapshot: string
           event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
           guest_count_snapshot: number | null
           id: string
           idempotency_key: string
@@ -4593,14 +5247,26 @@ export type Database = {
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
           revision: number
+          series_id: string | null
           start_at_snapshot: string | null
           status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
           terms: string | null
           total_expected_cost: number
           total_expected_profit: number
           total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
           updated_at: string
+          valid_until: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -4615,6 +5281,16 @@ export type Database = {
         Returns: number
       }
       quotation_fingerprint: { Args: { p_payload: Json }; Returns: string }
+      quotation_pricing: {
+        Args: {
+          p_discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          p_discount_value: number
+          p_subtotal: number
+          p_surcharge: number
+          p_transport: number
+        }
+        Returns: Record<string, unknown>
+      }
       receive_consumable_stock: {
         Args: {
           p_idempotency_key: string
@@ -4815,6 +5491,46 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      record_event_expense: {
+        Args: {
+          p_amount: number
+          p_category: Database["public"]["Enums"]["expense_category"]
+          p_description: string
+          p_event_id: string
+          p_expense_date: string
+          p_idempotency_key?: string
+          p_org_id: string
+          p_payee?: string
+          p_payment_method?: Database["public"]["Enums"]["payment_method"]
+          p_reference?: string
+        }
+        Returns: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at: string
+          description: string
+          event_id: string
+          expense_date: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          payee: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          recorded_by: string
+          reference: string | null
+          request_fingerprint: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_expenses"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       record_host_payout: {
         Args: {
           p_amount: number
@@ -4934,6 +5650,74 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      reject_quotation: {
+        Args: {
+          p_idempotency_key?: string
+          p_org_id: string
+          p_quotation_id: string
+          p_reason?: string
+        }
+        Returns: {
+          accepted_at: string | null
+          accepted_by: string | null
+          cancellation_reason: string | null
+          converted_at: string | null
+          converted_event_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_name_snapshot: string
+          customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
+          end_at_snapshot: string | null
+          event_id: string | null
+          event_number_snapshot: string | null
+          event_title_snapshot: string
+          event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
+          guest_count_snapshot: number | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          location_snapshot: string | null
+          notes: string | null
+          organization_id: string
+          prospect_company: string | null
+          prospect_whatsapp: string | null
+          quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          revision: number
+          series_id: string | null
+          start_at_snapshot: string | null
+          status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
+          terms: string | null
+          total_expected_cost: number
+          total_expected_profit: number
+          total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
+          updated_at: string
+          valid_until: string | null
+          venue_snapshot: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       release_equipment_reservation: {
         Args: { p_org_id: string; p_reservation_id: string }
         Returns: undefined
@@ -4941,6 +5725,38 @@ export type Database = {
       release_staff_assignment: {
         Args: { p_assignment_id: string; p_org_id: string }
         Returns: undefined
+      }
+      reopen_event_financially: {
+        Args: {
+          p_event_id: string
+          p_idempotency_key?: string
+          p_org_id: string
+          p_reason: string
+        }
+        Returns: {
+          close_note: string | null
+          closed_at: string
+          closed_by: string
+          collected_at_close: number | null
+          costs_at_close: number | null
+          created_at: string
+          event_id: string
+          id: string
+          margin_at_close: number | null
+          organization_id: string
+          outstanding_at_close: number | null
+          profit_at_close: number | null
+          reopen_reason: string | null
+          reopened_at: string | null
+          reopened_by: string | null
+          revenue_at_close: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_financial_closures"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       replace_procurement_lines_internal: {
         Args: { p_lines: Json; p_order_id: string; p_org_id: string }
@@ -5034,6 +5850,74 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      revise_quotation: {
+        Args: {
+          p_idempotency_key?: string
+          p_org_id: string
+          p_quotation_id: string
+          p_reason?: string
+        }
+        Returns: {
+          accepted_at: string | null
+          accepted_by: string | null
+          cancellation_reason: string | null
+          converted_at: string | null
+          converted_event_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_name_snapshot: string
+          customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
+          end_at_snapshot: string | null
+          event_id: string | null
+          event_number_snapshot: string | null
+          event_title_snapshot: string
+          event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
+          guest_count_snapshot: number | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          location_snapshot: string | null
+          notes: string | null
+          organization_id: string
+          prospect_company: string | null
+          prospect_whatsapp: string | null
+          quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          revision: number
+          series_id: string | null
+          start_at_snapshot: string | null
+          status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
+          terms: string | null
+          total_expected_cost: number
+          total_expected_profit: number
+          total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
+          updated_at: string
+          valid_until: string | null
+          venue_snapshot: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       save_consumable_stock_item: {
         Args: {
           p_catalog_item_id: string
@@ -5100,6 +5984,66 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_organization_settings: {
+        Args: {
+          p_accent_color?: string
+          p_address_line1?: string
+          p_city?: string
+          p_commercial_registration?: string
+          p_country?: string
+          p_document_footer?: string
+          p_document_terms?: string
+          p_email?: string
+          p_event_number_prefix?: string
+          p_invoice_number_prefix?: string
+          p_logo_url?: string
+          p_manager_name?: string
+          p_manager_title?: string
+          p_name_en?: string
+          p_org_id: string
+          p_phone_primary?: string
+          p_phone_secondary?: string
+          p_po_box?: string
+          p_postal_code?: string
+          p_primary_color?: string
+          p_quotation_number_prefix?: string
+          p_region?: string
+          p_whatsapp?: string
+        }
+        Returns: {
+          accent_color: string | null
+          address_line1: string | null
+          city: string | null
+          commercial_registration: string | null
+          country: string | null
+          created_at: string
+          document_footer: string | null
+          document_terms: string | null
+          email: string | null
+          event_number_prefix: string
+          invoice_number_prefix: string
+          logo_url: string | null
+          manager_name: string | null
+          manager_title: string | null
+          name_en: string | null
+          organization_id: string
+          phone_primary: string | null
+          phone_secondary: string | null
+          po_box: string | null
+          postal_code: string | null
+          primary_color: string | null
+          quotation_number_prefix: string
+          region: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "organization_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       save_package: {
         Args: {
           p_base_guest_count?: number
@@ -5142,11 +6086,16 @@ export type Database = {
           customer_id: string | null
           customer_name_snapshot: string
           customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
           end_at_snapshot: string | null
           event_id: string | null
           event_number_snapshot: string | null
           event_title_snapshot: string
           event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
           guest_count_snapshot: number | null
           id: string
           idempotency_key: string
@@ -5158,14 +6107,26 @@ export type Database = {
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
           revision: number
+          series_id: string | null
           start_at_snapshot: string | null
           status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
           terms: string | null
           total_expected_cost: number
           total_expected_profit: number
           total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
           updated_at: string
+          valid_until: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -5261,6 +6222,82 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_quotation_pricing: {
+        Args: {
+          p_discount_type?: Database["public"]["Enums"]["quotation_discount_type"]
+          p_discount_value?: number
+          p_idempotency_key?: string
+          p_org_id: string
+          p_quotation_id: string
+          p_surcharge_amount?: number
+          p_surcharge_note?: string
+          p_transport_amount?: number
+          p_transport_note?: string
+          p_transport_required?: boolean
+          p_transport_zone?: string
+          p_valid_until?: string
+        }
+        Returns: {
+          accepted_at: string | null
+          accepted_by: string | null
+          cancellation_reason: string | null
+          converted_at: string | null
+          converted_event_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_name_snapshot: string
+          customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
+          end_at_snapshot: string | null
+          event_id: string | null
+          event_number_snapshot: string | null
+          event_title_snapshot: string
+          event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
+          guest_count_snapshot: number | null
+          id: string
+          idempotency_key: string
+          issued_at: string | null
+          issued_by: string | null
+          location_snapshot: string | null
+          notes: string | null
+          organization_id: string
+          prospect_company: string | null
+          prospect_whatsapp: string | null
+          quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          revision: number
+          series_id: string | null
+          start_at_snapshot: string | null
+          status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
+          terms: string | null
+          total_expected_cost: number
+          total_expected_profit: number
+          total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
+          updated_at: string
+          valid_until: string | null
+          venue_snapshot: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "quotations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_supplier_status: {
         Args: {
           p_idempotency_key: string
@@ -5306,6 +6343,7 @@ export type Database = {
         Args: {
           p_event_id: string
           p_org_id: string
+          p_override_reason?: string
           p_reason?: string
           p_to: Database["public"]["Enums"]["event_status"]
         }
@@ -5415,11 +6453,16 @@ export type Database = {
           customer_id: string | null
           customer_name_snapshot: string
           customer_phone_snapshot: string | null
+          discount_amount: number
+          discount_type: Database["public"]["Enums"]["quotation_discount_type"]
+          discount_value: number
           end_at_snapshot: string | null
           event_id: string | null
           event_number_snapshot: string | null
           event_title_snapshot: string
           event_type_snapshot: string
+          expired_at: string | null
+          expired_by: string | null
           guest_count_snapshot: number | null
           id: string
           idempotency_key: string
@@ -5431,14 +6474,26 @@ export type Database = {
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
+          rejected_at: string | null
+          rejected_by: string | null
           revision: number
+          series_id: string | null
           start_at_snapshot: string | null
           status: Database["public"]["Enums"]["quotation_status"]
+          subtotal: number
+          superseded_reason: string | null
+          surcharge_amount: number
+          surcharge_note: string | null
           terms: string | null
           total_expected_cost: number
           total_expected_profit: number
           total_selling: number
+          transport_amount: number
+          transport_note: string | null
+          transport_required: boolean
+          transport_zone: string | null
           updated_at: string
+          valid_until: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -5514,6 +6569,40 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "customer_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      void_event_expense: {
+        Args: {
+          p_expense_id: string
+          p_idempotency_key?: string
+          p_org_id: string
+          p_reason: string
+        }
+        Returns: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at: string
+          description: string
+          event_id: string
+          expense_date: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          payee: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          recorded_by: string
+          reference: string | null
+          request_fingerprint: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_expenses"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -5763,6 +6852,14 @@ export type Database = {
         | "RETURNING"
         | "CLOSED"
         | "CANCELLED"
+      expense_category:
+        | "TRANSPORT"
+        | "FUEL"
+        | "RENTAL"
+        | "THIRD_PARTY"
+        | "CONSUMABLE"
+        | "DAMAGE_LOSS"
+        | "OTHER"
       host_payment_status: "RECORDED" | "VOIDED"
       installment_status: "PENDING" | "PAID" | "CANCELLED"
       invoice_installment_kind: "DEPOSIT" | "INSTALLMENT" | "FINAL"
@@ -5793,10 +6890,13 @@ export type Database = {
         | "PARTIALLY_RECEIVED"
         | "RECEIVED"
         | "CANCELLED"
+      quotation_discount_type: "NONE" | "FIXED" | "PERCENT"
       quotation_status:
         | "DRAFT"
         | "ISSUED"
+        | "EXPIRED"
         | "ACCEPTED"
+        | "REJECTED"
         | "CONVERTED"
         | "CANCELLED"
         | "SUPERSEDED"
@@ -5981,6 +7081,15 @@ export const Constants = {
         "CLOSED",
         "CANCELLED",
       ],
+      expense_category: [
+        "TRANSPORT",
+        "FUEL",
+        "RENTAL",
+        "THIRD_PARTY",
+        "CONSUMABLE",
+        "DAMAGE_LOSS",
+        "OTHER",
+      ],
       host_payment_status: ["RECORDED", "VOIDED"],
       installment_status: ["PENDING", "PAID", "CANCELLED"],
       invoice_installment_kind: ["DEPOSIT", "INSTALLMENT", "FINAL"],
@@ -6014,10 +7123,13 @@ export const Constants = {
         "RECEIVED",
         "CANCELLED",
       ],
+      quotation_discount_type: ["NONE", "FIXED", "PERCENT"],
       quotation_status: [
         "DRAFT",
         "ISSUED",
+        "EXPIRED",
         "ACCEPTED",
+        "REJECTED",
         "CONVERTED",
         "CANCELLED",
         "SUPERSEDED",

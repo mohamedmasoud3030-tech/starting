@@ -37,6 +37,25 @@ describe("LoginPage", () => {
       screen.queryByRole("button", { name: /المدير|الكاشير|المطبخ/ }),
     ).not.toBeInTheDocument();
   });
+
+  it("explains what the product does and who it is for before login", () => {
+    renderLogin();
+    // A first-time visitor must learn the outcome promise and the audience.
+    expect(
+      screen.getByText(/حوّل طلب العميل إلى مناسبة/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/مكاتب خدمات الضيافة والمناسبات في سلطنة عُمان/),
+    ).toBeInTheDocument();
+  });
+
+  it("sets no false signup expectation (access is provisioned, not self-service)", () => {
+    renderLogin();
+    expect(screen.getByText(/لا يوجد تسجيل ذاتي/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /سجّل|أنشئ حساب|اشترك/ }),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe("authLoginErrorMessage", () => {

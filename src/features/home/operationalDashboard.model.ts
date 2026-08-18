@@ -188,6 +188,29 @@ export function buildOperationalDashboard(input: {
   };
 }
 
+/**
+ * Whether a signed-in workspace is brand new — no events and no customers yet.
+ * This is the state a first-time user lands in, so it gates the onboarding
+ * "first steps" panel. Every input must be *settled* (`null` = unknown ⇒ not
+ * "new", so an unresolved query never shows onboarding as a false positive).
+ */
+export function isNewWorkspace(input: {
+  eventsLoaded: boolean;
+  eventCount: number | null;
+  customersLoaded: boolean;
+  customerCount: number | null;
+}): boolean {
+  if (
+    !input.eventsLoaded ||
+    !input.customersLoaded ||
+    input.eventCount === null ||
+    input.customerCount === null
+  ) {
+    return false;
+  }
+  return input.eventCount === 0 && input.customerCount === 0;
+}
+
 export function normalizeWhatsAppPhone(value: string | null | undefined): string | null {
   if (!value) return null;
   let digits = value.replace(/\D/g, "");

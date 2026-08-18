@@ -4,7 +4,7 @@ import {
   toOMRString,
   type DbAmount,
 } from "@/lib/money";
-import type { QuotationDraftValues, QuotationLineRow } from "./quotes.api";
+import type { QuotationDraftValues, QuotationDiscountType, QuotationLineRow } from "./quotes.api";
 import { isoToMuscatWallClock } from "@/lib/dates";
 
 /**
@@ -53,6 +53,60 @@ export function emptyForm(): DraftForm {
     endAt: "",
     venueName: "",
     notes: "",
+  };
+}
+
+export interface DraftPricing {
+  transportRequired: boolean;
+  transportZone: string;
+  transportAmount: string;
+  transportNote: string;
+  surchargeAmount: string;
+  surchargeNote: string;
+  discountType: QuotationDiscountType;
+  discountValue: string;
+  validUntil: string;
+}
+
+export function emptyPricing(): DraftPricing {
+  return {
+    transportRequired: false,
+    transportZone: "",
+    transportAmount: "",
+    transportNote: "",
+    surchargeAmount: "",
+    surchargeNote: "",
+    discountType: "NONE",
+    discountValue: "",
+    validUntil: "",
+  };
+}
+
+/** Hydrates the editable pricing from a persisted draft row (edit mode). */
+export function hydratePricingFromDraft(draft: {
+  transport_required: boolean;
+  transport_zone: string | null;
+  transport_amount: string;
+  transport_note: string | null;
+  surcharge_amount: string;
+  surcharge_note: string | null;
+  discount_type: QuotationDiscountType;
+  discount_value: string;
+  valid_until: string | null;
+}): DraftPricing {
+  return {
+    transportRequired: draft.transport_required,
+    transportZone: draft.transport_zone ?? "",
+    transportAmount:
+      draft.transport_amount === "0.000" ? "" : draft.transport_amount,
+    transportNote: draft.transport_note ?? "",
+    surchargeAmount:
+      draft.surcharge_amount === "0.000" ? "" : draft.surcharge_amount,
+    surchargeNote: draft.surcharge_note ?? "",
+    discountType: draft.discount_type,
+    discountValue:
+      draft.discount_type === "NONE" ? "" : draft.discount_value,
+    validUntil: isoToLocalInput(draft.valid_until),
   };
 }
 

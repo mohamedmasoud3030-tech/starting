@@ -17,6 +17,7 @@ import { useAttendanceGaps } from "@/features/staff/staff.api";
 import {
   attentionSummaryWhenLoaded,
   buildOperationalDashboard,
+  isNewWorkspace,
   settledCount,
   type OperationalReadiness,
 } from "./operationalDashboard.model";
@@ -134,6 +135,20 @@ export function useOperationalDashboard() {
     canReadFinance,
   });
 
+  /**
+   * True only once the events and customers reads have both settled to empty —
+   * the exact "first minutes" state a new office starts in. Gated by settled
+   * reads so a still-loading dashboard never flashes onboarding.
+   */
+  const isNewOrganization = isNewWorkspace({
+    eventsLoaded: events.isSuccess,
+    eventCount: events.isSuccess ? (events.data?.total ?? 0) : null,
+    customersLoaded: customers.isSuccess,
+    customerCount: customers.isSuccess
+      ? (customers.data?.rows.length ?? 0)
+      : null,
+  });
+
   return {
     orgId,
     profile,
@@ -145,6 +160,7 @@ export function useOperationalDashboard() {
     attendanceGaps: gaps.data ?? [],
     attendanceGapCount,
     attentionSummary,
+    isNewOrganization,
     /** Any read that failed and would otherwise leave the screen quietly wrong. */
     hasLoadError: events.isError || stock.isError || gaps.isError || readinessFailed,
     /** The events list is capped by PostgREST max_rows; today's events may be hidden. */

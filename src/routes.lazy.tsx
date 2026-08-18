@@ -43,3 +43,15 @@ export const ProcurementPage = lazy(async () => ({
 export const StaffPage = lazy(async () => ({
   default: (await import("@/features/staff/StaffPage")).StaffPage,
 }));
+
+export const SettingsPage = lazy(async () => ({
+  default: (await import("@/features/settings/SettingsPage")).SettingsPage,
+}));
+
+export const CalendarPage = lazy(async () => ({
+  default: (await import("@/features/calendar/CalendarPage")).CalendarPage,
+}));
+
+export const OperationsBoard = lazy(async () => ({
+  default: (await import("@/features/operations/OperationsBoard")).OperationsBoard,
+}));

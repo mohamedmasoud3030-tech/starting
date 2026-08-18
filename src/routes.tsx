@@ -8,16 +8,19 @@ import {
 import { AuthGate } from "@/app/AuthGate";
 import { LoginPage } from "@/features/auth/LoginPage";
 import {
+  CalendarPage,
   CatalogPage,
   ConsumablesPage,
   CustomersPage,
   EventWorkspace,
   EventsPage,
   HomePage,
+  OperationsBoard,
   PackagesPage,
   ProcurementPage,
   QuotePage,
   QuotesPage,
+  SettingsPage,
   StaffPage,
 } from "@/routes.lazy";
 
@@ -117,6 +120,24 @@ const staffRoute = createRoute({
   component: StaffPage,
 });
 
+const settingsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/settings",
+  component: SettingsPage,
+});
+
+const calendarRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/calendar",
+  component: CalendarPage,
+});
+
+const operationsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/operations",
+  component: OperationsBoard,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -133,6 +154,9 @@ const routeTree = rootRoute.addChildren([
     packagesRoute,
     customersRoute,
     staffRoute,
+    settingsRoute,
+    calendarRoute,
+    operationsRoute,
   ]),
 ]);
 

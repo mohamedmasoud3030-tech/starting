@@ -20,8 +20,10 @@ import {
 
 const STATUS_LABELS: Record<QuotationStatus, string> = {
   DRAFT: "مسودة",
-  ISSUED: "صادر",
+  ISSUED: "مُرسل",
+  EXPIRED: "منتهي الصلاحية",
   ACCEPTED: "معتمد",
+  REJECTED: "مرفوض",
   CONVERTED: "محوّل لمناسبة",
   CANCELLED: "ملغي",
   SUPERSEDED: "مستبدل",
@@ -30,7 +32,9 @@ const STATUS_LABELS: Record<QuotationStatus, string> = {
 const STATUS_TONES: Record<QuotationStatus, "neutral" | "success" | "warning" | "danger" | "brand"> = {
   DRAFT: "neutral",
   ISSUED: "warning",
+  EXPIRED: "neutral",
   ACCEPTED: "success",
+  REJECTED: "danger",
   CONVERTED: "brand",
   CANCELLED: "danger",
   SUPERSEDED: "neutral",
@@ -99,7 +103,7 @@ export function QuotesPage() {
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ابحث بالرقم، العميل أو الموقع" className="min-h-12 w-full rounded-xl border border-slate-200 bg-white pr-10 pl-3 text-base outline-none focus:border-brand-500" />
         </label>
         <div className="flex gap-1 overflow-x-auto" aria-label="تصفية حالة العرض">
-          {([['ALL','الكل'],['DRAFT','المسودات'],['ISSUED','الصادرة'],['ACCEPTED','المعتمدة'],['CONVERTED','المحوّلة']] as const).map(([value, label]) => (
+          {([['ALL','الكل'],['DRAFT','المسودات'],['ISSUED','المرسلة'],['ACCEPTED','المعتمدة'],['REJECTED','المرفوضة'],['CONVERTED','المحوّلة']] as const).map(([value, label]) => (
             <button key={value} type="button" onClick={() => setStatusFilter(value)} aria-pressed={statusFilter === value} className={`min-h-12 shrink-0 rounded-xl px-3 text-sm font-bold ${statusFilter === value ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>{label}</button>
           ))}
         </div>

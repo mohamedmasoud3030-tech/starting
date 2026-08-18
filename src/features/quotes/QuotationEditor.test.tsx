@@ -70,6 +70,9 @@ const rpcMock = vi.fn(async (name: string, args: Record<string, unknown>) => {
   if (name === "issue_quotation") {
     return { data: { ...draftRow(), status: "ISSUED", quotation_number: "QT-2026-00001" }, error: null };
   }
+  if (name === "set_quotation_pricing") {
+    return { data: draftRow(), error: null };
+  }
   return { data: null, error: null };
 });
 
@@ -265,7 +268,7 @@ describe("QuotationEditor", () => {
     await user.click(await screen.findByRole("button", { name: "تأكيد الإصدار" }));
     await waitFor(() => expect(testState.rpcCalls.some((call) => call.name === "issue_quotation")).toBe(true));
     expect(testState.rpcCalls.map((call) => call.name)).toEqual([
-      "persist_quotation_draft", "issue_quotation",
+      "persist_quotation_draft", "set_quotation_pricing", "issue_quotation",
     ]);
   });
 

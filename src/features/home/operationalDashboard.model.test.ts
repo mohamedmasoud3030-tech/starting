@@ -3,6 +3,7 @@ import {
   attentionSummaryWhenLoaded,
   buildEventWhatsAppUrl,
   buildOperationalDashboard,
+  isNewWorkspace,
   normalizeWhatsAppPhone,
   settledCount,
 } from "./operationalDashboard.model";
@@ -98,6 +99,57 @@ describe("WhatsApp sharing", () => {
 
   it("returns null when no valid contact number exists", () => {
     expect(buildEventWhatsAppUrl(event({ contact_phone: null }))).toBeNull();
+  });
+});
+
+describe("isNewWorkspace — first-minutes onboarding gate", () => {
+  it("is true only when both reads settle to empty", () => {
+    expect(
+      isNewWorkspace({
+        eventsLoaded: true,
+        eventCount: 0,
+        customersLoaded: true,
+        customerCount: 0,
+      }),
+    ).toBe(true);
+  });
+
+  it("is false while either read is unresolved (no false onboarding flash)", () => {
+    expect(
+      isNewWorkspace({
+        eventsLoaded: false,
+        eventCount: null,
+        customersLoaded: true,
+        customerCount: 0,
+      }),
+    ).toBe(false);
+    expect(
+      isNewWorkspace({
+        eventsLoaded: true,
+        eventCount: 0,
+        customersLoaded: true,
+        customerCount: null,
+      }),
+    ).toBe(false);
+  });
+
+  it("is false when any data already exists", () => {
+    expect(
+      isNewWorkspace({
+        eventsLoaded: true,
+        eventCount: 3,
+        customersLoaded: true,
+        customerCount: 0,
+      }),
+    ).toBe(false);
+    expect(
+      isNewWorkspace({
+        eventsLoaded: true,
+        eventCount: 0,
+        customersLoaded: true,
+        customerCount: 1,
+      }),
+    ).toBe(false);
   });
 });
 

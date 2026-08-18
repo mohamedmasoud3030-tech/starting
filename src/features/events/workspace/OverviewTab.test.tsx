@@ -2,7 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { EventRow, EventStatus } from "../events.api";
+import type { ReadinessReport } from "../readinessReport";
 import { OverviewTab } from "./OverviewTab";
+
+const readyReport: ReadinessReport = {
+  items: [],
+  percent: null,
+  overall: "EMPTY",
+  staffMissing: 0,
+  equipmentShortage: 0,
+};
 
 function event(status: EventStatus): EventRow {
   return {
@@ -50,12 +59,16 @@ describe("OverviewTab — lifecycle controls", () => {
           customerName="مريم"
           canCommercial={true}
           run={run}
+          report={readyReport}
+          history={[]}
+          acceptedQuote={null}
         />,
       );
       await userEvent.click(screen.getByRole("button", { name: label }));
       expect(run).toHaveBeenCalledWith("transition_event_status", {
         p_to: target,
         p_reason: null,
+        p_override_reason: null,
       });
     }
   });
@@ -68,6 +81,9 @@ describe("OverviewTab — lifecycle controls", () => {
           customerName="مريم"
           canCommercial={true}
           run={run}
+          report={readyReport}
+          history={[]}
+          acceptedQuote={null}
         />,
       );
       expect(
@@ -83,6 +99,9 @@ describe("OverviewTab — lifecycle controls", () => {
         customerName="مريم"
         canCommercial={true}
         run={run}
+        report={readyReport}
+        history={[]}
+        acceptedQuote={null}
       />,
     );
 
@@ -112,6 +131,9 @@ describe("OverviewTab — lifecycle controls", () => {
           customerName="مريم"
           canCommercial={true}
           run={run}
+          report={readyReport}
+          history={[]}
+          acceptedQuote={null}
         />,
       );
       expect(
@@ -128,6 +150,9 @@ describe("OverviewTab — lifecycle controls", () => {
         customerName="مريم"
         canCommercial={false}
         run={run}
+        report={readyReport}
+        history={[]}
+        acceptedQuote={null}
       />,
     );
     expect(

@@ -31,6 +31,7 @@ describe("eventWorkspace.model", () => {
       "المشتريات",
       "المدفوعات",
       "الفواتير",
+      "المالية",
       "الحضور",
       "الأجور",
       "السجل",
@@ -123,6 +124,7 @@ describe("visibleWorkspaceTabs — no dead-end tabs", () => {
     // These panels can only render a refusal for this role.
     expect(tabs).not.toContain("المدفوعات");
     expect(tabs).not.toContain("الفواتير");
+    expect(tabs).not.toContain("المالية");
     expect(tabs).not.toContain("الأجور");
     expect(tabs).not.toContain("المشتريات");
     // The operational work a warehouse user is actually here to do stays.
@@ -135,6 +137,7 @@ describe("visibleWorkspaceTabs — no dead-end tabs", () => {
     const tabs = visibleWorkspaceTabs(eventPermissions("ACCOUNTANT"));
     expect(tabs).toContain("المدفوعات");
     expect(tabs).toContain("الفواتير");
+    expect(tabs).toContain("المالية");
     expect(tabs).toContain("الأجور");
     // Read-only financial visibility includes procurement cost summaries.
     expect(tabs).toContain("المشتريات");

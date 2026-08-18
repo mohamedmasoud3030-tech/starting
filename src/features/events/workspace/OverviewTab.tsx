@@ -4,32 +4,43 @@ import { Card } from "@/components/ui/Card";
 import { ConfirmPanel } from "@/components/ui/ConfirmPanel";
 import { Input } from "@/components/ui/Input";
 import { Field } from "@/components/ui/Field";
-import type { EventRow } from "../events.api";
+import { formatOMR, fromDbAmount } from "@/lib/money";
+import type { EventRow, StatusHistoryRow } from "../events.api";
+import type { ReadinessReport } from "../readinessReport";
+import { EventTimeline } from "./EventTimeline";
+import { ReadinessReportPanel } from "./ReadinessReportPanel";
 
 /**
- * Overview tab: event details plus the operational state-transition actions.
+ * Overview tab: the event's single source of truth — details, linked accepted
+ * quotation, explainable readiness, timeline, and the operational transitions.
  *
- * The server (`transition_event_status`) enforces the legal step order
- * CONFIRMED → PREPARING → DISPATCHED → IN_PROGRESS → RETURNING → CLOSED;
- * this surface simply offers exactly one next step per status so the owner
- * can complete the close-out journey from the UI (defect F1).
- *
- * Cancellation asks for a written reason in a standard confirmation panel
- * (defect F7) — never a blocking `window.prompt`.
+ * The server (`transition_event_status`) enforces the legal step order and the
+ * readiness gate on PREPARING → DISPATCHED. This surface surfaces that gate
+ * explicitly: when resources are incomplete the owner must type an override
+ * reason (recorded + audited server-side) instead of the dispatch passing
+ * silently.
  */
 export function OverviewTab({
   event,
   customerName,
   canCommercial,
   run,
+  report,
+  history,
+  acceptedQuote,
 }: {
   event: EventRow;
   customerName: string | null;
   canCommercial: boolean;
   run: (name: string, args: Record<string, unknown>, includeEvent?: boolean) => Promise<void>;
+  report: ReadinessReport;
+  history: StatusHistoryRow[];
+  acceptedQuote: { quotation_number: string | null; revision: number; total_selling: string } | null;
 }) {
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
 
   const nextStep: ReadonlyArray<readonly [EventRow["status"], string, string]> = [
     ["CONFIRMED", "PREPARING", "بدء التجهيز"],
@@ -40,11 +51,30 @@ export function OverviewTab({
   ];
 
   const currentStep = nextStep.find(([from]) => from === event.status);
+  const needsOverride =
+    currentStep?.[1] === "DISPATCHED" && report.overall === "INCOMPLETE";
 
   const canCancel =
     ["DRAFT", "QUOTED", "CONFIRMED", "PREPARING", "DISPATCHED", "IN_PROGRESS", "RETURNING"].includes(
       event.status,
     ) && canCommercial;
+
+  function transition(overrideReasonText?: string) {
+    if (!currentStep) return;
+    void run("transition_event_status", {
+      p_to: currentStep[1],
+      p_reason: null,
+      p_override_reason: overrideReasonText ?? null,
+    });
+  }
+
+  function submitOverride() {
+    const reason = overrideReason.trim();
+    if (reason.length < 3) return;
+    setOverrideOpen(false);
+    setOverrideReason("");
+    transition(reason);
+  }
 
   function submitCancel() {
     const reason = cancelReason.trim();
@@ -58,39 +88,69 @@ export function OverviewTab({
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <Card>
-        <h2 className="font-black">بيانات المناسبة</h2>
-        <dl className="mt-3 space-y-2">
-          <div>
-            <dt className="text-sm text-slate-500">العميل</dt>
-            <dd>{customerName ?? event.customer_id}</dd>
-          </div>
-          <div>
-            <dt className="text-sm text-slate-500">الضيوف</dt>
-            <dd>{event.guest_count}</dd>
-          </div>
-          <div>
-            <dt className="text-sm text-slate-500">الفترة</dt>
-            <dd>
-              {new Date(event.start_at).toLocaleString("ar-OM")} —{" "}
-              {new Date(event.end_at).toLocaleString("ar-OM")}
-            </dd>
-          </div>
-        </dl>
-      </Card>
+    <div className="space-y-4">
+      <ReadinessReportPanel report={report} />
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <h2 className="font-black">بيانات المناسبة</h2>
+          <dl className="mt-3 space-y-2">
+            <div>
+              <dt className="text-sm text-slate-500">العميل</dt>
+              <dd className="font-bold">{customerName ?? event.customer_id}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">الضيوف</dt>
+              <dd className="font-bold">{event.guest_count}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">الموقع</dt>
+              <dd className="font-bold">{event.venue_name}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">الفترة</dt>
+              <dd className="font-bold">
+                {new Date(event.start_at).toLocaleString("ar-OM", { timeZone: "Asia/Muscat" })} —{" "}
+                {new Date(event.end_at).toLocaleString("ar-OM", { timeZone: "Asia/Muscat" })}
+              </dd>
+            </div>
+          </dl>
+        </Card>
+
+        <Card>
+          <h2 className="font-black">العرض المعتمد المرتبط</h2>
+          {acceptedQuote ? (
+            <dl className="mt-3 space-y-2">
+              <div>
+                <dt className="text-sm text-slate-500">رقم العرض</dt>
+                <dd className="font-bold" dir="ltr">
+                  {acceptedQuote.quotation_number ?? "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm text-slate-500">الإصدار</dt>
+                <dd className="font-bold">{acceptedQuote.revision}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-slate-500">القيمة التجارية</dt>
+                <dd className="text-lg font-black text-brand-800">
+                  {formatOMR(fromDbAmount(acceptedQuote.total_selling))}
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="mt-3 text-sm text-slate-500">
+              لا يوجد عرض سعر معتمد مرتبط بهذه المناسبة بعد.
+            </p>
+          )}
+        </Card>
+      </div>
+
       <Card>
         <h2 className="font-black">الإجراءات التشغيلية</h2>
         <div className="mt-3 flex flex-wrap gap-2">
           {currentStep && (
-            <Button
-              onClick={() =>
-                void run("transition_event_status", {
-                  p_to: currentStep[1],
-                  p_reason: null,
-                })
-              }
-            >
+            <Button onClick={() => (needsOverride ? setOverrideOpen(true) : transition())}>
               {currentStep[2]}
             </Button>
           )}
@@ -100,6 +160,34 @@ export function OverviewTab({
             </Button>
           )}
         </div>
+
+        {needsOverride && (
+          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800">
+            التجهيز غير مكتمل. يمكنك الإرسال مع سبب موثّق — سيُسجَّل التجاوز في سجل المناسبة.
+          </p>
+        )}
+
+        {overrideOpen && (
+          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <Field label="سبب التجاوز (3 أحرف على الأقل)" htmlFor="override-reason">
+              <Input
+                id="override-reason"
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+                placeholder="مثال: العميل أصر على الموعد وسنكمل الفريق ميدانياً"
+              />
+            </Field>
+            <div className="mt-2 flex gap-2">
+              <Button onClick={submitOverride} disabled={overrideReason.trim().length < 3}>
+                تأكيد الإرسال مع التجاوز
+              </Button>
+              <Button variant="secondary" onClick={() => setOverrideOpen(false)}>
+                إلغاء
+              </Button>
+            </div>
+          </div>
+        )}
+
         {confirmingCancel && (
           <ConfirmPanel
             title="تأكيد إلغاء المناسبة"
@@ -123,6 +211,8 @@ export function OverviewTab({
           </ConfirmPanel>
         )}
       </Card>
+
+      <EventTimeline history={history} />
     </div>
   );
 }
