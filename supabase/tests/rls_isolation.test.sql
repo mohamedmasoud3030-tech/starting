@@ -257,12 +257,12 @@ select throws_ok(
 );
 
 -- ---------------------------------------------------------------------------
--- Organization-creation bootstrap is not executable by client roles
--- (migration 0056; see docs/refactor/database-audit.md section 7)
+-- Organization-creation bootstrap (migration 0061): self-serve for
+-- authenticated users; anonymous stays revoked (migration 0059)
 -- ---------------------------------------------------------------------------
 select ok(
-  not has_function_privilege('authenticated', 'public.create_organization(text, text)', 'EXECUTE'),
-  'create_organization not executable by the authenticated browser role'
+  has_function_privilege('authenticated', 'public.create_organization(text, text)', 'EXECUTE'),
+  'self-serve onboarding: authenticated users may create their own organization (migration 0061)'
 );
 select ok(
   not has_function_privilege('anon', 'public.create_organization(text, text)', 'EXECUTE'),

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Navigate, Outlet } from "@tanstack/react-router";
 import { useAuth } from "@/app/authContext";
 import { AppShell } from "@/components/layout/AppShell";
+import { OnboardingPage } from "@/features/auth/OnboardingPage";
 import { Spinner } from "@/components/ui/Spinner";
 
 function LoadingScreen() {
@@ -13,10 +14,18 @@ function LoadingScreen() {
 }
 
 export function AuthGate() {
-  const { currentOrganization, loading } = useAuth();
+  const { user, memberships, currentOrganization, loading } = useAuth();
 
   if (loading) {
     return <LoadingScreen />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  if (memberships.length === 0) {
+    return <OnboardingPage />;
   }
 
   if (!currentOrganization) {
