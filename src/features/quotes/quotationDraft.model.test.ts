@@ -6,6 +6,7 @@ import {
   draftFingerprint,
   emptyForm,
   hydrateFormFromDraft,
+  hydratePricingFromDraft,
   isoToLocalInput,
   toDraftValues,
 } from "./quotationDraft.model";
@@ -48,6 +49,20 @@ describe("quotationDraft.model", () => {
       expect(form.endAt).toBe("");
       expect(form.venueName).toBe("قاعة الريان");
       expect(form.notes).toBe("ملاحظة");
+    });
+
+    it("hydrates pre-pricing drafts to controlled empty values", () => {
+      expect(hydratePricingFromDraft({})).toEqual({
+        transportRequired: false,
+        transportZone: "",
+        transportAmount: "",
+        transportNote: "",
+        surchargeAmount: "",
+        surchargeNote: "",
+        discountType: "NONE",
+        discountValue: "",
+        validUntil: "",
+      });
     });
 
     it("isoToLocalInput returns empty for null/NaN", () => {
