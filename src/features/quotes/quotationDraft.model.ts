@@ -82,30 +82,31 @@ export function emptyPricing(): DraftPricing {
   };
 }
 
-/** Hydrates the editable pricing from a persisted draft row (edit mode). */
+/** Hydrates editable pricing, including rows created before pricing columns existed. */
 export function hydratePricingFromDraft(draft: {
-  transport_required: boolean;
-  transport_zone: string | null;
-  transport_amount: string;
-  transport_note: string | null;
-  surcharge_amount: string;
-  surcharge_note: string | null;
-  discount_type: QuotationDiscountType;
-  discount_value: string;
-  valid_until: string | null;
+  transport_required?: boolean | null;
+  transport_zone?: string | null;
+  transport_amount?: string | null;
+  transport_note?: string | null;
+  surcharge_amount?: string | null;
+  surcharge_note?: string | null;
+  discount_type?: QuotationDiscountType | null;
+  discount_value?: string | null;
+  valid_until?: string | null;
 }): DraftPricing {
+  const discountType = draft.discount_type ?? "NONE";
   return {
-    transportRequired: draft.transport_required,
+    transportRequired: draft.transport_required ?? false,
     transportZone: draft.transport_zone ?? "",
     transportAmount:
-      draft.transport_amount === "0.000" ? "" : draft.transport_amount,
+      !draft.transport_amount || draft.transport_amount === "0.000" ? "" : draft.transport_amount,
     transportNote: draft.transport_note ?? "",
     surchargeAmount:
-      draft.surcharge_amount === "0.000" ? "" : draft.surcharge_amount,
+      !draft.surcharge_amount || draft.surcharge_amount === "0.000" ? "" : draft.surcharge_amount,
     surchargeNote: draft.surcharge_note ?? "",
-    discountType: draft.discount_type,
+    discountType,
     discountValue:
-      draft.discount_type === "NONE" ? "" : draft.discount_value,
+      discountType === "NONE" || !draft.discount_value ? "" : draft.discount_value,
     validUntil: isoToLocalInput(draft.valid_until),
   };
 }
