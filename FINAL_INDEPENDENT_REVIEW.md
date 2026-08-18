@@ -1,174 +1,137 @@
-# FINAL_INDEPENDENT_REVIEW.md — Independent Final Review
+# FINAL_INDEPENDENT_REVIEW.md — المراجعة المستقلة النهائية (Phases A–E)
 
-> Date: 2026-08-17 · Reviewer stance: independent product/domain/UX/engineering/
-> security/data/QA/PWA/production reviewer. **No prior claim was trusted** —
-> every verdict below is backed by evidence freshly executed in this pass.
->
-> Branch: `arena/01a00fa3-starting` @ `4233ed1` · PR: [#27](https://github.com/mohamedmasoud3030-tech/starting/pull/27)
-> (MERGEABLE, CLEAN) · CI on the final commit: **Database pass · Frontend pass · Vercel pass**.
+> أُعدّت 2026-08-18 بمراجعة مستقلة فعلية: أعدت تشغيل كل البوابات من الصفر، وفحصت
+> الكود والمخطط والتدفقات، ولم أعتمد على أي ملخص أو ادعاء سابق. صحّحت العيوب
+> الآمنة المؤكدة بنفسي. كل الأدلة أدناه من التنفيذ الفعلي في هذه الجلسة.
 
 ---
 
-## 1. Verdict
+## 1. الحكم (Verdict)
 
-# **CONDITIONAL PASS**
+**CONDITIONAL PASS** — المنتج صحيح ومتماسك ومناسب لمجاله، وكل بوابات الجودة
+خضراء، ولم تُكتشف أي عيوب حرجة (Critical). الشرط الوحيد قبل الإطلاق الفعلي هو
+خطوات النشر/البيانات الافتتاحية التي يملكها المالك (القسم 9)، وليست عيوباً في
+المنتج.
 
-The product is correct, coherent and complete for its domain; every critical
-journey is reachable and guarded; security/data posture is strong and now
-demonstrably clean of anonymous escalation; the codebase gates are all green.
-The **only** conditions are operational actions that cannot be executed from
-this workspace: applying the 61 migrations to the production Supabase project
-(with a pre-migration backup) and the one-command launch checklist. Nothing
-found in this review is a code-level release blocker.
+---
 
-## 2. Product / domain correctness verdict — PASS
+## 2. الأدلة الفعلية (أُعيد تشغيلها كلها في هذه الجلسة)
 
-- Primary promise verified end-to-end: quotation → acceptance → confirmed
-  event → preparation → dispatch → execution → return → **guarded close-out**
-  with actual economics. UI transitions (`OverviewTab`) match the server state
-  machine exactly; `CLOSED` is now blocked while equipment or consumables are
-  outstanding (migration 0058, pgTAP-proven).
-- OMR money discipline: `numeric(12,3)` everywhere; integer milli-OMR in the
-  browser; overpayments rejected (`OVERPAYMENT_EXCEEDS_ACCEPTED`);
-  damage/loss valuations snapshotted; installments derived from the payments
-  ledger.
-- Domain practices align with reputable hospitality-event operations: per-
-  event staffing with overlap checks, temporal equipment reservations with
-  physical recovery obligations (cancelled events keep dispatched stock
-  accountable), consumable ledger with mandatory reasons for waste/adjustment,
-  PO lifecycle with partial receiving, WhatsApp reminders carrying operational
-  data only (no prices), Muscat wall-clock pinned on every date input
-  (events, quotations, attendance).
-- Roles matrix verified at the data boundary (RLS + `has_org_role`), not just
-  in the UI: cost fields hidden from operational roles; procurement write
-  OWNER/MANAGER; payments OWNER/MANAGER/ACCOUNTANT; audit read
-  OWNER/MANAGER.
+| الفحص | النتيجة |
+| --- | --- |
+| `git status` | شجرة عمل نظيفة، فرع `arena/01a0153d-starting` فوق `main` |
+| `npm run typecheck` | ✓ 0 أخطاء |
+| `npm run lint` | ✓ 0 تحذيرات / 0 أخطاء (273 ملفاً) |
+| `npm test` | ✓ **81 ملفاً / 578 اختباراً** كلها ناجحة |
+| `npm run build` | ✓ نجح |
+| `npm run smoke:production` | ✓ نجح |
+| `npm audit --audit-level=high` | ✓ 0 ثغرات |
+| إعادة الترحيلات من قاعدة فارغة (`run.mjs`) | ✓ **72 ترحيلاً** تُعاد بنجاح |
+| pgTAP | ✓ **21 ملفاً** كلها ناجحة |
+| تطابق الأنواع المولّدة | ✓ **byte-exact** (`gen_types.mjs` مقابل `database.types.ts`) |
+| RLS على الجداول الجديدة | ✓ مفعّل على `event_expenses`, `event_financial_closures`, `event_transition_overrides`, `organization_settings` |
+| المسارات الجديدة (HTTP) | ✓ `dashboard/reports/integrity/search/calendar/operations/settings` كلها 200 |
+| CSP/أمان/Manifest | ✓ سليمة (vercel.json: CSP + HSTS + X-Frame-Options؛ manifest: `lang=ar dir=rtl start_url=/home`) |
 
-## 3. UX / completeness verdict — PASS (with 3 corrections applied this pass)
+---
 
-- First-use path for a brand-new organization is now guided: the event dialog
-  points to «العملاء» when none exist (previously a silent dead-end select);
-  staff roster and equipment capacity have creation forms; every list has
-  empty states; the dashboard honestly renders «لا توجد مناسبات مجدولة اليوم».
-- Errors are Arabic everywhere; audit actions in the history tab now carry
-  Arabic labels (raw codes preserved as identifiers).
-- RTL/A11y: skip link, `aria-describedby` wiring, keyboard-reachable dialogs,
-  large touch targets, self-hosted Cairo font (offline), confirm panels
-  instead of `window.prompt` (zero remaining).
-- Known accepted limitations: no full pagination on procurement list (cap
-  warning present), date inputs use the device timezone only for display of
-  attendance defaults (all persisted values are Muscat-pinned).
+## 3. صحة المنتج/المجال (Product & Domain)
 
-## 4. Security / data / reliability verdict — PASS
+**النطاق:** منصة تشغيل ضيافة ومناسبات (مكاتب خدمات ضيافة عُمانية) — عميل →
+عرض → اعتماد → مناسبة → تجهيز/موارد → تنفيذ → تحصيل → مصروفات → إغلاق تشغيلي →
+إغلاق مالي → ربحية → ذكاء إداري.
 
-- Anonymous escalation fully removed: migration 0059 dropped
-  `public_demo_admin`, its grants and the `app_private` helpers; `anon` holds
-  **zero** table grants and **zero** function grants (pgTAP-verified on a
-  clean replay; additionally proven by execution: anonymous calls are
-  rejected at the privilege layer).
-- `create_organization` not executable by browser roles; `record_audit`
-  internal-only; command idempotency register internal; append-only ledgers
-  with structural guards; no client DELETE on master data.
-- Backup/restore: CI executes a real dump→reset→restore→verify proof; runbook
-  documented. Recovery for the new rules = standard forward-only migration
-  policy (each rule is reversible by a later migration).
-- Fresh evidence this pass: 8/8 two-session concurrency harnesses PASSED.
+- التدفق **مترابط بلا إعادة إدخال**: التحويل من عرض معتمد إلى مناسبة ينسخ العميل
+  والبنود والقيمة كلقطات (مثبت بـ pgTAP). الفصل بين الـ snapshot التجاري وخطة
+  التشغيل سليم.
+- النقود OMR بدقة `numeric(12,3)` في كل الحفظ، والحساب بالأعداد الصحيحة (ملي-ريال).
+- **حكم: صحيح ومتماسك لمجاله.**
 
-## 5. PWA / domain / deployment verdict — PASS
+---
 
-- Manifest (ar/rtl/standalone/icons/shortcuts) and service worker verified:
-  static-only cache, no interception of Supabase/non-GET/cross-origin traffic,
-  offline shell fallback with redirected-response rejection, skipWaiting
-  update flow. Production smoke asserts the guards.
-- `vercel.json`: SPA rewrite, immutable hashed assets, no-cache shell,
-  CSP (scripts self; connect self + `https://*.supabase.co`; frame-ancestors
-  none), nosniff/DENY/referrer headers. Vercel preview build passed on the PR.
-- `.env.production` untracked; only `.env.example` (placeholders) remains.
-- HTTPS is inherent to Vercel/Supabase hosting; no cookie/CORS custom config
-  needed (no custom cookies; PostgREST same-origin via Supabase client).
+## 4. تجربة الاستخدام والاكتمال (UX & Completeness)
 
-## 6. Fresh evidence for previous claims (all re-executed this pass)
+- عربي RTL أولاً، خط Cairo، أهداف لمس كبيرة، ترتيب هرمي (الانتباه أولاً).
+- شاشة الدخول تشرح المنتج والجمهور وطريقة الوصول (بلا تسجيل ذاتي وهمي).
+- مساحة عمل المناسبة «مركز قيادة»: تفاصيل + العرض المعتمد + جاهزية تفسيرية + خط
+  زمني + إجراءات. الجاهزية نسبة قابلة للتفسير (مطلوب/مخصص) وليست رقماً وهمياً.
+- كل KPI/تنبيه/تقرير قابل للتوجيه إلى سجله المصدر.
+- **حكم: يمكن للمستخدم الحقيقي فهم المنتج وإكمال النتيجة الأساسية.**
 
-| Claim | Check | Observed |
-| --- | --- | --- |
-| Migrations replay from empty | `scripts/native-db/run.mjs` on fresh PG 18.4 | **61 migrations ✓** |
-| pgTAP | same harness | **16 files / 590 planned assertions — PASSED** |
-| Concurrency proofs | 8 harnesses | 8/8 exit 0, 0 failures |
-| Frontend tests | `npm test` | **70 files / 537 tests — passing** |
-| Types / lint | `npm run typecheck` · `npm run lint` | 0 errors · 0 warnings (241 files) |
-| Build / smoke | `npm run build` · `npm run smoke:production` | pass · pass |
-| Dependencies | `npm run audit:check` | 0 vulnerabilities |
-| Runtime routes | `curl` on dev server | 14/14 routes HTTP 200; manifest+sw 200 |
-| CI on PR | GitHub Actions run 32056022153 | Database pass · Frontend pass · Vercel pass |
-| No demo path | grep `PUBLIC_DEMO|publicDemo` in `src/`, `.env.example` | zero |
-| No `window.prompt` | grep production code | zero (doc comments only) |
-| Generated types drift | repo generator vs committed file | **0 diff** |
+---
 
-## 7. Safe corrections completed in this pass
+## 5. الأمن والبيانات والموثوقية (Security/Data/Reliability)
 
-1. **Money discipline violation** — the commercial line editor converted
-   milli-OMR with float division (`String(millis / 1000)`), violating
-   `AGENTS.md`. Replaced with `toOMRString` + exact `fromDbAmount` seeding;
-   regression test asserts `2.500` display and exact `1.234` submission.
-2. **Crash on cleared money field** — `parseOMR("")` threw when the operator
-   cleared the line-editor money input. Switched to `parseOptionalOMR`;
-   regression covered.
-3. **First-use dead-end** — create-event dialog with zero customers offered an
-   empty select. Added guidance + link to `/customers` and disabled submit;
-   guarded in the submit handler; 3 component tests.
-4. **Arabic audit labels** — history tab now translates all 46 known audit
-   actions (raw code kept as identifier); 2 tests incl. unknown-action
-   fallback.
-5. **Label-input wiring** — the create-event dialog fields had no `htmlFor`/
-   `id` (labels not associated for screen readers/tap targets). Wired all 10
-   fields; covered by the component tests.
+- RLS على كل الجداول التجارية؛ عزل المنظمات عبر مفاتيح مركّبة + فحوص عضوية.
+- التفويض في قاعدة البيانات (أوامر SECURITY DEFINER + triggers)، لا في الواجهة.
+- فصل بيانات التكلفة عند حدود البيانات (`can_read_cost`) — مثبت باختبارات عزل
+  (org B لا تقرأ ولا تعدّل بيانات org A).
+- نقود دقيقة، idempotency للأوامر الحساسة، دفاتر إلحاقية، لا حذف تدميري.
+- الإغلاق المالي «حدث أعمال» بسجل تاريخي + حارس يمنع أي تعديل مالي بعد الإغلاق.
+- **حكم: آمن تقنياً وتشغيلياً.**
 
-All five are display/input-layer changes: fully reversible, no schema change,
-and CI re-verified green on commit `4233ed1`.
+---
 
-## 8. Unresolved release blockers
+## 6. PWA / النطاق / النشر (PWA/Domain/Deployment)
 
-**None in code.** The remaining conditions are operational and outside this
-workspace's reach:
+- Manifest عربي RTL + أيقونات 192/512 + Service Worker للقشرة غير المتصلة (لا
+  اعتراض لحركة Supabase). CSP + HSTS + X-Frame-Options في `vercel.json`.
+- **غير مُتحقق في هذه البيئة:** السلوك الحي على نطاق فعلي، `enable_signup`،
+  النسخ الاحتياطي المجدول، وخطة Supabase — كلها إعدادات Dashboard للمالك.
 
-| # | Condition | Category |
-| --- | --- | --- |
-| O1 | Apply the 61 migrations to the production Supabase project (with a pre-migration backup) | production action — owner authorization |
-| O2 | Launch checklist: verify production `enable_signup` policy, enable managed backups, confirm `VITE_PUBLIC_DEMO_MODE` absent (it is deleted from code), disable demo users if any exist | production settings |
-| O3 | Merge PR #27 (this triggers the Vercel production deployment) | public deployment |
+---
 
-## 9. Accepted / unavoidable limitations
+## 7. تصحيحات آمنة نُفِّذت (Safe Corrections Completed)
 
-- Procurement list keeps a cap warning instead of pagination (business volume
-  is small; warning prevents wrong decisions).
-- Attendance default times display in the device timezone; persisted values
-  are Muscat-pinned.
-- No browser-level E2E suite (no Docker in this workspace; jsdom + CI matrix +
-  Vercel preview currently cover the risk).
-- PWA icons are functional but visually plain; no image review available here.
-- Real-device PWA/voice quality untested (mocked speech only).
+| # | العيب المؤكد | الإصلاح | حماية الانحدار |
+| --- | --- | --- | --- |
+| 1 | **حساب نقود بالفاصلة العائمة** في 3 مواضع (`Math.round(x*1000)`) يخالف قاعدة AGENTS.md المالية | استُبدل بـ `fromDbAmount` / `parseOMR` (الحدود الدقيقة للمشروع) في `CustomerDetail.tsx`, `ReportsPage.tsx`, `EventFinancePanel.tsx` | الحصر المالي قائم في `money.test.ts`؛ grep مؤكد عدم بقاء float money |
+| 2 | **`top_packages`** محسوب خادمياً لكنه غير معروض (فجوة مواصفات E1) | عُرضت قائمة «الباقات الأكثر استخداماً» في لوحة الإدارة | اختبار اللوحة |
+| 3 | **ترتيب `top_packages`** بالـ string عبر jsonb (خطأ للأعداد ≥10) | فُرزت رقمياً في طبقة البيانات | اختبار اللوحة |
+| 4 | مكوّن `ReadinessBanner.tsx` أصبح كوداً ميتاً بعد استبداله | حُذف الملف الميت | lint/typecheck/build خضراء |
 
-## 10. Unverified areas
+---
 
-Live production Vercel/Supabase behavior and dashboard settings (signup,
-backups, plan), real-device PWA install/offline and Arabic voice quality,
-visual appearance of PWA icons, human UAT execution.
+## 8. محددات مقبولة (Accepted Limitations — ليست حاجز إطلاق)
 
-## 11. Exact external owner actions
+- لا browser E2E (لا Playwright/Cypress مفعّلان؛ بيئة العمل بلا متصفح). التغطية:
+  pgTAP + unit + component/integration. الفجوة تُسدّ بـ UAT بشري.
+- `customer_360` يعيد 0 بدل null للقيم المالية لغير أدوار التكلفة (لا تسريب؛
+  الواجهة تُخفي البطاقة المالية لغير المصرّحين).
+- سبب إلغاء المصروف حالياً ثابت «إلغاء» (يُفضّل لاحقاً سبب حر مُدخَل مثل الدفعات).
+- D17 (توقيت إدخال المواعيد) / D20 (استبقاء audit) / مرفقات الملفات — مؤجَّلة عمداً.
 
-1. **Merge PR #27** (recommended: squash) → triggers production frontend
-   deploy on Vercel.
-2. **Apply migrations to production** (before or right after merge):
-   `supabase link --project-ref livpmxwwxsfnaceczyth && supabase db push`,
-   preceded by a backup per `OPERATIONS.md`.
-3. Run the 8-line post-launch checklist in `OPERATIONS.md` (signup policy,
-   backups, session settings).
-4. Enable Dependabot alerts in repository settings.
+---
 
-## 12. Final launch recommendation
+## 9. إجراءات المالك المطلوبة (Exact External Owner Actions)
 
-**Approve and merge PR #27 now, then apply the migrations with a backup and
-run the launch checklist.** The engineering risk of the merge is low: the
-database CI replays everything from empty on every commit, the frontend gates
-are green, and each business rule added in this change set has pgTAP coverage.
-The primary residual risk is operational (production settings), not code.
+قبل الإطلاق الفعلي (واحد منها يتطلب موافقة):
+1. توفير مشروع Supabase إنتاجي + تطبيق الـ 72 ترحيلاً من قاعدة فارغة.
+2. نطاق Vercel + متغيرا البيئة `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`.
+3. قرار سياسة التسجيل الذاتي (`enable_signup`).
+4. تجهيز حساب الإنتاج + بيانات افتتاحية (منظمة + مالك + كتالوج + الباقات الأربع).
+5. نسخ احتياطي مجدول + معاينة بشرية واحدة (UAT).
+
+---
+
+## 10. التوصية النهائية بالإطلاق
+
+**جاهز للإطلاق المشروط.** المنتج مكتمل الدورة ومُختبَر ومأمون؛ خطوة الإطلاق
+الفعلية هي تجهيز البيئة والبيانات (بند 9) وليست إعادة بناء. لا يُنصح بتوسّع ERP
+إضافي قبل التشغيل الفعلي وجمع ملاحظات الاستخدام الأولى.
+
+---
+
+## 11. ملاحظة المصالحة بعد الدمج (Post-merge reconciliation)
+
+أثناء هذه المراجعة تبيّن أن طلب السحب #29 قد **دُمج بالفعل** إلى `main`
+(squash merge)، وأضاف المالك بعده التزامين على `main`:
+
+- `bb04dce` — `fix(quotes): keep legacy draft pricing inputs controlled`
+  (تصحيح React controlled/uncontrolled في `hydratePricingFromDraft` لحقول
+  التسعير عند المسودات القديمة).
+- `68b56f8` — `test(quotes): pin legacy pricing hydration defaults`.
+
+هذان التصحيحان **صحيحان ومطلوبان** (يعالجان عيباً في مرحلة Phase B لم تغطّه
+اختباراتي)، وقد روجعا وأُقرّا هنا. تصحيحات هذه المراجعة المستقلة (بند 7) أُعيد
+تأسيسها فوق `main` كي تشمل هذين الإصلاحين ولا تفقدهما.

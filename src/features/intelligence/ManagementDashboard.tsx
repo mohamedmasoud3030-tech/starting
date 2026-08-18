@@ -124,6 +124,19 @@ export function ManagementDashboard() {
             <Metric label="مرفوضة مؤخراً" value={m?.quotes_rejected} to="/quotes" />
             <Metric label="نسبة التحويل" value={m?.quote_conversion_rate != null ? `${m.quote_conversion_rate}%` : "—"} to="/quotes" />
           </dl>
+          {m?.top_packages && m.top_packages.length > 0 && (
+            <div className="mt-3 border-t border-slate-100 pt-2">
+              <p className="text-sm font-bold text-slate-500">الباقات الأكثر استخداماً</p>
+              <ul className="mt-1 space-y-1 text-sm">
+                {m.top_packages.map((p) => (
+                  <li key={p.name} className="flex justify-between">
+                    <span>{p.name}</span>
+                    <span className="font-bold">{p.count}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </Card>
 
         {canReadCost && (
