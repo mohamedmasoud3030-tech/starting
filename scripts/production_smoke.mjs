@@ -185,6 +185,8 @@ try {
   for (const route of [
     "/",
     "/login",
+    "/signup",
+    "/forgot-password",
     "/home",
     "/events",
     "/quotes",

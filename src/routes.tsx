@@ -6,7 +6,9 @@ import {
   redirect,
 } from "@tanstack/react-router";
 import { AuthGate } from "@/app/AuthGate";
+import { ForgotPasswordPage } from "@/features/auth/ForgotPasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
+import { SignupPage } from "@/features/auth/SignupPage";
 import {
   CalendarPage,
   CatalogPage,
@@ -45,6 +47,18 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
   component: LoginPage,
+});
+
+const signupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/signup",
+  component: SignupPage,
+});
+
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  component: ForgotPasswordPage,
 });
 
 const appRoute = createRoute({
@@ -176,6 +190,8 @@ const searchRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
+  signupRoute,
+  forgotPasswordRoute,
   appRoute.addChildren([
     homeRoute,
     eventsRoute,

@@ -66,6 +66,7 @@ describe("ProcurementPage", () => {
       canWriteCustomers: true,
       login: vi.fn(),
       logout: vi.fn(),
+      createOrganization: vi.fn(),
       switchOrganization: vi.fn(),
     });
 
@@ -99,6 +100,7 @@ describe("ProcurementPage", () => {
       canWriteCustomers: false,
       login: vi.fn(),
       logout: vi.fn(),
+      createOrganization: vi.fn(),
       switchOrganization: vi.fn(),
     });
 
@@ -130,6 +132,7 @@ describe("ProcurementPage", () => {
       canWriteCustomers: false,
       login: vi.fn(),
       logout: vi.fn(),
+      createOrganization: vi.fn(),
       switchOrganization: vi.fn(),
     });
 

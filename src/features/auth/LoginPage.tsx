@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -91,7 +91,7 @@ export function LoginPage() {
             </p>
 
             <p className="mx-auto mt-3 max-w-md rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600 lg:mx-0">
-              الدخول بحساب يزوّده مكتبك — لا يوجد تسجيل ذاتي.
+              لديك حساب؟ سجّل الدخول. مستخدم جديد؟ أنشئ حسابك ثم منشأتك الأولى.
             </p>
           </section>
 
@@ -171,6 +171,19 @@ export function LoginPage() {
                   {submitting ? "جارٍ الدخول..." : "دخول"}
                 </Button>
               </form>
+            </div>
+            <div className="mt-4 space-y-2 text-center text-sm">
+              <p className="text-slate-500">
+                ليس لديك حساب؟{" "}
+                <Link to="/signup" className="font-bold text-brand-700">
+                  أنشئ حساباً الآن
+                </Link>
+              </p>
+              <p>
+                <Link to="/forgot-password" className="font-bold text-slate-500 hover:text-slate-700">
+                  نسيت كلمة المرور؟
+                </Link>
+              </p>
             </div>
           </div>
         </div>

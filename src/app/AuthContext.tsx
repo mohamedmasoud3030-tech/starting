@@ -198,6 +198,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const currentMembership = current?.membership ?? null;
   const currentOrganization = current?.organization ?? null;
 
+  const createOrganization = useCallback(
+    async (name: string) => {
+      if (!user) throw new Error("يجب تسجيل الدخول أولاً");
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("اسم المنشأة مطلوب");
+      const { data, error: rpcError } = await supabase.rpc(
+        "create_organization",
+        { p_name: trimmed },
+      );
+      if (rpcError) throw rpcError;
+      if (!data) throw new Error("تعذّر إنشاء المنشأة");
+      await loadMemberships(user.id);
+    },
+    [user, loadMemberships],
+  );
+
   const switchOrganization = useCallback(
     (organizationId: string) => {
       // Ignore an organization the user is not actually a member of: the
@@ -254,6 +270,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       login,
       logout,
+      createOrganization,
       switchOrganization,
     }),
     [
@@ -271,6 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error,
       login,
       logout,
+      createOrganization,
       switchOrganization,
     ],
   );

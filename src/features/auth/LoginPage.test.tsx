@@ -5,9 +5,12 @@ import { AuthProvider } from "@/app/AuthContext";
 import { authLoginErrorMessage } from "./authErrors";
 import { LoginPage } from "./LoginPage";
 
-// LoginPage only needs `useNavigate`; stub it to avoid mounting a full router.
+// LoginPage only needs `useNavigate` and `Link`; stub them to avoid mounting a full router.
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => () => {},
+  Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
+    <a href={to}>{children}</a>
+  ),
 }));
 
 function renderLogin() {
@@ -49,12 +52,14 @@ describe("LoginPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("sets no false signup expectation (access is provisioned, not self-service)", () => {
+  it("offers self-serve signup and password recovery", () => {
     renderLogin();
-    expect(screen.getByText(/لا يوجد تسجيل ذاتي/)).toBeInTheDocument();
     expect(
-      screen.queryByRole("link", { name: /سجّل|أنشئ حساب|اشترك/ }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("link", { name: /أنشئ حساباً الآن/ }),
+    ).toHaveAttribute("href", "/signup");
+    expect(
+      screen.getByRole("link", { name: /نسيت كلمة المرور/ }),
+    ).toHaveAttribute("href", "/forgot-password");
   });
 });
 

@@ -124,24 +124,28 @@ select is(
 );
 
 -- ---------------------------------------------------------------------------
--- create_organization command (browser role revoked by migration 0056)
+-- create_organization command (self-serve onboarding, migration 0061)
 -- ---------------------------------------------------------------------------
 set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000010","role":"authenticated"}'; -- new user
-select throws_ok(
+select lives_ok(
   $sql$ select public.create_organization('New Org') $sql$,
-  '42501', null, 'create_organization is not executable by the browser role'
+  'self-serve onboarding: authenticated user creates their own organization'
 );
 
 set local role postgres;
+-- Distinct name: the earlier authenticated call already created 'New Org' with
+-- a membership for the caller, and auth.uid() still resolves from the local
+-- jwt claims — the privileged-path coverage must not skew the OWNER count
+-- for 'New Org' below.
 select is(
-  (public.create_organization('New Org') is not null),
+  (public.create_organization('Privileged New Org') is not null),
   true, 'create_organization still runs for the privileged owner role'
 );
 select is(
   (select count(*)::int from public.organization_memberships m
     join public.organizations o on o.id = m.organization_id
     where o.name = 'New Org' and m.user_id = '00000000-0000-0000-0000-000000000010' and m.role = 'OWNER'),
-  1, 'create_organization makes the caller OWNER of the new org'
+  1, 'self-serve onboarding makes the caller OWNER of the new org'
 );
 
 select * from finish();
