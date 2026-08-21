@@ -5,21 +5,16 @@
  * Usage:
  *   npm run db:guardian                 # static + dynamic against LOCAL scratch PostgreSQL
  *   npm run db:guardian -- --mode static
- *   npm run db:guardian -- --db-url postgresql://…   (LOCAL scratch server only)
- *   npm run db:guardian:snapshot        # safely regenerate expected schema + lock NEW migration hashes
+ *   npm run db:guardian -- --db-url postgresql://…   # LOCAL only
+ *   npm run db:guardian:snapshot        # safe expected-schema + NEW hash snapshot
  *   npm run db:guardian -- --fail-on CRITICAL
  *
- * Snapshot safety rule:
- *   - existing migration hashes are immutable and are NEVER overwritten;
- *   - edited/deleted recorded migrations make snapshot mode fail before any
- *     contract file is rewritten;
- *   - applied-baseline.json is NOT advanced automatically. It represents a
- *     separately verified deployed/stable baseline.
- *
- * Exit code is non-zero when any FAIL finding is at or above --fail-on
- * (default: HIGH, per the canonical contract). Report:
- *   guardian/reports/latest/report.json | summary.md | findings.csv
- *   guardian/reports/latest/inventory.md|json · write-paths.md|json
+ * Snapshot safety:
+ *   - recorded migration hashes are immutable and never overwritten;
+ *   - edited/deleted recorded migrations block snapshot writing;
+ *   - expected-schema is written only after a clean replay and ZERO failed
+ *     Guardian findings;
+ *   - applied-baseline.json is never advanced automatically.
  */
 import { performance } from "node:perf_hooks";
 import { join } from "node:path";
@@ -28,6 +23,7 @@ import {
   ROOT,
   CONTRACT_DIR,
   MIGRATIONS_DIR,
+  SEVERITY_RANK,
   readJson,
   writeJson,
   withScratchDatabase,
@@ -37,6 +33,7 @@ import {
   hashFile,
   currentBranch,
   shortHead,
+  redactDatabaseUrl,
 } from "./lib/common.mjs";
 import { writeReport } from "./lib/report.mjs";
 import { checksFor } from "./checks/registry.mjs";
@@ -50,11 +47,11 @@ Options:
   --mode <static|dynamic|all>   default: all
   --db-url <url>                LOCAL Postgres scratch server only
                                 (env DB_URL fallback; default
-                                postgres://postgres:postgres@127.0.0.1:54322/postgres)
+                                postgresql://postgres:postgres@127.0.0.1:54322/postgres)
   --snapshot                    safely regenerate expected-schema.json and add
                                 hashes for NEW migrations only; existing hashes
                                 are immutable and applied-baseline is untouched
-  --fail-on <severity>          exit non-zero on failures >= severity (default: HIGH)
+  --fail-on <severity>          CRITICAL|HIGH|MEDIUM|LOW|INFO (default: HIGH)
   --report-dir <path>           default: guardian/reports/latest
   --skip <checkId,...>          skip specific checks by id prefix
   --help`;
@@ -62,47 +59,73 @@ Options:
 function parseArgs(argv) {
   const cli = {
     mode: "all",
-    dbUrl: process.env.DB_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
+    dbUrl:
+      process.env.DB_URL ??
+      "postgresql://postgres:postgres@127.0.0.1:54322/postgres",
     snapshot: false,
     failOn: "HIGH",
     reportDir: join(ROOT, "guardian", "reports", "latest"),
     skip: new Set(),
   };
+
+  const requireValue = (index, option) => {
+    const value = argv[index + 1];
+    if (!value || value.startsWith("--")) {
+      throw new Error(`${option} requires a value`);
+    }
+    return value;
+  };
+
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    const val = () => argv[++i];
     switch (a) {
       case "--mode":
-        cli.mode = val();
+        cli.mode = requireValue(i, a);
+        i++;
         break;
       case "--db-url":
-        cli.dbUrl = val();
+        cli.dbUrl = requireValue(i, a);
+        i++;
         break;
       case "--snapshot":
         cli.snapshot = true;
         break;
       case "--fail-on":
-        cli.failOn = val().toUpperCase();
+        cli.failOn = requireValue(i, a).toUpperCase();
+        i++;
         break;
       case "--report-dir":
-        cli.reportDir = val();
+        cli.reportDir = requireValue(i, a);
+        i++;
         break;
       case "--skip":
-        for (const s of val().split(",")) cli.skip.add(s.trim());
+        for (const s of requireValue(i, a).split(",")) {
+          if (s.trim()) cli.skip.add(s.trim());
+        }
+        i++;
         break;
       case "--help":
       case "-h":
         console.log(USAGE);
         process.exit(0);
+        break;
       default:
-        console.error(`unknown option: ${a}\n${USAGE}`);
-        process.exit(2);
+        throw new Error(`unknown option: ${a}`);
     }
   }
+
   if (!["static", "dynamic", "all"].includes(cli.mode)) {
-    console.error(`--mode must be static|dynamic|all (got ${cli.mode})`);
-    process.exit(2);
+    throw new Error(`--mode must be static|dynamic|all (got ${cli.mode})`);
   }
+  if (!(cli.failOn in SEVERITY_RANK)) {
+    throw new Error(
+      `--fail-on must be CRITICAL|HIGH|MEDIUM|LOW|INFO (got ${cli.failOn})`,
+    );
+  }
+  if (cli.snapshot && cli.mode === "static") {
+    throw new Error("--snapshot requires --mode dynamic or all; static mode cannot build a schema snapshot");
+  }
+
   return cli;
 }
 
@@ -133,18 +156,30 @@ function snapshotHistoryViolations() {
 }
 
 async function main() {
-  const cli = parseArgs(process.argv.slice(2));
+  let cli;
+  try {
+    cli = parseArgs(process.argv.slice(2));
+  } catch (e) {
+    console.error(`${e.message}\n\n${USAGE}`);
+    process.exit(2);
+  }
+
+  const safeDbTarget = redactDatabaseUrl(cli.dbUrl);
   const t0 = performance.now();
   const runId = `guardian-${new Date().toISOString().replace(/[:.]/g, "-")}`;
-  const report = new Report({ runId, startedAt: new Date().toISOString(), cli });
+  const report = new Report({
+    runId,
+    startedAt: new Date().toISOString(),
+    cli,
+  });
   report.meta.branch = currentBranch();
   report.meta.head = shortHead();
 
-  let contract = {};
+  let contract;
   try {
     contract = readJson(join(CONTRACT_DIR, "canonical-contract.json"));
   } catch {
-    console.error("✗ guardian/contract/canonical-contract.json missing");
+    console.error("✗ guardian/contract/canonical-contract.json missing or invalid");
     process.exit(2);
   }
 
@@ -152,7 +187,11 @@ async function main() {
     const violations = snapshotHistoryViolations();
     if (violations.length > 0) {
       report.fail(
-        { id: "G-SNAPSHOT-SAFETY", title: "Snapshot safety", category: "migrations" },
+        {
+          id: "G-SNAPSHOT-SAFETY",
+          title: "Snapshot safety",
+          category: "migrations",
+        },
         {
           severity: "CRITICAL",
           id: "G-SNAPSHOT-SAFETY-IMMUTABLE-HISTORY",
@@ -172,10 +211,12 @@ async function main() {
   let snapshotManifest = null;
 
   console.log(`\n=== Database Guardian ${runId} ===`);
-  console.log(`mode=${cli.mode}  fail-on=${cli.failOn}  db-url=${cli.dbUrl}\n`);
+  console.log(
+    `mode=${cli.mode}  fail-on=${cli.failOn}  db-target=${safeDbTarget}\n`,
+  );
 
   for (const check of checks.filter((c) => c.mode === "static")) {
-    ctx.report.meta.checksRun = (ctx.report.meta.checksRun ?? 0) + 1;
+    report.meta.checksRun = (report.meta.checksRun ?? 0) + 1;
     try {
       await check.run(ctx);
       console.log(`  ✓ static  ${check.id} — ${check.title}`);
@@ -192,7 +233,7 @@ async function main() {
 
   const dynamic = checks.filter((c) => c.mode === "dynamic");
   if (dynamic.length > 0) {
-    console.log(`\n-- dynamic phase (LOCAL scratch replay on ${cli.dbUrl}) --`);
+    console.log(`\n-- dynamic phase (LOCAL scratch replay on ${safeDbTarget}) --`);
     await withScratchDatabase(cli.dbUrl, "guardian_scratch", async (db) => {
       const bootstrapped = await applyNativeBootstrap(db);
       console.log(
@@ -200,10 +241,15 @@ async function main() {
           ? "  (native bootstrap applied: auth replica + pgTAP shims)"
           : "  (local Supabase-like server detected — no bootstrap needed)",
       );
+
       const replay = await replayMigrations(db);
       if (!replay.ok) {
         report.fail(
-          { id: "G-REPLAY", title: "Migration replay from scratch", category: "migrations" },
+          {
+            id: "G-REPLAY",
+            title: "Migration replay from scratch",
+            category: "migrations",
+          },
           {
             severity: "CRITICAL",
             id: "G-REPLAY-FAILED",
@@ -211,7 +257,9 @@ async function main() {
             evidence: replay.error,
           },
         );
-        console.error(`  ✗ replay failed at ${replay.failedFile}: ${replay.error}`);
+        console.error(
+          `  ✗ replay failed at ${replay.failedFile}: ${replay.error}`,
+        );
         return;
       }
 
@@ -219,7 +267,7 @@ async function main() {
       ctx.db = db;
 
       for (const check of dynamic) {
-        ctx.report.meta.checksRun = (ctx.report.meta.checksRun ?? 0) + 1;
+        report.meta.checksRun = (report.meta.checksRun ?? 0) + 1;
         try {
           await check.run(ctx);
           console.log(`  ✓ dynamic ${check.id} — ${check.title}`);
@@ -242,10 +290,26 @@ async function main() {
   }
 
   if (cli.snapshot) {
-    const blockingBeforeSnapshot = report.failuresAtOrAbove(cli.failOn);
-    if (blockingBeforeSnapshot.length > 0 || !snapshotManifest) {
+    // Snapshot is stricter than the normal release threshold: any failed
+    // finding means the contract must not be rewritten around that defect.
+    if (report.failed.length > 0 || !snapshotManifest) {
+      report.fail(
+        {
+          id: "G-SNAPSHOT-SAFETY",
+          title: "Snapshot safety",
+          category: "migrations",
+        },
+        {
+          severity: "HIGH",
+          id: "G-SNAPSHOT-SAFETY-NOT-WRITTEN",
+          title: "Snapshot files were not written",
+          evidence: `${report.failed.length} failed finding(s); manifestReady=${Boolean(snapshotManifest)}`,
+          detail:
+            "Fix every failed Guardian finding and complete a clean dynamic replay before updating expected-schema.json.",
+        },
+      );
       console.error(
-        "\n✗ snapshot files NOT written because Guardian has blocking findings or replay did not complete",
+        "\n✗ snapshot files NOT written because Guardian has failed findings or replay did not complete",
       );
     } else {
       const files = migrationFiles();
@@ -274,7 +338,7 @@ async function main() {
         `\n  ✓ snapshot written safely: expected-schema.json + migration-hashes.json (${Object.keys(lockedFiles).length} locked files)`,
       );
       console.log(
-        "  - applied-baseline.json intentionally unchanged; advance it only after a separately verified deployment/stable baseline",
+        "  - applied-baseline.json intentionally unchanged; advance only after separately verified deployment/stability",
       );
     }
   }
@@ -282,30 +346,38 @@ async function main() {
   const durationMs = performance.now() - t0;
   writeReport(cli.reportDir, report, {
     durationMs,
-    dbTarget: cli.dbUrl,
+    dbTarget: safeDbTarget,
     modes: [cli.mode],
   });
 
   const failed = report.failed;
   const blocking = report.failuresAtOrAbove(cli.failOn);
-  console.log(`\n=== Guardian summary ===`);
-  console.log(`findings: ${report.findings.length} (PASS ${report.passed.length} / FAIL ${failed.length})`);
+  console.log("\n=== Guardian summary ===");
+  console.log(
+    `findings: ${report.findings.length} (PASS ${report.passed.length} / FAIL ${failed.length})`,
+  );
   for (const sev of ["CRITICAL", "HIGH", "MEDIUM", "LOW"]) {
     const n = failed.filter((f) => f.severity === sev).length;
     if (n > 0) console.log(`  ${sev}: ${n}`);
   }
-  console.log(`worst: ${report.worstSeverity()} · blocking (>= ${cli.failOn}): ${blocking.length}`);
+  console.log(
+    `worst: ${report.worstSeverity()} · blocking (>= ${cli.failOn}): ${blocking.length}`,
+  );
   console.log(`report: ${cli.reportDir}/report.json`);
-  for (const f of failed) console.log(`  [${f.severity}] ${f.id} — ${f.title}`);
+  for (const f of failed) {
+    console.log(`  [${f.severity}] ${f.id} — ${f.title}`);
+  }
 
   if (blocking.length > 0) {
-    console.error(`\n✗ Guardian FAILED (${blocking.length} finding(s) at or above ${cli.failOn})`);
+    console.error(
+      `\n✗ Guardian FAILED (${blocking.length} finding(s) at or above ${cli.failOn})`,
+    );
     process.exit(1);
   }
   console.log(`\n✓ Guardian PASSED (no findings at or above ${cli.failOn})`);
 }
 
 main().catch((e) => {
-  console.error(e);
+  console.error(e?.message ?? e);
   process.exit(1);
 });
