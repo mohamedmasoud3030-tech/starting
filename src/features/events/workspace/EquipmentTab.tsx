@@ -7,6 +7,7 @@ import { useAuth } from "@/app/authContext";
 import { useCatalogItems } from "@/features/catalog/catalog.api";
 import { useSaveEquipmentCapacity } from "@/features/warehouse/warehouse.api";
 import type { Capacity, Reservation } from "../events.api";
+import { EQUIPMENT_RESERVATION_LABELS } from "../eventCommand.model";
 
 /**
  * Equipment tab: reservation form + reservations list, plus (defect F11) the
@@ -152,17 +153,30 @@ export function EquipmentTab({
           <Button type="submit">حجز</Button>
         </form>
       </Card>
-      {reservations.map((r) => (
-        <Card key={r.id}>
-          <p className="font-bold">
-            {capacities.find((c) => c.id === r.equipment_capacity_id)?.catalog_items?.name ??
-              capacities.find((c) => c.id === r.equipment_capacity_id)?.catalog_item_id}
-          </p>
-          <p>
-            {r.quantity} · {r.status}
-          </p>
-        </Card>
-      ))}
+      <div className="space-y-2">
+        {reservations.length === 0 ? (
+          <p className="text-sm text-slate-500">لا توجد معدات محجوزة بعد.</p>
+        ) : (
+          reservations.map((r) => {
+            const name =
+              capacities.find((c) => c.id === r.equipment_capacity_id)?.catalog_items?.name ??
+              capacities.find((c) => c.id === r.equipment_capacity_id)?.catalog_item_id;
+            return (
+              <Card key={r.id} className="p-4">
+                <p className="font-black">{name}</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  الكمية المطلوبة: <span className="font-bold">{r.quantity}</span>
+                  {" · "}
+                  {EQUIPMENT_RESERVATION_LABELS[r.status] ?? r.status}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  الصرف والإرجاع والتلف تُدار من تبويب المخزن — مطلوب → خرج → عاد.
+                </p>
+              </Card>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

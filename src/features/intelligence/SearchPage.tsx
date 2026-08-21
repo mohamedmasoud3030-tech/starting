@@ -5,6 +5,8 @@ import { useAuth } from "@/app/authContext";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useGlobalSearch } from "./intelligence.api";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 
 const ENTITY_LABEL: Record<string, string> = {
   customer: "عميل",
@@ -23,6 +25,20 @@ export function SearchPage() {
   const orgId = currentOrganization?.id ?? null;
   const [term, setTerm] = useState("");
   const results = useGlobalSearch(orgId, term);
+  const staffHits = useQuery({
+    queryKey: ["search-staff", orgId, term],
+    enabled: !!orgId && term.trim().length >= 2,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_members_operational")
+        .select("id, name, staff_type, phone")
+        .eq("organization_id", orgId!)
+        .ilike("name", `%${term.trim()}%`)
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const grouped = (results.data ?? []).reduce<Record<string, typeof results.data>>(
     (acc, r) => {
@@ -52,7 +68,7 @@ export function SearchPage() {
         <div className="mt-4 space-y-4">
           {results.isLoading ? (
             <p className="text-slate-500">جارٍ البحث…</p>
-          ) : (results.data ?? []).length === 0 ? (
+          ) : (results.data ?? []).length === 0 && (staffHits.data ?? []).length === 0 ? (
             <p className="text-slate-500">لا توجد نتائج مطابقة.</p>
           ) : (
             Object.entries(grouped).map(([type, rows]) => (
@@ -75,6 +91,30 @@ export function SearchPage() {
                 </ul>
               </section>
             ))
+          )}
+          {(staffHits.data ?? []).length > 0 && (
+            <section>
+              <h2 className="mb-2 text-sm font-bold text-slate-400">مضيف</h2>
+              <ul className="space-y-2">
+                {(staffHits.data ?? []).map((row) => (
+                  <li key={String(row.id)}>
+                    <Link to="/staff" className="block">
+                      <Card className="flex items-center justify-between gap-3 p-3 hover:border-brand-300">
+                        <div className="min-w-0">
+                          <p className="truncate font-bold">{row.name}</p>
+                          {row.phone && (
+                            <p className="truncate text-sm text-slate-500" dir="ltr">
+                              {row.phone}
+                            </p>
+                          )}
+                        </div>
+                        <span className="shrink-0 text-sm font-bold text-brand-700">مضيف</span>
+                      </Card>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
         </div>
       )}

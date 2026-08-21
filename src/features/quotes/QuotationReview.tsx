@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2, Copy, Eye, FileCheck2, Printer, XCircle } from "lucide-react";
+import { CheckCircle2, Copy, FileCheck2, XCircle } from "lucide-react";
 import { JobPath } from "@/components/ui/JobPath";
 import { jobPathForQuoteStatus } from "@/features/events/eventWorkspace.model";
 import { useAuth } from "@/app/authContext";
@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
 import { buildQuotationVoiceSummary } from "@/features/ownerVoice/screenSummary";
 import { buildDocumentIdentity } from "@/components/documents/documentIdentity";
-import { printDocument } from "@/components/documents/printDocument";
+import { DocumentActions } from "@/components/documents/DocumentActions";
 import { useOrganizationSettings } from "@/features/settings/settings.api";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import { PRICING_METHOD_LABELS } from "@/lib/domain";
@@ -205,14 +205,6 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
         actions={
           <>
             <OwnerVoiceButton summary={voiceSummary} />
-            <Button variant="outline" onClick={() => setPreviewOpen((v) => !v)}>
-              <Eye className="h-5 w-5" />
-              {previewOpen ? "إخفاء المعاينة" : "معاينة المستند"}
-            </Button>
-            <Button onClick={() => printDocument()}>
-              <Printer className="h-5 w-5" />
-              طباعة / حفظ PDF
-            </Button>
             <Badge tone={statusTone()}>
               {statusLabel[q.status] ?? q.status}
             </Badge>
@@ -241,6 +233,21 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
       {error && (
         <InlineError message={error} />
       )}
+
+      <DocumentActions
+        previewOpen={previewOpen}
+        onTogglePreview={() => setPreviewOpen((v) => !v)}
+        phone={q.customer_phone_snapshot ?? q.prospect_whatsapp}
+        shareTitle={`عرض سعر ${q.quotation_number ?? ""}`}
+        message={[
+          `عرض سعر${q.quotation_number ? ` رقم ${q.quotation_number}` : ""}`,
+          `العميل: ${q.customer_name_snapshot}`,
+          q.event_title_snapshot ? `المناسبة: ${q.event_title_snapshot}` : "",
+          `الإجمالي: ${formatOMR(fromDbAmount(q.total_selling))}`,
+        ]
+          .filter(Boolean)
+          .join("\n")}
+      />
 
       {previewOpen && (
         <div className="space-y-3">

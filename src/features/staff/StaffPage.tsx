@@ -315,6 +315,20 @@ function StaffSummaryCard({
         {open && (
           <div className="mt-4 space-y-3 border-t pt-4">
             <div>
+              <p className="font-black">الملف</p>
+              <p className="mt-1 text-sm text-slate-600">
+                {staff.phone ?? "بدون هاتف"}
+                {staff.idNumber ? ` · هوية ${staff.idNumber}` : ""}
+              </p>
+            </div>
+            <div>
+              <p className="font-black">العمل</p>
+              <p className="mt-1 text-sm text-slate-600">
+                {rows.length} مناسبة في الأرشيف الحالي
+              </p>
+            </div>
+            <div>
+              <p className="font-black">المال</p>
               <p className="font-black">الأجور لكل مناسبة</p>
               {rows.length ? (
                 <ul className="mt-2 space-y-1">
@@ -373,7 +387,7 @@ export function StaffPage() {
     <div className="space-y-4">
       <PageHeader
         title="المضيفون والأجور"
-        description="هنا الأجور والسلف والصرف. تسجيل الشغل يتم من داخل المناسبة بزر دخول الآن / خروج الآن."
+        description="هنا الملف والعمل والأجور. إثبات الحضور بالصورة يتم من داخل المناسبة."
         actions={
           canManageCommercial ? (
             <Button

@@ -196,7 +196,8 @@ export function AttendancePanel({
         <div>
           <h2 id="attendance-heading" className="text-xl font-black">حضور المضيفين</h2>
           <p className="mt-1 text-slate-600">
-            اضغط دخول الآن عند وصول المضيف وخروج الآن عند انصرافه. التسجيل اليدوي للتصحيح أو الغياب فقط.
+            المشرف يصوّر دخول كل مضيف قبل المغادرة وخروجه بعد العودة من هاتف العمل.
+            التسجيل اليدوي للتصحيح أو الغياب فقط.
           </p>
         </div>
         <div className="flex items-center gap-3">

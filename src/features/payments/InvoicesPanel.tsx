@@ -1,4 +1,10 @@
 import { useState, type FormEvent } from "react";
+import { useAuth } from "@/app/authContext";
+import { DocumentActions } from "@/components/documents/DocumentActions";
+import { buildDocumentIdentity } from "@/components/documents/documentIdentity";
+import { useOrganizationSettings } from "@/features/settings/settings.api";
+import { InvoiceDocument } from "./InvoiceDocument";
+import { FINANCE_LABELS } from "@/lib/financeLabels";
 import { InlineError } from "@/components/ui/ErrorState";
 import { VoidReasonPanel } from "@/components/ui/VoidReasonPanel";
 import { Badge } from "@/components/ui/Badge";
@@ -48,8 +54,11 @@ export function InvoicesPanel({
    */
   acceptedRevenueMilli: number | null;
 }) {
+  const { currentOrganization } = useAuth();
+  const settings = useOrganizationSettings(orgId);
   const invoice = useEventInvoice(orgId, eventId);
   const installments = useEventInstallments(orgId, eventId);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const createInvoice = useCreateInvoice(orgId, eventId);
   const voidInvoice = useVoidInvoice(orgId, eventId);
 
@@ -225,9 +234,28 @@ export function InvoicesPanel({
 
       {error && <InlineError message={error} />}
 
+      <DocumentActions
+        previewOpen={previewOpen}
+        onTogglePreview={() => setPreviewOpen((v) => !v)}
+        shareTitle={`فاتورة ${inv.invoiceNumber}`}
+        message={[
+          `فاتورة رقم ${inv.invoiceNumber}`,
+          `المناسبة: ${inv.eventTitle}`,
+          `${FINANCE_LABELS.agreed}: ${formatOMR(inv.totalMilli)}`,
+          `${FINANCE_LABELS.remaining}: ${formatOMR(inv.remainingMilli)}`,
+        ].join("\n")}
+      />
+      {previewOpen && (
+        <InvoiceDocument
+          identity={buildDocumentIdentity(currentOrganization, settings.data ?? null)}
+          invoice={inv}
+          installments={rows}
+        />
+      )}
+
       <div className="grid gap-3 sm:grid-cols-3">
         <Card><CardBody>
-          <p className="text-sm text-slate-500">قيمة الفاتورة</p>
+          <p className="text-sm text-slate-500">{FINANCE_LABELS.agreed}</p>
           <p className="text-2xl font-black" dir="ltr">{formatOMR(inv.totalMilli)}</p>
           {inv.vatRegistered && (
             <p className="mt-1 text-xs text-slate-500">

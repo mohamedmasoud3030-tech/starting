@@ -16,6 +16,7 @@ import {
 import { useAttendanceGaps } from "@/features/staff/staff.api";
 import {
   attentionSummaryWhenLoaded,
+  buildEventStaffingMap,
   buildOperationalDashboard,
   isNewWorkspace,
   settledCount,
@@ -120,6 +121,28 @@ export function useOperationalDashboard() {
     [events.data, readinessByEventId, stock.data?.lines, now],
   );
 
+  const staffingQuery = useQuery({
+    queryKey: ["today-event-staffing", orgId, todayIds.join(",")],
+    enabled: !!orgId && events.isSuccess && todayIds.length > 0,
+    queryFn: async () => {
+      const [assignments, attendance] = await Promise.all([
+        supabase
+          .from("event_staff_assignments_operational")
+          .select("event_id, staff_member_id, status")
+          .eq("organization_id", orgId!)
+          .in("event_id", todayIds),
+        supabase
+          .from("staff_attendance_summaries")
+          .select("event_id, staff_member_id, check_in, check_out, attendance_status")
+          .eq("organization_id", orgId!)
+          .in("event_id", todayIds),
+      ]);
+      if (assignments.error) throw assignments.error;
+      if (attendance.error) throw attendance.error;
+      return buildEventStaffingMap(assignments.data ?? [], attendance.data ?? []);
+    },
+  });
+
   const dashboardLoaded = readinessSettled && stock.isSuccess;
   const gapsLoaded = gaps.isSuccess;
   const attendanceGapCount = settledCount(gapsLoaded, gaps.data?.length);
@@ -155,6 +178,7 @@ export function useOperationalDashboard() {
     currentOrganization,
     dashboard,
     dashboardLoaded,
+    staffingByEventId: staffingQuery.isSuccess ? staffingQuery.data : null,
     readinessByEventId,
     readinessFailed,
     attendanceGaps: gaps.data ?? [],

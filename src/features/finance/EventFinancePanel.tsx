@@ -7,6 +7,8 @@ import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { formatOMR, fromDbAmount, parseOMR } from "@/lib/money";
+import { FINANCE_LABELS } from "@/lib/financeLabels";
+import { EvidenceFileField } from "@/features/attachments/EvidenceFileField";
 import type { ExpenseCategory, PaymentMethod } from "@/lib/dbTypes";
 import { useEventFinance } from "@/features/payments/payments.api";
 import {
@@ -138,11 +140,11 @@ export function EventFinancePanel({
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <SummaryStat label="القيمة" value={f ? formatOMR(f.acceptedRevenueMilli) : "—"} />
-          <SummaryStat label="المحصل" value={f ? formatOMR(f.amountPaidMilli) : "—"} />
-          <SummaryStat label="المتبقي" value={f ? formatOMR(f.outstandingMilli) : "—"} />
-          <SummaryStat label="المصروف" value={f ? formatOMR(f.actualCostMilli) : "—"} />
-          <SummaryStat label="الربح" value={f ? formatOMR(f.actualProfitMilli) : "—"} tone="brand" />
+          <SummaryStat label={FINANCE_LABELS.agreed} value={f ? formatOMR(f.acceptedRevenueMilli) : "—"} />
+          <SummaryStat label={FINANCE_LABELS.collected} value={f ? formatOMR(f.amountPaidMilli) : "—"} />
+          <SummaryStat label={FINANCE_LABELS.remaining} value={f ? formatOMR(f.outstandingMilli) : "—"} />
+          <SummaryStat label={FINANCE_LABELS.costs} value={f ? formatOMR(f.actualCostMilli) : "—"} />
+          <SummaryStat label={FINANCE_LABELS.profit} value={f ? formatOMR(f.actualProfitMilli) : "—"} tone="brand" />
           <SummaryStat label="الهامش" value={marginText} />
         </div>
 
@@ -152,7 +154,7 @@ export function EventFinancePanel({
             <ul className="mt-2 space-y-1 text-sm">
               {f && f.staffCostMilli > 0 && (
                 <li className="flex justify-between">
-                  <span>عمالة</span>
+                  <span>{FINANCE_LABELS.hostCosts}</span>
                   <span className="font-bold">{formatOMR(f.staffCostMilli)}</span>
                 </li>
               )}
@@ -175,7 +177,7 @@ export function EventFinancePanel({
 
       {/* Expenses ledger + record form */}
       <Card className="p-5">
-        <h2 className="font-black">المصروفات</h2>
+        <h2 className="font-black">{FINANCE_LABELS.expenses}</h2>
         {canMutate && !isClosed && (
           <form onSubmit={submitExpense} className="mt-3 grid gap-3 sm:grid-cols-2">
             <Field label="الفئة" htmlFor="exp-category">
@@ -222,26 +224,41 @@ export function EventFinancePanel({
         ) : (
           <ul className="mt-3 space-y-2">
             {(expenses.data ?? []).map((e) => (
-              <li key={e.id} className="flex items-start justify-between gap-2 rounded-xl border border-slate-200 p-3">
-                <div>
-                  <p className="font-bold">
-                    {EXPENSE_CATEGORY_LABELS[e.category]} · {formatOMR(e.amountMilli)}
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    {e.description}
-                    {e.payee ? ` · ${e.payee}` : ""}
-                    {e.status === "VOIDED" ? " · ملغى" : ""}
-                  </p>
+              <li key={e.id} className="space-y-2 rounded-xl border border-slate-200 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-bold">
+                      {EXPENSE_CATEGORY_LABELS[e.category]} · {formatOMR(e.amountMilli)}
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      {e.description}
+                      {e.payee ? ` · ${e.payee}` : ""}
+                      {e.status === "VOIDED" ? " · ملغى" : ""}
+                    </p>
+                  </div>
+                  {canMutate && e.status === "RECORDED" && !isClosed && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void voidExpense.mutateAsync({ expenseId: e.id, reason: "إلغاء" }).catch((x) => setError(financeError(x)))}
+                    >
+                      <XCircle className="h-4 w-4" />
+                      إلغاء
+                    </Button>
+                  )}
                 </div>
-                {canMutate && e.status === "RECORDED" && !isClosed && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => void voidExpense.mutateAsync({ expenseId: e.id, reason: "إلغاء" }).catch((x) => setError(financeError(x)))}
-                  >
-                    <XCircle className="h-4 w-4" />
-                    إلغاء
-                  </Button>
+                {orgId && e.status === "RECORDED" && (
+                  <EvidenceFileField
+                    orgId={orgId}
+                    evidenceType="EXPENSE_RECEIPT"
+                    entityType="event_expense"
+                    entityId={e.id}
+                    label="إيصال المصروف"
+                    hint="الإيصال إثبات فقط — المبلغ يأتي من سجل المصروف"
+                    capture
+                    supersede
+                    canEdit={canMutate && !isClosed}
+                  />
                 )}
               </li>
             ))}

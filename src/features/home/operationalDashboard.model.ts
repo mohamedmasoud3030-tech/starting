@@ -48,10 +48,19 @@ export type OperationalAlert =
 
 export interface OperationalDashboard {
   todayEvents: OperationalEvent[];
+  upcomingEvents: OperationalEvent[];
   readyCount: number;
   eventAttentionCount: number;
   lowStockCount: number;
   alerts: OperationalAlert[];
+}
+
+export interface EventStaffingSnapshot {
+  assigned: number;
+  arrived: number;
+  present: number;
+  checkedOut: number;
+  notArrived: number;
 }
 
 /**
@@ -131,6 +140,15 @@ export function buildOperationalDashboard(input: {
     )
     .sort((a, b) => a.start_at.localeCompare(b.start_at));
 
+  const upcomingEvents = input.events
+    .filter((event) => {
+      if (event.status === "CANCELLED" || event.status === "CLOSED") return false;
+      if (isSameLocalDay(event.start_at, now, timeZone)) return false;
+      return new Date(event.start_at).getTime() > now.getTime();
+    })
+    .sort((a, b) => a.start_at.localeCompare(b.start_at))
+    .slice(0, 8);
+
   const alerts: OperationalAlert[] = [];
   let readyCount = 0;
   let eventAttentionCount = 0;
@@ -181,11 +199,66 @@ export function buildOperationalDashboard(input: {
 
   return {
     todayEvents,
+    upcomingEvents,
     readyCount,
     eventAttentionCount,
     lowStockCount: lowStock.length,
     alerts,
   };
+}
+
+export function buildEventStaffingMap(
+  assignments: ReadonlyArray<{
+    event_id: string | null;
+    staff_member_id: string | null;
+    status: string | null;
+  }>,
+  attendance: ReadonlyArray<{
+    event_id: string | null;
+    staff_member_id: string | null;
+    check_in: string | null;
+    check_out: string | null;
+    attendance_status: string | null;
+  }>,
+): Record<string, EventStaffingSnapshot> {
+  const byEvent = new Map<string, Set<string>>();
+  for (const row of assignments) {
+    if (!row.event_id || !row.staff_member_id || row.status !== "ACTIVE") continue;
+    const set = byEvent.get(row.event_id) ?? new Set<string>();
+    set.add(row.staff_member_id);
+    byEvent.set(row.event_id, set);
+  }
+
+  const openOrClosed = new Map<
+    string,
+    { arrived: Set<string>; present: Set<string>; out: Set<string> }
+  >();
+  for (const row of attendance) {
+    if (!row.event_id || !row.staff_member_id) continue;
+    if (row.attendance_status === "VOIDED" || row.attendance_status === "ABSENT") continue;
+    if (!row.check_in) continue;
+    const bucket =
+      openOrClosed.get(row.event_id) ??
+      { arrived: new Set<string>(), present: new Set<string>(), out: new Set<string>() };
+    bucket.arrived.add(row.staff_member_id);
+    if (row.check_out) bucket.out.add(row.staff_member_id);
+    else bucket.present.add(row.staff_member_id);
+    openOrClosed.set(row.event_id, bucket);
+  }
+
+  const result: Record<string, EventStaffingSnapshot> = {};
+  for (const [eventId, assigned] of byEvent) {
+    const att = openOrClosed.get(eventId);
+    const arrived = att?.arrived.size ?? 0;
+    result[eventId] = {
+      assigned: assigned.size,
+      arrived,
+      present: att?.present.size ?? 0,
+      checkedOut: att?.out.size ?? 0,
+      notArrived: Math.max(assigned.size - arrived, 0),
+    };
+  }
+  return result;
 }
 
 /**

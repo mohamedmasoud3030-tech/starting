@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   attentionSummaryWhenLoaded,
+  buildEventStaffingMap,
   buildEventWhatsAppUrl,
   buildOperationalDashboard,
   isNewWorkspace,
@@ -150,6 +151,34 @@ describe("isNewWorkspace — first-minutes onboarding gate", () => {
         customerCount: 1,
       }),
     ).toBe(false);
+  });
+});
+
+describe("buildEventStaffingMap", () => {
+  it("counts assigned vs arrived without inventing hosts", () => {
+    const map = buildEventStaffingMap(
+      [
+        { event_id: "e1", staff_member_id: "s1", status: "ACTIVE" },
+        { event_id: "e1", staff_member_id: "s2", status: "ACTIVE" },
+        { event_id: "e1", staff_member_id: "s3", status: "RELEASED" },
+      ],
+      [
+        {
+          event_id: "e1",
+          staff_member_id: "s1",
+          check_in: "2026-08-19T08:00:00+04:00",
+          check_out: null,
+          attendance_status: "PRESENT",
+        },
+      ],
+    );
+    expect(map.e1).toEqual({
+      assigned: 2,
+      arrived: 1,
+      present: 1,
+      checkedOut: 0,
+      notArrived: 1,
+    });
   });
 });
 

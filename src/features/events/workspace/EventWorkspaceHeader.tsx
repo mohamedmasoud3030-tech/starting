@@ -33,7 +33,7 @@ export function EventWorkspaceHeader({
             {new Date(event.start_at).toLocaleString("ar-OM", {
               timeZone: "Asia/Muscat",
             })}{" "}
-            · {event.venue_name}
+            · {event.venue_name} · {event.guest_count} ضيف
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">

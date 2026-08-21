@@ -30,66 +30,47 @@ export type NavGroup = {
 
 export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
-    label: "الرئيسية",
+    label: "اليوم",
     items: [
-      { to: "/home", label: "لوحة المتابعة" },
-      { to: "/dashboard", label: "لوحة الإدارة", financial: true },
-      { to: "/search", label: "البحث" },
-    ],
-  },
-  {
-    label: "المناسبات",
-    items: [
-      { to: "/events", label: "كل المناسبات" },
-      { to: "/calendar", label: "التقويم" },
-      { to: "/operations", label: "لوحة التشغيل" },
-    ],
-  },
-  {
-    label: "المبيعات والعملاء",
-    items: [
-      { to: "/quotes", label: "عروض الأسعار", commercial: true },
+      { to: "/home", label: "الرئيسية" },
+      { to: "/events", label: "المناسبات" },
       { to: "/customers", label: "العملاء" },
-      { to: "/packages", label: "الباقات" },
+      { to: "/staff", label: "الفريق", financial: true },
     ],
   },
   {
-    label: "التشغيل والمخزن",
-    items: [
-      { to: "/catalog", label: "دليل الخدمات والمواد" },
-      { to: "/consumables", label: "مخزون المواد" },
-    ],
+    label: "المبيعات",
+    items: [{ to: "/quotes", label: "عروض الأسعار", commercial: true }],
   },
   {
-    label: "المشتريات",
-    items: [
-      // Every procurement read model is hidden from non-cost roles and every
-      // S5 command requires OWNER/MANAGER, so this surface is cost-role-only.
-      { to: "/procurement", label: "الموردون وأوامر الشراء", financial: true },
-    ],
-  },
-  {
-    label: "الفريق",
-    items: [{ to: "/staff", label: "المضيفون والحضور", financial: true }],
-  },
-  {
-    label: "الإدارة والتحليل",
+    label: "المالية",
     items: [
       { to: "/reports", label: "التقارير", financial: true },
-      { to: "/integrity", label: "مركز السلامة", financial: true },
+      { to: "/dashboard", label: "لوحة الإدارة", financial: true },
     ],
   },
   {
-    label: "النظام",
-    items: [{ to: "/settings", label: "إعدادات المنشأة" }],
+    label: "المزيد",
+    items: [
+      { to: "/search", label: "البحث" },
+      { to: "/calendar", label: "التقويم" },
+      { to: "/operations", label: "لوحة التشغيل" },
+      { to: "/catalog", label: "دليل الخدمات والمواد" },
+      { to: "/packages", label: "الباقات" },
+      { to: "/consumables", label: "مخزون المواد" },
+      { to: "/procurement", label: "الموردون وأوامر الشراء", financial: true },
+      { to: "/integrity", label: "مركز السلامة", financial: true },
+      { to: "/settings", label: "الإعدادات" },
+    ],
   },
 ];
 
-/** The four always-visible mobile bottom-bar targets (role permitting). */
+/** Daily mobile bottom-bar targets (role permitting). */
 export const MOBILE_PRIMARY_TARGETS: ReadonlyArray<NavTarget> = [
   "/home",
   "/events",
   "/customers",
+  "/staff",
 ];
 
 export function isActivePath(pathname: string, target: NavTarget): boolean {

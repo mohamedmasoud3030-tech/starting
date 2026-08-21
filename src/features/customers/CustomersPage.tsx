@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { Phone, Plus } from "lucide-react";
+import { MessageCircle, Phone, Plus } from "lucide-react";
+import { omanTelUrl, omanWhatsAppUrl } from "@/lib/phone";
+import { downloadCsv, toCsv } from "@/lib/csv";
 import { useAuth } from "@/app/authContext";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -50,17 +52,40 @@ export function CustomersPage() {
         title="العملاء"
         description="جهات الاتصال والعملاء"
         actions={
-          canWriteCustomers ? (
-            <Button
-              onClick={() => {
-                setEditing(null);
-                setDialogOpen(true);
-              }}
-            >
-              <Plus className="h-5 w-5" />
-              عميل جديد
-            </Button>
-          ) : undefined
+          <div className="flex flex-wrap gap-2">
+            {customers.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  downloadCsv(
+                    "customers-loaded.csv",
+                    toCsv(
+                      ["الاسم", "الهاتف", "واتساب", "النوع"],
+                      customers.map((c) => [
+                        c.name,
+                        c.phone,
+                        c.whatsapp,
+                        CUSTOMER_TYPE_LABELS[c.customer_type],
+                      ]),
+                    ),
+                  );
+                }}
+              >
+                تصدير النتائج المعروضة
+              </Button>
+            )}
+            {canWriteCustomers ? (
+              <Button
+                onClick={() => {
+                  setEditing(null);
+                  setDialogOpen(true);
+                }}
+              >
+                <Plus className="h-5 w-5" />
+                عميل جديد
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
@@ -115,18 +140,26 @@ export function CustomersPage() {
                   <Badge tone="brand">{CUSTOMER_TYPE_LABELS[c.customer_type]}</Badge>
                 </div>
                 {(c.phone || c.whatsapp) && (
-                  <div className="space-y-1 text-base text-slate-600">
-                    {c.phone && (
-                      <p className="flex items-center gap-1.5">
-                        <Phone className="h-4 w-4 text-slate-400" />
-                        {c.phone}
-                      </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {omanTelUrl(c.phone) && (
+                      <a
+                        href={omanTelUrl(c.phone)!}
+                        className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-slate-200 px-3 text-sm font-bold"
+                      >
+                        <Phone className="h-4 w-4" />
+                        اتصال
+                      </a>
                     )}
-                    {c.whatsapp && (
-                      <p className="flex items-center gap-1.5">
-                        <span className="text-sm">واتساب:</span>
-                        {c.whatsapp}
-                      </p>
+                    {omanWhatsAppUrl(c.whatsapp ?? c.phone) && (
+                      <a
+                        href={omanWhatsAppUrl(c.whatsapp ?? c.phone)!}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-emerald-200 px-3 text-sm font-bold text-emerald-800"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        واتساب
+                      </a>
                     )}
                   </div>
                 )}

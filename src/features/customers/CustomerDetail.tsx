@@ -58,6 +58,12 @@ export function CustomerDetail() {
                 واتساب
               </a>
             )}
+            <Link
+              to="/quotes/new"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-brand-700 px-4 text-sm font-bold text-white hover:bg-brand-800"
+            >
+              عرض سعر جديد
+            </Link>
             <Badge tone={row.is_active ? "brand" : "neutral"}>
               {CUSTOMER_TYPE_LABELS[row.customer_type as keyof typeof CUSTOMER_TYPE_LABELS] ?? row.customer_type}
             </Badge>

@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { CalendarDays, MapPin, Plus, Search, Users } from "lucide-react";
+import { csvDate, downloadCsv, toCsv } from "@/lib/csv";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -121,7 +122,7 @@ export function EventsPage() {
       <PageHeader
         title="المناسبات"
         description="بعد اعتماد العرض تُنفَّذ المناسبة هنا حتى الإغلاق والتحصيل والربح"
-        actions={<><OwnerVoiceButton summary={voiceSummary} /><Button onClick={() => setOpen(true)}><Plus className="h-5 w-5" />مناسبة جديدة</Button></>}
+        actions={<><OwnerVoiceButton summary={voiceSummary} />{visibleEvents.length > 0 && <Button variant="outline" onClick={() => downloadCsv("events-loaded.csv", toCsv(["الرقم","العنوان","الحالة","الموعد","الموقع","الضيوف"], visibleEvents.map((event) => [event.event_number, event.title, labels[event.status], csvDate(event.start_at), event.venue_name, event.guest_count])))}>تصدير النتائج المعروضة</Button>}<Button onClick={() => setOpen(true)}><Plus className="h-5 w-5" />مناسبة جديدة</Button></>}
       />
 
       <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center">
