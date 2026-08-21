@@ -2,40 +2,49 @@
 /**
  * PORTABLE RELEASE GATE — CI-independent verification for the whole repo.
  *
- * Runs every release-critical gate locally in one command:
- *
- *   node scripts/release-gate.mjs            # full gate; database REQUIRED
+ *   node scripts/release-gate.mjs            # full gate; LOCAL DB REQUIRED
  *   node scripts/release-gate.mjs --skip-db  # explicit frontend/static-only gate
  *
- * Order:
+ * Full order:
  *   1. typecheck
  *   2. lint
- *   3. frontend tests (vitest)
+ *   3. frontend tests
  *   4. build
- *   5. Database Guardian — static checks (always)
- *   6. Database gates (required unless --skip-db is explicit):
- *        - native migration replay (supabase migrations on a scratch DB)
- *        - official pgTAP suites via the native harness (supabase/tests/*.sql)
- *        - Database Guardian — dynamic checks (drift, ACL, RLS, integrity, …)
+ *   5. Guardian static
+ *   6. native migration replay + pgTAP on isolated local scratch DB
+ *   7. Guardian dynamic on isolated local scratch DBs
  *
- * Exit code: 0 only when every REQUIRED gate passes. A missing database is a
- * failure by default so `npm run gate` can never produce a false green for a
- * database-changing release. `--skip-db` is an explicit operator choice and is
- * recorded as SKIPPED in the machine-readable report.
- *
- * Output: guardian/reports/latest/release-gate.json (machine-readable) +
- * console summary.
+ * A missing or unsafe DB target fails the full gate. Remote DB URLs are rejected
+ * BEFORE any connection attempt. Credentials are never written to reports.
  */
 import { execSync, spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  assertLocalScratchDatabaseUrl,
+  redactDatabaseUrl,
+} from "../guardian/lib/common.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = join(ROOT, "guardian", "reports", "latest");
 
+const allowedArgs = new Set(["--skip-db"]);
+const unknownArgs = process.argv.slice(2).filter((arg) => !allowedArgs.has(arg));
+if (unknownArgs.length > 0) {
+  console.error(`unknown release-gate argument(s): ${unknownArgs.join(", ")}`);
+  process.exit(2);
+}
+
 const skipDb = process.argv.includes("--skip-db");
-const dbUrl = process.env.DB_URL ?? "postgresql://postgres:postgres@127.0.0.1:5433/postgres";
+const dbUrl =
+  process.env.DB_URL ??
+  "postgresql://postgres:postgres@127.0.0.1:5433/postgres";
+const safeDbTarget = redactDatabaseUrl(dbUrl);
+
+function sanitizeText(value) {
+  return String(value ?? "").split(dbUrl).join(safeDbTarget);
+}
 
 function run(name, cmd, args, { cwd = ROOT, okOnExit = [0], env = {} } = {}) {
   const t0 = Date.now();
@@ -55,14 +64,14 @@ function run(name, cmd, args, { cwd = ROOT, okOnExit = [0], env = {} } = {}) {
     ok,
     status: res.status ?? "spawn-error",
     durationMs: Date.now() - t0,
-    tail: tail.trim().slice(0, 1200),
+    tail: sanitizeText(tail.trim()).slice(0, 1200),
   };
 }
 
 function reachable(url) {
   try {
     execSync(
-      `node -e "new (require('pg').Client)({connectionString:process.env.U}).connect().then(c=>{c.end();process.exit(0)}).catch(()=>process.exit(1))"`,
+      `node -e "const {Client}=require('pg');const c=new Client({connectionString:process.env.U});c.connect().then(async()=>{await c.end();process.exit(0)}).catch(()=>process.exit(1))"`,
       {
         env: { ...process.env, U: url },
         cwd: ROOT,
@@ -79,27 +88,39 @@ function reachable(url) {
 const results = [];
 const report = {
   startedAt: new Date().toISOString(),
-  dbUrl,
+  dbTarget: safeDbTarget,
   dbRequired: !skipDb,
   skipDb,
   steps: [],
 };
 
-const steps = [
+const frontendAndStaticSteps = [
   ["typecheck", "npm", ["run", "typecheck", "--silent"]],
   ["lint", "npm", ["run", "lint", "--silent"]],
   ["frontend-tests", "npm", ["run", "test", "--silent", "--", "--run"]],
   ["build", "npm", ["run", "build", "--silent"]],
-  ["guardian-static", "node", ["guardian/run.mjs", "--mode", "static", "--report-dir", OUT_DIR]],
+  [
+    "guardian-static",
+    "node",
+    ["guardian/run.mjs", "--mode", "static", "--report-dir", OUT_DIR],
+  ],
 ];
 
 let dbAvailable = false;
+let dbSafetyError = null;
 if (!skipDb) {
-  dbAvailable = reachable(dbUrl);
+  try {
+    // Safety check BEFORE reachable() so a remote DB is never contacted.
+    assertLocalScratchDatabaseUrl(dbUrl);
+    dbAvailable = reachable(dbUrl);
+  } catch (e) {
+    dbSafetyError = e.message;
+  }
   report.dbAvailable = dbAvailable;
+  report.dbSafetyError = dbSafetyError;
 }
 
-for (const [name, cmd, args] of steps) {
+for (const [name, cmd, args] of frontendAndStaticSteps) {
   const r = run(name, cmd, args);
   report.steps.push({
     name,
@@ -118,7 +139,7 @@ if (dbAvailable) {
     ["db-replay+pgtap (native harness)", "node", ["scripts/native-db/run.mjs"]],
     ["guardian-dynamic", "node", ["guardian/run.mjs", "--report-dir", OUT_DIR]],
   ]) {
-    const r = run(name, cmd, args, { env: { ...process.env, DB_URL: dbUrl } });
+    const r = run(name, cmd, args, { env: { DB_URL: dbUrl } });
     report.steps.push({
       name,
       status: r.ok ? "PASS" : "FAIL",
@@ -132,12 +153,30 @@ if (dbAvailable) {
   }
 } else if (skipDb) {
   const tail = "database gates explicitly skipped with --skip-db";
-  report.steps.push({ name: "db-gates", status: "SKIPPED", durationMs: 0, tail });
+  report.steps.push({
+    name: "db-gates",
+    status: "SKIPPED",
+    durationMs: 0,
+    tail,
+  });
   console.log("  - db-gates SKIPPED (--skip-db was explicitly supplied)");
 } else {
-  const tail = `no reachable local database at ${dbUrl}; set DB_URL to a local scratch PostgreSQL server or start the local PG harness`;
-  const r = { name: "db-gates", ok: false, status: "db-unavailable", durationMs: 0, tail };
-  report.steps.push({ name: r.name, status: "FAIL", durationMs: 0, tail });
+  const tail = dbSafetyError
+    ? `unsafe database target rejected before connection: ${dbSafetyError}`
+    : `no reachable local PostgreSQL server at ${safeDbTarget}`;
+  const r = {
+    name: "db-gates",
+    ok: false,
+    status: dbSafetyError ? "unsafe-db-target" : "db-unavailable",
+    durationMs: 0,
+    tail,
+  };
+  report.steps.push({
+    name: r.name,
+    status: "FAIL",
+    durationMs: 0,
+    tail,
+  });
   results.push(r);
   console.error(`  ✗ db-gates — ${tail}`);
 }
@@ -148,7 +187,11 @@ report.status = failed.length === 0 ? "PASS" : "FAIL";
 report.failedSteps = failed.map((r) => r.name);
 
 mkdirSync(OUT_DIR, { recursive: true });
-writeFileSync(join(OUT_DIR, "release-gate.json"), JSON.stringify(report, null, 2) + "\n");
+writeFileSync(
+  join(OUT_DIR, "release-gate.json"),
+  JSON.stringify(report, null, 2) + "\n",
+);
+
 console.log(`\n=== Portable Release Gate: ${report.status} ===`);
 console.log(
   `steps: ${report.steps.length} (${report.steps.filter((s) => s.status === "PASS").length} PASS, ${report.steps.filter((s) => s.status === "FAIL").length} FAIL, ${report.steps.filter((s) => s.status === "SKIPPED").length} SKIPPED)`,
