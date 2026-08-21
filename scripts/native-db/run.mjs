@@ -28,6 +28,9 @@ function assertLocalScratchTarget(url) {
   } catch {
     throw new Error("NATIVE_DB_INVALID_DB_URL");
   }
+  if (!new Set(["postgres:", "postgresql:"]).has(parsed.protocol)) {
+    throw new Error(`NATIVE_DB_INVALID_DB_PROTOCOL: ${parsed.protocol}`);
+  }
   const localHosts = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
   if (!localHosts.has(parsed.hostname)) {
     throw new Error(
@@ -60,6 +63,16 @@ async function exec(client, sql, label) {
   }
 }
 
+async function createScratch(name) {
+  const admin = new pg.Client({ connectionString: dbUrl });
+  try {
+    await admin.connect();
+    await admin.query(`create database ${quoteIdent(name)}`);
+  } finally {
+    await admin.end().catch(() => {});
+  }
+}
+
 async function dropScratch(name) {
   const cleanup = new pg.Client({ connectionString: dbUrl });
   try {
@@ -74,14 +87,13 @@ async function main() {
   assertLocalScratchTarget(dbUrl);
 
   const dbName = `hospitality_native_check_${process.pid}_${Date.now()}`;
-  const admin = new pg.Client({ connectionString: dbUrl });
   let db;
+  let scratchCreated = false;
   let allPassed = true;
 
   try {
-    await admin.connect();
-    await admin.query(`create database ${quoteIdent(dbName)}`);
-    await admin.end();
+    await createScratch(dbName);
+    scratchCreated = true;
 
     db = new pg.Client({ connectionString: databaseUrl(dbUrl, dbName) });
     await db.connect();
@@ -90,13 +102,11 @@ async function main() {
 
     log("\n== Layer A: native PostgreSQL validation ==");
 
-    // 1. auth/storage replicas + pgTAP shims
     log("\n[1/4] setup auth replica + storage replica + pgTAP shims");
     await exec(db, readFileSync(join(__dirname, "setup_auth.sql"), "utf8"), "auth replica");
     await exec(db, readFileSync(join(__dirname, "setup_storage.sql"), "utf8"), "storage replica");
     await exec(db, readFileSync(join(__dirname, "pgtap_shims.sql"), "utf8"), "pgTAP shims");
 
-    // 2. full migration replay
     log("\n[2/4] replay migrations");
     const migrations = readdirSync(migrationsDir)
       .filter((f) => f.endsWith(".sql"))
@@ -109,8 +119,6 @@ async function main() {
       );
     }
 
-    // 3. repository pgTAP tests through native shims. finish() inside each test
-    // raises on assertion failure/plan mismatch. Most files rollback fixtures.
     log("\n[3/4] run pgTAP tests");
     const tests = readdirSync(testsDir)
       .filter((f) => f.endsWith(".test.sql"))
@@ -125,21 +133,19 @@ async function main() {
         allPassed = false;
         log(`  ✗ ${test}: ${e.message}`);
       } finally {
-        // Recover an aborted transaction when finish() raises before the test's
-        // own trailing ROLLBACK. Safe when already outside a transaction.
-        await db.query("rollback");
+        await db.query("rollback").catch(() => {});
       }
     }
 
     log("\n[4/4] native replay complete");
   } finally {
     if (db) await db.end().catch(() => {});
-    // Always clean the uniquely named scratch DB, including migration/test
-    // failures. No fixed database name is ever dropped.
-    await dropScratch(dbName).catch((e) => {
-      console.error(`scratch cleanup failed for ${dbName}: ${e.message}`);
-      allPassed = false;
-    });
+    if (scratchCreated) {
+      await dropScratch(dbName).catch((e) => {
+        console.error(`scratch cleanup failed for ${dbName}: ${e.message}`);
+        allPassed = false;
+      });
+    }
   }
 
   if (!allPassed) {
@@ -151,6 +157,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error(e);
+  console.error(e?.message ?? e);
   process.exitCode = 1;
 });
