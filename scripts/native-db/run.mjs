@@ -2,17 +2,12 @@
 /**
  * SUPPLEMENTARY (Layer A) — native PostgreSQL migration replay + pgTAP harness.
  *
- * Runs the full migration chain against a plain native PostgreSQL server,
- * then executes the OFFICIAL supabase/tests/*.sql pgTAP files through the
- * minimal pgTAP shims (pgtap_shims.sql), using a replica auth schema
- * (setup_auth.sql).
- *
- * This is for early defect detection only. The AUTHORITATIVE acceptance
- * environment is the official Supabase stack in GitHub Actions (Layer B):
- * `supabase db reset` + `supabase test db`.
+ * DESTRUCTIVE SCRATCH HARNESS: it creates and drops an isolated database, so
+ * it is intentionally restricted to localhost / loopback PostgreSQL only.
+ * Never pass a Supabase production/direct/pooler URL to this script.
  *
  * Usage:
- *   DB_URL=postgres://postgres@127.0.0.1:5433/postgres node scripts/native-db/run.mjs
+ *   DB_URL=postgres://postgres:postgres@127.0.0.1:5433/postgres node scripts/native-db/run.mjs
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -21,12 +16,38 @@ import pg from "pg";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..", "..");
-const dbUrl = process.env.DB_URL ?? "postgres://postgres@127.0.0.1:5433/postgres";
+const dbUrl = process.env.DB_URL ?? "postgres://postgres:postgres@127.0.0.1:5433/postgres";
 
 const migrationsDir = join(root, "supabase", "migrations");
 const testsDir = join(root, "supabase", "tests");
 
-const admin = new pg.Client({ connectionString: dbUrl });
+function assertLocalScratchTarget(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error("NATIVE_DB_INVALID_DB_URL");
+  }
+  if (!new Set(["postgres:", "postgresql:"]).has(parsed.protocol)) {
+    throw new Error(`NATIVE_DB_INVALID_DB_PROTOCOL: ${parsed.protocol}`);
+  }
+  const localHosts = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
+  if (!localHosts.has(parsed.hostname)) {
+    throw new Error(
+      `NATIVE_DB_REMOTE_TARGET_FORBIDDEN: scratch replay only accepts localhost/loopback (got ${parsed.hostname})`,
+    );
+  }
+}
+
+function databaseUrl(url, dbName) {
+  const parsed = new URL(url);
+  parsed.pathname = `/${dbName}`;
+  return parsed.toString();
+}
+
+function quoteIdent(identifier) {
+  return `"${identifier.replaceAll('"', '""')}"`;
+}
 
 function log(...a) {
   console.log(...a);
@@ -42,68 +63,100 @@ async function exec(client, sql, label) {
   }
 }
 
-async function main() {
-  await admin.connect();
-
-  // Fresh database per run → true "replay from clean state".
-  const dbName = "hospitality_native_check";
-  await admin.query(`drop database if exists ${dbName}`);
-  await admin.query(`create database ${dbName}`);
-  await admin.end();
-
-  const db = new pg.Client({
-    connectionString: dbUrl.replace(/\/postgres(\?|$)/, `/${dbName}$1`),
-  });
-  await db.connect();
-  await db.query("set search_path to public");
-  await db.query("set check_function_bodies = on");
-
-  log("\n== Layer A: native PostgreSQL validation ==");
-
-  // 1. auth replica + pgTAP shims
-  log("\n[1/4] setup auth replica + storage replica + pgTAP shims");
-  await exec(db, readFileSync(join(__dirname, "setup_auth.sql"), "utf8"), "auth replica");
-  await exec(db, readFileSync(join(__dirname, "setup_storage.sql"), "utf8"), "storage replica");
-  await exec(db, readFileSync(join(__dirname, "pgtap_shims.sql"), "utf8"), "pgTAP shims");
-
-  // 2. migrations (replay)
-  log("\n[2/4] replay migrations");
-  const migrations = readdirSync(migrationsDir).filter((f) => f.endsWith(".sql")).sort();
-  for (const m of migrations) {
-    await exec(db, readFileSync(join(migrationsDir, m), "utf8"), m);
+async function createScratch(name) {
+  const admin = new pg.Client({ connectionString: dbUrl });
+  try {
+    await admin.connect();
+    await admin.query(`create database ${quoteIdent(name)}`);
+  } finally {
+    await admin.end().catch(() => {});
   }
+}
 
-  // 3. run official pgTAP tests through the shims
-  log("\n[3/4] run official pgTAP tests");
-  const tests = readdirSync(testsDir).filter((f) => f.endsWith(".sql")).sort();
+async function dropScratch(name) {
+  const cleanup = new pg.Client({ connectionString: dbUrl });
+  try {
+    await cleanup.connect();
+    await cleanup.query(`drop database if exists ${quoteIdent(name)}`);
+  } finally {
+    await cleanup.end().catch(() => {});
+  }
+}
+
+async function main() {
+  assertLocalScratchTarget(dbUrl);
+
+  const dbName = `hospitality_native_check_${process.pid}_${Date.now()}`;
+  let db;
+  let scratchCreated = false;
   let allPassed = true;
-  for (const t of tests) {
-    const sql = readFileSync(join(testsDir, t), "utf8");
-    try {
-      await db.query(sql);
-      log(`  ✓ ${t}`);
-    } catch (e) {
-      allPassed = false;
-      log(`  ✗ ${t}: ${e.message}`);
-      const res = await db.query(
-        "select description from public._pgtap_results where ok = false order by id",
+
+  try {
+    await createScratch(dbName);
+    scratchCreated = true;
+
+    db = new pg.Client({ connectionString: databaseUrl(dbUrl, dbName) });
+    await db.connect();
+    await db.query("set search_path to public");
+    await db.query("set check_function_bodies = on");
+
+    log("\n== Layer A: native PostgreSQL validation ==");
+
+    log("\n[1/4] setup auth replica + storage replica + pgTAP shims");
+    await exec(db, readFileSync(join(__dirname, "setup_auth.sql"), "utf8"), "auth replica");
+    await exec(db, readFileSync(join(__dirname, "setup_storage.sql"), "utf8"), "storage replica");
+    await exec(db, readFileSync(join(__dirname, "pgtap_shims.sql"), "utf8"), "pgTAP shims");
+
+    log("\n[2/4] replay migrations");
+    const migrations = readdirSync(migrationsDir)
+      .filter((f) => f.endsWith(".sql"))
+      .sort();
+    for (const migration of migrations) {
+      await exec(
+        db,
+        readFileSync(join(migrationsDir, migration), "utf8"),
+        migration,
       );
-      for (const row of res.rows) log(`      FAIL: ${row.description}`);
-    } finally {
-      await db.query("rollback");
+    }
+
+    log("\n[3/4] run pgTAP tests");
+    const tests = readdirSync(testsDir)
+      .filter((f) => f.endsWith(".test.sql"))
+      .sort();
+
+    for (const test of tests) {
+      const sql = readFileSync(join(testsDir, test), "utf8");
+      try {
+        await db.query(sql);
+        log(`  ✓ ${test}`);
+      } catch (e) {
+        allPassed = false;
+        log(`  ✗ ${test}: ${e.message}`);
+      } finally {
+        await db.query("rollback").catch(() => {});
+      }
+    }
+
+    log("\n[4/4] native replay complete");
+  } finally {
+    if (db) await db.end().catch(() => {});
+    if (scratchCreated) {
+      await dropScratch(dbName).catch((e) => {
+        console.error(`scratch cleanup failed for ${dbName}: ${e.message}`);
+        allPassed = false;
+      });
     }
   }
 
-  await db.end();
-
   if (!allPassed) {
     log("\nLayer A: FAILED");
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
   log("\nLayer A: PASSED (supplementary)");
 }
 
 main().catch((e) => {
-  console.error(e);
-  process.exit(1);
+  console.error(e?.message ?? e);
+  process.exitCode = 1;
 });

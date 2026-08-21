@@ -16,7 +16,11 @@
     "db:types": "supabase gen types typescript --local > src/lib/database.types.ts",
     "db:reset": "supabase db reset",
     "db:backup-restore-proof": "node scripts/native-db/backup_restore_proof.mjs",
-    "audit:check": "npm audit --audit-level=high"
+    "audit:check": "npm audit --audit-level=high",
+    "db:guardian": "node guardian/run.mjs",
+    "db:guardian:static": "node guardian/run.mjs --mode static",
+    "db:guardian:snapshot": "node guardian/run.mjs --snapshot",
+    "gate": "node scripts/release-gate.mjs"
   },
   "dependencies": {
     "@fontsource/cairo": "^5.3.0",

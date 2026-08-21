@@ -1,0 +1,160 @@
+{
+  "schemaVersion": "1.0.0",
+  "project": "Hospitality Operations (Arabic-first RTL)",
+  "repository": "mohamedmasoud3030-tech/starting",
+  "domain": "Hospitality / Event Operations (weddings, funerals, majalis, meetings, meals, events in the Sultanate of Oman) — NOT property management.",
+  "description": "Canonical Database Contract — machine-readable invariants the Database Guardian enforces. Human-readable companion: guardian/README.md and guardian/contract/business-invariants.md. CRITICAL/HIGH violations block the portable release gate and block CI when the Guardian workflow is installed.",
+  "roles": {
+    "tenantRoot": "organizations",
+    "membership": "organization_memberships",
+    "appRoles": ["OWNER", "MANAGER", "SUPERVISOR", "WAREHOUSE", "ACCOUNTANT"]
+  },
+  "money": {
+    "currency": "OMR",
+    "scale": 3,
+    "unitMoneyType": "numeric(12,3)",
+    "derivedTotalType": "numeric(14,3)",
+    "rule": "Every money column MUST be an exact NUMERIC with scale 3. Unit prices and rates use numeric(12,3); derived totals (sums/products of unit prices × quantities) may use numeric(14,3). The invariant that must never break: scale 3, never binary float, never narrower than numeric(12,3) for a unit price.",
+    "bannedTypes": ["double precision", "real", "float4", "float8", "integer money"],
+    "bannedExpressions": ["::float", "::float8", "::double precision", "::real"],
+    "frontendMustUseExactMath": true,
+    "notes": "AGENTS.md and this contract use numeric(12,3) for unit prices/rates and allow numeric(14,3) for derived totals. Both are exact NUMERIC with OMR scale 3; binary float is banned for persisted money."
+  },
+  "tenantIsolation": {
+    "required": true,
+    "rlsEnabledOnEveryBusinessTable": true,
+    "orgScopedTablesCarryOrganizationId": true,
+    "orgScopedFksMustIncludeOrganizationId": true,
+    "noAnonGrantsOnTables": true,
+    "noAnonExecuteOnRpcFunctions": true,
+    "noDeletePoliciesOnFinancialTables": true,
+    "noDeletePoliciesOnMasterCatalogTables": true,
+    "viewsMustBeSecurityInvoker": false,
+    "viewsMustBeSecurityInvokerOrOrgFilteredInBody": true,
+    "secdefFunctionsMustPinSearchPath": true,
+    "secdefFunctionsMustRoleGuardInBody": true,
+    "rlsRoleChecksAreServerSide": true
+  },
+  "domainLifecycles": {
+    "event": {
+      "table": "events",
+      "historyTable": "event_status_history",
+      "statuses": ["DRAFT", "QUOTED", "CONFIRMED", "PREPARING", "DISPATCHED", "IN_PROGRESS", "RETURNING", "CLOSED", "CANCELLED"],
+      "transitionRule": "Status moves only through transition_event_status() which enforces the documented matrix; CANCELLED is reached exclusively via cancel_event(); CLOSED is blocked while equipment or consumables are outstanding; DISPATCH requires readiness (READY or an audited override via event_transition_overrides)."
+    },
+    "quotation": {
+      "table": "quotations",
+      "linesTable": "quotation_lines",
+      "statuses": ["DRAFT", "ISSUED", "EXPIRED", "ACCEPTED", "REJECTED", "CONVERTED", "CANCELLED", "SUPERSEDED"],
+      "transitionRule": "A DRAFT is editable via update_quotation_draft(); once ISSUED the commercial snapshot is immutable except for documented lifecycle metadata; acceptance converts the event to CONFIRMED; a revision supersedes prior ISSUED quotations of the same event. quotation_lines are immutable for non-DRAFT quotations (protect_quotation_snapshot / prevent_quotation_line_mutation triggers)."
+    },
+    "attendance": {
+      "table": "staff_attendance",
+      "statuses": ["PRESENT", "LATE", "PARTIAL", "ABSENT", "VOIDED"],
+      "transitionRule": "Earned amounts derive from wage_method/wage_rate and check-in/out via compute_earned_amount(); attendance rows are append-only except the documented void transition; clock in/out pairs are enforced."
+    },
+    "equipment": {
+      "reservationsTable": "event_equipment_reservations",
+      "movementsTable": "event_equipment_movements",
+      "reconciliationTable": "event_warehouse_reconciliations",
+      "statuses": ["ACTIVE", "RELEASED", "CANCELLED"],
+      "movementKinds": ["DISPATCH", "RETURN"],
+      "transitionRule": "Ledger movements are append-only (warehouse_ledger_is_append_only); reconciliation is append-only; a CLOSED event must have zero outstanding equipment."
+    },
+    "consumables": {
+      "movementsTable": "consumable_movements",
+      "reconciliationTable": "event_consumable_reconciliations",
+      "kinds": ["RECEIVE", "ISSUE_TO_EVENT", "RETURN_FROM_EVENT", "CONSUME_AT_EVENT", "WASTE_AT_EVENT", "WAREHOUSE_WASTE", "ADJUSTMENT"],
+      "transitionRule": "Movements are append-only (consumable_ledger_guard); stock on hand is a derivation over the ledger; a CLOSED event must have zero outstanding consumables."
+    },
+    "procurement": {
+      "ordersTable": "procurement_orders",
+      "statuses": ["DRAFT", "APPROVED", "SENT", "CONFIRMED", "PARTIALLY_RECEIVED", "RECEIVED", "CANCELLED"],
+      "transitionRule": "History-guarded (procurement_order_history_guard); receipt lines append-only; suppliers are master data that cannot be hard-deleted; orders are scoped to an event when provided."
+    }
+  },
+  "financial": {
+    "exactNumericOnly": true,
+    "approvedDocumentsImmutable": true,
+    "ledgersAppendOnly": true,
+    "noHardDeleteOnFinancialTables": true,
+    "documentNumberUniquePerOrg": true,
+    "overpaymentForbidden": true,
+    "duplicatePaymentDetectionRequired": true,
+    "commandIdempotencyRequired": true,
+    "financialTables": [
+      "invoices", "invoice_installments", "customer_payments", "host_payouts",
+      "host_payout_allocations", "staff_advances", "staff_attendance", "event_expenses",
+      "event_financial_closures", "procurement_orders", "procurement_order_lines",
+      "procurement_receipts", "procurement_receipt_lines", "consumable_movements",
+      "event_equipment_movements", "event_warehouse_reconciliations",
+      "event_consumable_reconciliations", "audit_events"
+    ],
+    "documentNumberTables": {
+      "events": ["organization_id", "event_number"],
+      "invoices": ["organization_id", "invoice_number"],
+      "procurement_orders": ["organization_id", "order_number"],
+      "quotations": ["organization_id", "quotation_number", "revision"]
+    },
+    "immutableTransitions": {
+      "invoices": "ISSUED → CANCELLED only (invoice_guard); all financial fields immutable after issue",
+      "invoice_installments": "PENDING → CANCELLED only (invoice_installment_guard)",
+      "customer_payments": "RECORDED → VOIDED only (customer_payment_guard); amount/method/reference immutable",
+      "host_payouts": "RECORDED → VOIDED only (host_payout_guard)",
+      "staff_advances": "RECORDED → VOIDED only (staff_advance_guard)",
+      "staff_attendance": "documented void transition only (staff_attendance_guard)",
+      "event_expenses": "RECORDED → VOIDED only; financial/source fields are immutable and VOID audit metadata is write-once (event_expenses_append_only_guard, Guardian 0078 + 0079)",
+      "event_financial_closures": "open → reopened_at set once (event_financial_closures_guard, Guardian 0078)",
+      "audit_events": "append-only, no UPDATE/DELETE (audit_events_append_only_guard, Guardian 0078)"
+    }
+  },
+  "migrations": {
+    "immutableOnceApplied": true,
+    "newFilePerChange": true,
+    "replayFromEmptyMustSucceed": true,
+    "replayOnNearCurrentStateMustSucceed": true,
+    "everyChangeHasRegressionTest": true,
+    "noEditingOfAppliedMigrationHashes": true,
+    "snapshotMustNotRewriteRecordedMigrationHashes": true,
+    "appliedBaselineAdvancesSeparatelyAfterVerifiedDeployment": true
+  },
+  "security": {
+    "secdefAcl": "authenticated-only EXECUTE for RPCs; internal-only for trigger helpers; anon EXECUTE forbidden",
+    "searchPathPinned": "SET search_path TO '' (or explicit pinned path) on every SECURITY DEFINER function",
+    "clientDeleteForbidden": "No DELETE RLS policy on financial or master-catalog tables; DELETE allowed only on explicitly listed tables and bounded by FKs",
+    "auditAppendOnly": true,
+    "noDemoOrBackdoorPaths": true,
+    "costDataSeparation": "cost_price / internal_notes and financial ledgers readable only by OWNER/MANAGER/ACCOUNTANT (can_read_cost), enforced at the data boundary, not just the UI"
+  },
+  "writePaths": {
+    "commandWritesGoThroughExactlyOneRpc": true,
+    "allowedDirectClientWrites": {
+      "catalog_categories": ["INSERT", "UPDATE"],
+      "catalog_items": ["INSERT", "UPDATE"],
+      "customers": ["INSERT", "UPDATE"],
+      "packages": ["INSERT", "UPDATE"],
+      "package_items": ["INSERT", "UPDATE"],
+      "staff_members": ["INSERT", "UPDATE"],
+      "equipment_capacity": ["INSERT", "UPDATE"],
+      "events": ["UPDATE"],
+      "profiles": ["INSERT", "UPDATE"],
+      "organizations": ["UPDATE"],
+      "organization_memberships": ["INSERT", "UPDATE", "DELETE"]
+    },
+    "allowedDeleteOnly": ["organization_memberships", "equipment_capacity", "staff_members"],
+    "notes": "Allowed direct client writes mirror the RLS policies that exist today (extracted from the schema). Any new direct client write outside this list is a finding. DELETE is never allowed on financial or master-catalog tables. Event state changes, quotations, invoices, payments, expenses, closures, procurement, attendance, consumables and equipment movements are command-only (SECURITY DEFINER RPCs)."
+  },
+  "guardian": {
+    "failThreshold": "HIGH",
+    "findingStatuses": ["PASS", "FAIL"],
+    "severities": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"],
+    "evidenceRequired": true,
+    "machineReadableReport": "guardian/reports/latest/report.json",
+    "inventoryArtifacts": [
+      "guardian/reports/latest/inventory.md",
+      "guardian/reports/latest/inventory.json",
+      "guardian/reports/latest/write-paths.md",
+      "guardian/reports/latest/write-paths.json"
+    ]
+  }
+}

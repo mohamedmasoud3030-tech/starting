@@ -1,0 +1,74 @@
+name: Database Guardian
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - "guardian/**"
+      - "scripts/release-gate.mjs"
+      - "package.json"
+      - "src/lib/database.types.ts"
+  pull_request:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - "guardian/**"
+      - "scripts/release-gate.mjs"
+      - "package.json"
+      - "src/lib/database.types.ts"
+  workflow_dispatch:
+
+concurrency:
+  group: guardian-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Guardian — static (no DB)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:guardian:static
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: guardian-report-static
+          path: guardian/reports/latest
+          if-no-files-found: ignore
+          retention-days: 7
+
+  dynamic:
+    name: Guardian — dynamic (Supabase stack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.114.0
+      - run: supabase start
+      - run: supabase db reset
+      - run: supabase test db
+      - name: Run Database Guardian dynamic checks
+        env:
+          DB_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        run: npm run db:guardian
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: guardian-report-dynamic
+          path: guardian/reports/latest
+          if-no-files-found: ignore
+          retention-days: 7
+      - run: supabase stop
+        if: always()
