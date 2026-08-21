@@ -1,5 +1,7 @@
 {
-  "generatedAt": "2026-08-21T19:58:46.337Z",
+  "generatedAt": "2026-08-21T20:16:00.000Z",
+  "baseCommit": "c31d85e5cfec91720e6d41860bd5dd19dc1def44",
+  "note": "Stable main baseline before PR #35. This file is intentionally not advanced by db:guardian:snapshot; advance only after the newer migrations are separately verified as applied/stable.",
   "files": [
     "0001_extensions_enums.sql",
     "0002_functions.sql",
@@ -78,7 +80,6 @@
     "20260820100000_0074_secure_attachments_foundation.sql",
     "20260820101000_0075_staff_identity_selfie_evidence.sql",
     "20260820102000_0076_host_payout_multi_event.sql",
-    "20260820103000_0077_optional_vat.sql",
-    "20260821160000_0078_guardian_security_hardening.sql"
+    "20260820103000_0077_optional_vat.sql"
   ]
 }
