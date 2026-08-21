@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 /**
- * View security — every business view must be security_invoker AND
- * org-filtered in its definition (or CRITICAL: cross-tenant exposure).
+ * View security — every business view must satisfy ONE safe boundary:
+ *   1. security_invoker=true, so caller/base-table RLS remains authoritative; or
+ *   2. explicit organization filtering in the view body, verified behaviorally.
+ *
+ * A view satisfying neither condition is a CRITICAL cross-tenant leak risk.
  */
 import { extractManifest } from "../../lib/manifest.mjs";
 
 export const id = "G-VIEW-SECURITY";
-export const title = "Views: security_invoker=true and org-filtered bodies";
+export const title = "Views: security_invoker OR explicit organization filtering";
 export const category = "security";
 export const defaultSeverity = "HIGH";
 export const mode = "dynamic";
@@ -15,37 +18,45 @@ export async function run(ctx) {
   const { report, db } = ctx;
   const manifest = await extractManifest(db);
 
-  const notInvoker = [];
-  const notFiltered = [];
-  for (const [name, v] of Object.entries(manifest.views)) {
-    if (!v.securityInvoker) notInvoker.push(name);
-    // A view is DANGEROUS only when it is neither security_invoker nor
-    // org-filtered in its body: RLS cannot backstop it AND it has no filter.
-    if (!v.securityInvoker && !v.orgFiltered) notFiltered.push(name);
+  const safeDefinerViews = [];
+  const unsafeViews = [];
+
+  for (const [name, view] of Object.entries(manifest.views)) {
+    if (!view.securityInvoker && view.orgFiltered) safeDefinerViews.push(name);
+    if (!view.securityInvoker && !view.orgFiltered) unsafeViews.push(name);
   }
 
-  if (notInvoker.length > 0) {
-    report.add(this, {
-      status: "PASS",
-      severity: "LOW",
-      id: `${id}-NOT-INVOKER`,
-      title: "Non-security_invoker views exist but are org-filtered in their bodies (documented deviation)",
-      evidence: notInvoker.join("\n") + "\n(bodies carry can_read_cost/is_org_member/has_org_role; behavior verified by guardian_tenant_isolation.test.sql)",
-      detail: "These definer-security views bypass RLS on base tables, so tenant filtering depends on the body WHERE clause. The hard invariant (checked elsewhere) is that the filter must never be dropped. Converting them to security_invoker would require widening raw-table grants to authenticated, which the design deliberately avoids.",
-    });
+  if (safeDefinerViews.length > 0) {
+    report.pass(
+      this,
+      `${id}-FILTERED-DEFINER`,
+      "Non-security_invoker views are explicitly organization-filtered",
+      safeDefinerViews.join("\n"),
+    );
   } else {
-    report.pass(this, `${id}-NOT-INVOKER`, "All views are security_invoker=true", `${Object.keys(manifest.views).length} views`);
+    report.pass(
+      this,
+      `${id}-FILTERED-DEFINER`,
+      "No organization-filtered definer-security view deviations detected",
+      "(none)",
+    );
   }
 
-  if (notFiltered.length > 0) {
+  if (unsafeViews.length > 0) {
     report.fail(this, {
       severity: "CRITICAL",
-      id: `${id}-NOT-FILTERED`,
-      title: "Views without any organization filtering in their definition (cross-tenant leak risk)",
-      evidence: notFiltered.join("\n"),
-      detail: "A view that is neither security_invoker nor org-filtered in its body can expose every organization's rows.",
+      id: `${id}-UNSAFE`,
+      title: "Views are neither security_invoker nor explicitly organization-filtered",
+      evidence: unsafeViews.join("\n"),
+      detail:
+        "Such a view can bypass base-table RLS without supplying its own tenant boundary. Convert it to security_invoker or add and behavior-test an explicit organization filter.",
     });
   } else {
-    report.pass(this, `${id}-NOT-FILTERED`, "Every view body filters by organization", "(is_org_member / has_org_role / can_read_cost present)");
+    report.pass(
+      this,
+      `${id}-SAFE`,
+      "Every view has a tenant-safe execution boundary",
+      `${Object.keys(manifest.views).length} view(s): security_invoker or explicit org filter`,
+    );
   }
 }
