@@ -17,6 +17,7 @@ import { OverviewTab } from "./workspace/OverviewTab";
 import { PricingTab } from "./workspace/PricingTab";
 import { TeamTab } from "./workspace/TeamTab";
 import { WorkspaceTabs } from "./workspace/WorkspaceTabs";
+import { pickLinkedQuote } from "./eventWorkspace.model";
 import { buildReadinessReport } from "./readinessReport";
 import { useEventWorkspace } from "./useEventWorkspace";
 
@@ -51,7 +52,7 @@ export function EventWorkspace() {
     amountPaidMilli: ws.finance.data?.amountPaidMilli ?? 0,
   });
 
-  const acceptedQuote = d.quotes.find((q) => q.status === "ACCEPTED") ?? d.quotes[0] ?? null;
+  const linkedQuote = pickLinkedQuote(d.quotes, ev.accepted_quotation_id);
 
   return (
     <div className="space-y-5">
@@ -78,10 +79,13 @@ export function EventWorkspace() {
           event={ev}
           customerName={customerName}
           canCommercial={ws.canCommercial}
+          canFinance={ws.canFinance}
           run={ws.run}
           report={readinessReport}
           history={d.history}
-          acceptedQuote={acceptedQuote}
+          acceptedQuote={linkedQuote}
+          financiallyClosed={false}
+          onOpenTab={ws.setTab}
         />
       )}
 
@@ -97,7 +101,16 @@ export function EventWorkspace() {
       )}
 
       {ws.tab === "الفريق" && (
-        <TeamTab staff={d.staff} assignments={d.assignments} run={ws.run} />
+        <TeamTab
+          staff={d.staff}
+          assignments={d.assignments}
+          run={ws.run}
+          canAssign={ws.canAttendance}
+          canCost={ws.canCost}
+          onOpenAttendance={
+            ws.canAttendance ? () => ws.setTab("الحضور") : undefined
+          }
+        />
       )}
 
       {ws.tab === "المعدات" && (
@@ -183,6 +196,7 @@ export function EventWorkspace() {
             assignmentRole: a.assignment_role,
             scheduledStart: a.scheduled_start,
             scheduledEnd: a.scheduled_end,
+            status: a.status,
           }))}
           staffList={d.staff.map((s) => ({
             id: s.id,

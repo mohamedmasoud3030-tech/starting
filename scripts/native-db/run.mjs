@@ -61,8 +61,9 @@ async function main() {
   log("\n== Layer A: native PostgreSQL validation ==");
 
   // 1. auth replica + pgTAP shims
-  log("\n[1/4] setup auth replica + pgTAP shims");
+  log("\n[1/4] setup auth replica + storage replica + pgTAP shims");
   await exec(db, readFileSync(join(__dirname, "setup_auth.sql"), "utf8"), "auth replica");
+  await exec(db, readFileSync(join(__dirname, "setup_storage.sql"), "utf8"), "storage replica");
   await exec(db, readFileSync(join(__dirname, "pgtap_shims.sql"), "utf8"), "pgTAP shims");
 
   // 2. migrations (replay)

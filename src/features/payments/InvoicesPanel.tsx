@@ -229,6 +229,13 @@ export function InvoicesPanel({
         <Card><CardBody>
           <p className="text-sm text-slate-500">قيمة الفاتورة</p>
           <p className="text-2xl font-black" dir="ltr">{formatOMR(inv.totalMilli)}</p>
+          {inv.vatRegistered && (
+            <p className="mt-1 text-xs text-slate-500">
+              يشمل ضريبة {inv.vatPercent}% بقيمة{" "}
+              <span dir="ltr">{formatOMR(inv.vatAmountMilli)}</span>
+              {inv.vatRegistrationNumber ? ` · ${inv.vatRegistrationNumber}` : ""}
+            </p>
+          )}
         </CardBody></Card>
         <Card className="border-emerald-200"><CardBody>
           <p className="text-sm text-slate-500">المحصَّل</p>

@@ -18,6 +18,11 @@ export interface QuotationDocumentData {
   surchargeAmount: string | number;
   discountAmount: string | number;
   totalSelling: string | number;
+  preVatTotal: string | number | null;
+  vatRegistered: boolean | null;
+  vatPercent: number | null;
+  vatAmount: string | number | null;
+  vatRegistrationNumber: string | null;
   revision: number;
   issuedAt: string | null;
   validUntil: string | null;
@@ -167,6 +172,27 @@ export function QuotationDocument({
               </td>
               <td className="py-1 ps-2 text-left font-bold text-red-600">
                 -{formatOMR(fromDbAmount(data.discountAmount))}
+              </td>
+            </tr>
+          )}
+          {data.vatRegistered && data.preVatTotal != null && (
+            <tr>
+              <td colSpan={3} className="py-1 pe-2 text-slate-600">
+                المجموع قبل الضريبة
+              </td>
+              <td className="py-1 ps-2 text-left font-bold">
+                {formatOMR(fromDbAmount(data.preVatTotal))}
+              </td>
+            </tr>
+          )}
+          {data.vatRegistered && (
+            <tr>
+              <td colSpan={3} className="py-1 pe-2 text-slate-600">
+                ضريبة القيمة المضافة ({data.vatPercent}%)
+                {data.vatRegistrationNumber ? ` — ${data.vatRegistrationNumber}` : ""}
+              </td>
+              <td className="py-1 ps-2 text-left font-bold">
+                {formatOMR(fromDbAmount(data.vatAmount))}
               </td>
             </tr>
           )}

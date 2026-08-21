@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { InlineError } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { JobPath } from "@/components/ui/JobPath";
 import { formatOMR } from "@/lib/money";
 import { IssueQuotationDialog } from "./IssueQuotationDialog";
 import { QuotationDetailsStep } from "./QuotationDetailsStep";
@@ -41,8 +42,11 @@ export function QuotationEditor({ draftId }: { draftId?: string }) {
     <div>
       <PageHeader
         title={draftId ? "تعديل عرض السعر" : "عرض سعر جديد"}
-        description="اعمل عرض سعر بسرعة — بدون الحاجة لتسجيل عميل أو إنشاء مناسبة"
+        description="اكتب الخدمات والأسعار، ثم أصدر العرض. بعد موافقة العميل تعتمده وتحوّله إلى مناسبة"
       />
+      <div className="mb-5">
+        <JobPath current="quote" />
+      </div>
       {draft.error && <InlineError message={draft.error} className="mb-4" />}
 
       <div className="grid gap-5 lg:grid-cols-3">

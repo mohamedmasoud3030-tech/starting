@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isoToMuscatWallClock, muscatWallClockToIso, todayInMuscat } from "./dates";
+import {
+  defaultMuscatShift,
+  isoToMuscatWallClock,
+  muscatHour,
+  muscatWallClockToIso,
+  todayInMuscat,
+} from "./dates";
 
 describe("todayInMuscat", () => {
   it("returns the Muscat calendar day, not the UTC day, after UTC midnight", () => {
@@ -23,6 +29,16 @@ describe("todayInMuscat", () => {
     expect(todayInMuscat(new Date("2026-01-05T12:00:00.000Z"))).toMatch(
       /^\d{4}-\d{2}-\d{2}$/,
     );
+  });
+});
+
+describe("defaultMuscatShift", () => {
+  it("is MORNING before 16:00 Muscat and EVENING at or after 16:00", () => {
+    // 11:00 UTC = 15:00 Muscat.
+    expect(muscatHour(new Date("2026-08-19T11:00:00.000Z"))).toBe(15);
+    expect(defaultMuscatShift(new Date("2026-08-19T11:00:00.000Z"))).toBe("MORNING");
+    // 12:00 UTC = 16:00 Muscat.
+    expect(defaultMuscatShift(new Date("2026-08-19T12:00:00.000Z"))).toBe("EVENING");
   });
 });
 

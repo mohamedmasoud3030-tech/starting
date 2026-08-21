@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   EVENT_STATUS_LABELS,
   eventPermissions,
+  eventQuotesOrFilter,
+  jobPathForEventStatus,
+  jobPathForQuoteStatus,
+  pickLinkedQuote,
   readinessText,
   resolveActiveTab,
   visibleWorkspaceTabs,
@@ -157,5 +161,36 @@ describe("resolveActiveTab", () => {
 
   it("falls back to the summary instead of stranding the user on a refusal", () => {
     expect(resolveActiveTab("الفواتير", eventPermissions("WAREHOUSE"))).toBe("ملخص");
+  });
+});
+
+describe("linked quotation after convert", () => {
+  it("looks up quotes by event_id or converted_event_id", () => {
+    expect(eventQuotesOrFilter("ev-1")).toBe(
+      "event_id.eq.ev-1,converted_event_id.eq.ev-1",
+    );
+  });
+
+  it("prefers the accepted quotation id, then a converted snapshot", () => {
+    const quotes = [
+      { id: "q-old", status: "SUPERSEDED" },
+      { id: "q-live", status: "CONVERTED" },
+    ];
+    expect(pickLinkedQuote(quotes, "q-live")?.id).toBe("q-live");
+    expect(pickLinkedQuote(quotes, null)?.id).toBe("q-live");
+    expect(pickLinkedQuote([], null)).toBeNull();
+  });
+});
+
+describe("job path from quote to profit", () => {
+  it("walks quote statuses then event statuses", () => {
+    expect(jobPathForQuoteStatus("DRAFT")).toBe("quote");
+    expect(jobPathForQuoteStatus("ISSUED")).toBe("quote");
+    expect(jobPathForQuoteStatus("ACCEPTED")).toBe("accept");
+    expect(jobPathForQuoteStatus("CONVERTED")).toBe("event");
+    expect(jobPathForEventStatus("CONFIRMED", false)).toBe("event");
+    expect(jobPathForEventStatus("IN_PROGRESS", false)).toBe("run");
+    expect(jobPathForEventStatus("CLOSED", false)).toBe("money");
+    expect(jobPathForEventStatus("CLOSED", true)).toBe("done");
   });
 });

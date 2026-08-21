@@ -9,6 +9,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import type { MilliOMR } from "@/lib/money";
 import type { CompensationMethod, StaffType } from "@/lib/dbTypes";
 import { COMPENSATION_LABELS, STAFF_TYPE_LABELS } from "./labels";
+import { EvidenceFileField } from "@/features/attachments/EvidenceFileField";
 import {
   useSaveStaffMember,
   type StaffMemberFormValues,
@@ -45,6 +46,7 @@ export function StaffMemberDialog({
   );
   const [phone, setPhone] = useState(() => member?.phone ?? "");
   const [whatsapp, setWhatsapp] = useState(() => member?.whatsapp ?? "");
+  const [idNumber, setIdNumber] = useState(() => member?.idNumber ?? "");
   const [method, setMethod] = useState<CompensationMethod>(
     () => member?.defaultCompensationMethod ?? "PER_EVENT",
   );
@@ -71,6 +73,7 @@ export function StaffMemberDialog({
       staffType,
       phone,
       whatsapp,
+      idNumber,
       compensationMethod: method,
       rateMilli,
       isActive,
@@ -135,6 +138,14 @@ export function StaffMemberDialog({
             onChange={(e) => setWhatsapp(e.target.value)}
           />
         </Field>
+        <Field label="رقم الهوية / البطاقة المدنية" htmlFor="staff-id-number">
+          <Input
+            id="staff-id-number"
+            dir="ltr"
+            value={idNumber}
+            onChange={(e) => setIdNumber(e.target.value)}
+          />
+        </Field>
         <Field label="طريقة الأجر الافتراضية" htmlFor="staff-method" required>
           <Select
             id="staff-method"
@@ -174,6 +185,31 @@ export function StaffMemberDialog({
             />
           </Field>
         </div>
+        {isEditing && member && orgId && (
+          <div className="grid gap-4 rounded-xl border border-slate-200 p-3 sm:col-span-2 sm:grid-cols-2">
+            <p className="font-black sm:col-span-2">المستندات الخاصة</p>
+            <EvidenceFileField
+              orgId={orgId}
+              evidenceType="STAFF_ID"
+              entityType="staff_member"
+              entityId={member.id}
+              label="صورة الهوية / البطاقة المدنية"
+              hint="محفوظة بشكل خاص — يراها المالك والمدير فقط"
+              supersede
+              canEdit
+            />
+            <EvidenceFileField
+              orgId={orgId}
+              evidenceType="STAFF_CONTRACT"
+              entityType="staff_member"
+              entityId={member.id}
+              label="عقد العمل"
+              hint="PDF أو صورة — يراها المالك والمدير فقط"
+              supersede
+              canEdit
+            />
+          </div>
+        )}
         {error && (
           <p className="text-sm font-bold text-red-700 sm:col-span-2" role="alert">
             {error}

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import type { OrganizationSettingsRow } from "@/lib/dbTypes";
 import {
@@ -41,14 +42,24 @@ const EMPTY_FORM: FormState = {
   event_number_prefix: "EV",
   manager_name: "",
   manager_title: "",
+  vat_registered: "false",
+  vat_percent: "5.000",
+  vat_registration_number: "",
 };
 
 function toForm(row: OrganizationSettingsRow | null): FormState {
   if (!row) return { ...EMPTY_FORM };
-  const { organization_id: _o, created_at: _c, updated_at: _u, ...rest } = row;
-  return Object.fromEntries(
-    Object.entries(rest).map(([k, v]) => [k, v == null ? "" : String(v)]),
-  ) as FormState;
+  return {
+    ...EMPTY_FORM,
+    ...Object.fromEntries(
+      Object.entries(row)
+        .filter(([k]) => k !== "organization_id" && k !== "created_at" && k !== "updated_at")
+        .map(([k, v]) => [
+          k,
+          k === "vat_registered" ? String(!!v) : v == null ? "" : String(v),
+        ]),
+    ),
+  } as FormState;
 }
 
 export function SettingsPage() {
@@ -104,6 +115,9 @@ export function SettingsPage() {
         p_event_number_prefix: form.event_number_prefix,
         p_manager_name: form.manager_name,
         p_manager_title: form.manager_title,
+        p_vat_registered: form.vat_registered === "true",
+        p_vat_percent: Number(form.vat_percent || "0"),
+        p_vat_registration_number: form.vat_registration_number,
       });
       setSavedAt(new Date().toLocaleTimeString("ar-OM", { timeZone: "Asia/Muscat" }));
     } catch (cause) {
@@ -235,6 +249,45 @@ export function SettingsPage() {
               </Field>
               <Field label="بادئة المناسبات" htmlFor="set-pe">
                 <Input id="set-pe" dir="ltr" value={form.event_number_prefix} onChange={(e) => set("event_number_prefix", e.target.value)} disabled={!isOwner} />
+              </Field>
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <h2 className="font-black">ضريبة القيمة المضافة (VAT)</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              عند التفعيل تُثبَّت النسبة على عروض الأسعار والفواتير وقت الإصدار، ولا تتغير المستندات الصادرة لاحقاً.
+            </p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-3">
+              <Field label="مسجّل في الضريبة" htmlFor="set-vat-registered">
+                <Select
+                  id="set-vat-registered"
+                  value={form.vat_registered === "true" ? "true" : "false"}
+                  onChange={(e) => set("vat_registered", e.target.value)}
+                  disabled={!isOwner}
+                >
+                  <option value="false">غير مسجّل</option>
+                  <option value="true">مسجّل</option>
+                </Select>
+              </Field>
+              <Field label="نسبة الضريبة %" htmlFor="set-vat-percent">
+                <Input
+                  id="set-vat-percent"
+                  dir="ltr"
+                  inputMode="decimal"
+                  value={form.vat_percent}
+                  onChange={(e) => set("vat_percent", e.target.value)}
+                  disabled={!isOwner}
+                />
+              </Field>
+              <Field label="الرقم الضريبي" htmlFor="set-vat-number">
+                <Input
+                  id="set-vat-number"
+                  dir="ltr"
+                  value={form.vat_registration_number}
+                  onChange={(e) => set("vat_registration_number", e.target.value)}
+                  disabled={!isOwner}
+                />
               </Field>
             </div>
           </Card>

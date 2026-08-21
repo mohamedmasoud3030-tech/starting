@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -11,11 +11,12 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { formatOMR, type MilliOMR } from "@/lib/money";
 import { todayInMuscat } from "@/lib/dates";
 import type { PaymentMethod } from "@/lib/dbTypes";
+import { uploadEvidenceFile } from "@/features/attachments/attachments.api";
 import {
   attendanceError,
   useEventPayroll,
   useRecordAdvance,
-  useRecordPayout,
+  useRecordPayoutMulti,
 } from "./staff.api";
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_OPTIONS } from "@/features/payments/presentation";
 import { InlineError } from "@/components/ui/ErrorState";
@@ -32,7 +33,7 @@ export function HostPayrollPanel({
 }) {
   const payroll = useEventPayroll(orgId, eventId);
   const recordAdvance = useRecordAdvance(orgId);
-  const recordPayout = useRecordPayout(orgId);
+  const recordPayout = useRecordPayoutMulti(orgId);
 
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
@@ -43,6 +44,8 @@ export function HostPayrollPanel({
   const [method, setMethod] = useState<PaymentMethod>("CASH");
   const [reference, setReference] = useState("");
   const [reason, setReason] = useState("");
+  const [receipt, setReceipt] = useState<File | null>(null);
+  const receiptInput = useRef<HTMLInputElement>(null);
 
   const rows = payroll.data ?? [];
   const assignedHostOptions = rows.map((r) => ({ id: r.staffMemberId, name: r.staffName }));
@@ -67,20 +70,38 @@ export function HostPayrollPanel({
           reason,
         });
       } else {
+        let receiptEvidence = null;
+        if (receipt && orgId) {
+          const uploaded = await uploadEvidenceFile(
+            orgId,
+            "HOST_PAYOUT_RECEIPT",
+            "host_payout",
+            receipt,
+          );
+          receiptEvidence = {
+            evidencePath: uploaded.storagePath,
+            evidenceFileName: uploaded.fileName,
+            evidenceMimeType: uploaded.mimeType,
+            evidenceSizeBytes: uploaded.sizeBytes,
+          };
+        }
         await recordPayout.mutateAsync({
           staffMemberId,
-          eventId,
           amountMilli,
           payoutDate: date,
           method,
           reference,
           reason,
+          allocations: [{ eventId, amountMilli }],
+          receipt: receiptEvidence,
         });
       }
       setOpen(false);
       setAmountMilli(0);
       setReference("");
       setReason("");
+      setReceipt(null);
+      if (receiptInput.current) receiptInput.current.value = "";
     } catch (cause) {
       setError(attendanceError(cause));
     }
@@ -191,6 +212,17 @@ export function HostPayrollPanel({
           {mode === "PAYOUT" && (
             <Field label="المرجع" htmlFor="pay-ref">
               <Input id="pay-ref" dir="ltr" placeholder="مثال: TRX-1234" value={reference} onChange={(e) => setReference(e.target.value)} />
+            </Field>
+          )}
+          {mode === "PAYOUT" && (
+            <Field label="إيصال / إثبات تحويل (اختياري)" htmlFor="pay-receipt">
+              <Input
+                id="pay-receipt"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                ref={receiptInput}
+                onChange={(e) => setReceipt(e.target.files?.[0] ?? null)}
+              />
             </Field>
           )}
           <Field label="سبب / ملاحظات" htmlFor="pay-reason">

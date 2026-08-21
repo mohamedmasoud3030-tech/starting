@@ -24,6 +24,7 @@ import {
 import { useWarehousePanel } from "./useWarehousePanel";
 import { WarehouseLineCard } from "./WarehouseLineCard";
 import { WarehouseReconcileSection } from "./WarehouseReconcileSection";
+import { DeliverySignature } from "./DeliverySignature";
 
 interface WarehousePanelProps {
   orgId: string | null;
@@ -52,6 +53,8 @@ export function WarehousePanel({
   if (!warehouse.data) return <p>تعذر تحميل حالة المخزن.</p>;
 
   const { lines, defects, summary } = warehouse.data;
+  const canCaptureEvidence =
+    role === "OWNER" || role === "MANAGER" || role === "WAREHOUSE";
 
   return (
     <div className="space-y-4">
@@ -100,10 +103,12 @@ export function WarehousePanel({
           {lines.map((line) => (
             <WarehouseLineCard
               key={line.reservationId}
+              orgId={orgId}
               line={line}
               eventStatus={eventStatus}
               role={role}
               canReadCost={canReadCost}
+              canCaptureEvidence={canCaptureEvidence}
               busy={panel.busy}
               onDispatch={(l, q, r) => void panel.runDispatch(l, q, r)}
               onReturn={(l, q, n) => void panel.runReturn(l, q, n)}
@@ -123,6 +128,10 @@ export function WarehousePanel({
         onNotesChange={panel.setReconcileNotes}
         onConfirm={() => void panel.runReconcile()}
       />
+
+      {orgId && lines.length > 0 && (
+        <DeliverySignature orgId={orgId} eventId={eventId} canEdit={canCaptureEvidence} />
+      )}
     </div>
   );
 }

@@ -33,6 +33,12 @@ export const STAFF_TYPE_LABELS: Record<string, string> = {
   OTHER: "أخرى",
 };
 
+export const ASSIGNMENT_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: "مسند",
+  RELEASED: "محرّر",
+  CANCELLED: "ملغى",
+};
+
 export const ATTENDANCE_STATUS_TONE: Record<
   AttendanceStatus,
   "success" | "warning" | "danger" | "neutral"

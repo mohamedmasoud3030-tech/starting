@@ -50,33 +50,8 @@ export function QuotationServicesStep({
         <span className="text-brand-700">٢.</span> الخدمات والسعر
       </h2>
       <p className="mb-4 text-sm text-slate-500">
-        أضف خدمات من باقة جاهزة أو أضف خدمة يدوياً. الإجمالي يتحدث مباشرة.
+        أضف الخدمات والأسعار يدوياً. الباقة اختيارية وليست مطلوبة لإصدار العرض.
       </p>
-
-      <div className="mb-4 flex flex-wrap items-end gap-2">
-        <div className="min-w-52 flex-1">
-          <Field label="باقة جاهزة" htmlFor="qq-package">
-            <Select
-              id="qq-package"
-              value={selectedPackage}
-              onChange={(e) => onSelectedPackageChange(e.target.value)}
-            >
-              <option value="">اختر الباقة…</option>
-              {packages
-                .filter((p) => p.package.status === "ACTIVE")
-                .map((p) => (
-                  <option key={p.package.id} value={p.package.id}>
-                    {p.package.name}
-                  </option>
-                ))}
-            </Select>
-          </Field>
-        </div>
-        <Button variant="secondary" onClick={onApplyPackage}>
-          <Package className="h-5 w-5" />
-          تطبيق الباقة
-        </Button>
-      </div>
 
       <form className="grid gap-3 sm:grid-cols-6" onSubmit={onAddCustomLine}>
         <div className="sm:col-span-3">
@@ -128,6 +103,31 @@ export function QuotationServicesStep({
           </Button>
         </div>
       </form>
+
+      <div className="mt-4 flex flex-wrap items-end gap-2 rounded-xl bg-slate-50 p-3">
+        <div className="min-w-52 flex-1">
+          <Field label="باقة جاهزة" htmlFor="qq-package">
+            <Select
+              id="qq-package"
+              value={selectedPackage}
+              onChange={(e) => onSelectedPackageChange(e.target.value)}
+            >
+              <option value="">اختياري — اختر الباقة…</option>
+              {packages
+                .filter((p) => p.package.status === "ACTIVE")
+                .map((p) => (
+                  <option key={p.package.id} value={p.package.id}>
+                    {p.package.name}
+                  </option>
+                ))}
+            </Select>
+          </Field>
+        </div>
+        <Button variant="secondary" onClick={onApplyPackage}>
+          <Package className="h-5 w-5" />
+          تطبيق الباقة
+        </Button>
+      </div>
 
       <div className="mt-4 space-y-2">
         {lines.length === 0 ? (

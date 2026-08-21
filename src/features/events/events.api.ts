@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { callRpc } from "@/lib/rpc";
+import { eventQuotesOrFilter } from "./eventWorkspace.model";
 
 /**
  * Events data layer: list/detail reads, the workspace aggregate read, the
@@ -67,7 +68,7 @@ export interface Quote {
   id: string;
   quotation_number: string;
   revision: number;
-  status: "ISSUED" | "ACCEPTED" | "SUPERSEDED";
+  status: "ISSUED" | "ACCEPTED" | "CONVERTED" | "SUPERSEDED";
   total_selling: string;
   total_expected_cost?: string;
   total_expected_profit?: string;
@@ -90,6 +91,8 @@ export interface Assignment {
   status: string;
   scheduled_start: string;
   scheduled_end: string;
+  compensation_method?: string | null;
+  rate?: string | number | null;
 }
 
 export interface EventReadiness {
@@ -271,7 +274,8 @@ export function useWorkspaceData(
         db
           .from(quoteTable)
           .select("*")
-          .eq("event_id", eventId)
+          .eq("organization_id", orgId!)
+          .or(eventQuotesOrFilter(eventId))
           .order("revision", { ascending: false }),
         db
           .from(staffTable)

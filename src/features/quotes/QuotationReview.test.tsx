@@ -18,7 +18,8 @@ const authMock = vi.hoisted(() =>
 );
 
 const state = vi.hoisted(() => ({
-  quotationStatus: "ISSUED" as "ISSUED" | "ACCEPTED" | "SUPERSEDED",
+  quotationStatus: "ISSUED" as "ISSUED" | "ACCEPTED" | "CONVERTED" | "SUPERSEDED",
+  convertedEventId: null as string | null,
   rpcCalls: [] as Array<{ name: string; args: Record<string, unknown> }>,
 }));
 
@@ -47,7 +48,7 @@ vi.mock("@/lib/supabase", () => {
     start_at_snapshot: "2026-09-01T10:00:00+04:00", end_at_snapshot: "2026-09-01T14:00:00+04:00",
     venue_snapshot: "قاعة الريان", location_snapshot: null, terms: null, notes: null,
     total_selling: "850.000", issued_at: "2026-08-14T00:00:00Z", accepted_at: null,
-    converted_event_id: null, created_at: "2026-08-14T00:00:00Z", updated_at: "2026-08-14T00:00:00Z",
+    converted_event_id: state.convertedEventId, created_at: "2026-08-14T00:00:00Z", updated_at: "2026-08-14T00:00:00Z",
   });
   function builderFor(table: string) {
     const rows: unknown[] = table === "quotations_customer"
@@ -77,7 +78,17 @@ vi.mock("@/app/authContext", () => ({
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => navigateMock,
-  Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
+  Link: ({
+    to,
+    params,
+    children,
+  }: {
+    to: string;
+    params?: { eventId?: string };
+    children: ReactNode;
+  }) => (
+    <a href={to.replace("$eventId", params?.eventId ?? "")}>{children}</a>
+  ),
 }));
 
 function renderReview() {
@@ -93,6 +104,7 @@ function renderReview() {
 
 beforeEach(() => {
   state.quotationStatus = "ISSUED";
+  state.convertedEventId = null;
   state.rpcCalls.length = 0;
   rpcMock.mockClear();
   navigateMock.mockClear();
@@ -162,6 +174,15 @@ describe("QuotationReview", () => {
         params: { eventId: "ev-1" },
       }),
     );
+  });
+
+  it("opens the converted event so the job can continue", async () => {
+    state.quotationStatus = "CONVERTED";
+    state.convertedEventId = "ev-9";
+    renderReview();
+    const link = await screen.findByRole("link", { name: "افتح المناسبة" });
+    expect(link).toHaveAttribute("href", "/events/ev-9");
+    expect(screen.getByText(/أكمل التنفيذ والتحصيل من المناسبة/)).toBeInTheDocument();
   });
 
   it("hides accept/convert actions for non-commercial roles", async () => {
