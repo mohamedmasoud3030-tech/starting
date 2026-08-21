@@ -9,6 +9,62 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      attachment_evidence: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          evidence_type: Database["public"]["Enums"]["attachment_evidence_type"]
+          file_name: string
+          id: string
+          metadata: Json | null
+          mime_type: string
+          organization_id: string
+          size_bytes: number
+          storage_path: string
+          superseded_at: string | null
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          evidence_type: Database["public"]["Enums"]["attachment_evidence_type"]
+          file_name: string
+          id?: string
+          metadata?: Json | null
+          mime_type: string
+          organization_id: string
+          size_bytes: number
+          storage_path: string
+          superseded_at?: string | null
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          evidence_type?: Database["public"]["Enums"]["attachment_evidence_type"]
+          file_name?: string
+          id?: string
+          metadata?: Json | null
+          mime_type?: string
+          organization_id?: string
+          size_bytes?: number
+          storage_path?: string
+          superseded_at?: string | null
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attachment_evidence_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_events: {
         Row: {
           action: string
@@ -1234,6 +1290,48 @@ export type Database = {
           },
         ]
       }
+      host_payout_allocations: {
+        Row: {
+          amount: number
+          created_at: string
+          event_id: string
+          id: string
+          organization_id: string
+          payout_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          event_id: string
+          id?: string
+          organization_id: string
+          payout_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          event_id?: string
+          id?: string
+          organization_id?: string
+          payout_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "host_payout_allocations_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "host_payout_allocations_org_payout_fk"
+            columns: ["organization_id", "payout_id"]
+            isOneToOne: false
+            referencedRelation: "host_payouts"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       host_payouts: {
         Row: {
           amount: number
@@ -1348,6 +1446,13 @@ export type Database = {
             foreignKeyName: "invoice_installments_org_fk"
             columns: ["organization_id", "invoice_id"]
             isOneToOne: false
+            referencedRelation: "invoice_summaries"
+            referencedColumns: ["organization_id", "invoice_id"]
+          },
+          {
+            foreignKeyName: "invoice_installments_org_fk"
+            columns: ["organization_id", "invoice_id"]
+            isOneToOne: false
             referencedRelation: "invoices"
             referencedColumns: ["organization_id", "id"]
           },
@@ -1365,9 +1470,14 @@ export type Database = {
           issued_at: string
           note: string | null
           organization_id: string
+          pre_vat_total: number
           quotation_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           total_amount: number
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           void_reason: string | null
           voided_at: string | null
           voided_by: string | null
@@ -1383,9 +1493,14 @@ export type Database = {
           issued_at?: string
           note?: string | null
           organization_id: string
+          pre_vat_total?: number
           quotation_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           total_amount: number
+          vat_amount?: number
+          vat_percent?: number
+          vat_registered?: boolean
+          vat_registration_number?: string | null
           void_reason?: string | null
           voided_at?: string | null
           voided_by?: string | null
@@ -1401,9 +1516,14 @@ export type Database = {
           issued_at?: string
           note?: string | null
           organization_id?: string
+          pre_vat_total?: number
           quotation_id?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           total_amount?: number
+          vat_amount?: number
+          vat_percent?: number
+          vat_registered?: boolean
+          vat_registration_number?: string | null
           void_reason?: string | null
           voided_at?: string | null
           voided_by?: string | null
@@ -1489,6 +1609,9 @@ export type Database = {
           quotation_number_prefix: string
           region: string | null
           updated_at: string
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           whatsapp: string | null
         }
         Insert: {
@@ -1516,6 +1639,9 @@ export type Database = {
           quotation_number_prefix?: string
           region?: string | null
           updated_at?: string
+          vat_percent?: number
+          vat_registered?: boolean
+          vat_registration_number?: string | null
           whatsapp?: string | null
         }
         Update: {
@@ -1543,6 +1669,9 @@ export type Database = {
           quotation_number_prefix?: string
           region?: string | null
           updated_at?: string
+          vat_percent?: number
+          vat_registered?: boolean
+          vat_registration_number?: string | null
           whatsapp?: string | null
         }
         Relationships: [
@@ -2106,6 +2235,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -2129,6 +2259,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         Insert: {
@@ -2160,6 +2294,7 @@ export type Database = {
           location_snapshot?: string | null
           notes?: string | null
           organization_id: string
+          pre_vat_total?: number
           prospect_company?: string | null
           prospect_whatsapp?: string | null
           quotation_number?: string | null
@@ -2183,6 +2318,10 @@ export type Database = {
           transport_zone?: string | null
           updated_at?: string
           valid_until?: string | null
+          vat_amount?: number
+          vat_percent?: number
+          vat_registered?: boolean
+          vat_registration_number?: string | null
           venue_snapshot?: string | null
         }
         Update: {
@@ -2214,6 +2353,7 @@ export type Database = {
           location_snapshot?: string | null
           notes?: string | null
           organization_id?: string
+          pre_vat_total?: number
           prospect_company?: string | null
           prospect_whatsapp?: string | null
           quotation_number?: string | null
@@ -2237,6 +2377,10 @@ export type Database = {
           transport_zone?: string | null
           updated_at?: string
           valid_until?: string | null
+          vat_amount?: number
+          vat_percent?: number
+          vat_registered?: boolean
+          vat_registration_number?: string | null
           venue_snapshot?: string | null
         }
         Relationships: [
@@ -2428,6 +2572,7 @@ export type Database = {
           default_compensation_method: Database["public"]["Enums"]["compensation_method"]
           default_rate: number
           id: string
+          id_number: string | null
           is_active: boolean
           name: string
           notes: string | null
@@ -2442,6 +2587,7 @@ export type Database = {
           default_compensation_method: Database["public"]["Enums"]["compensation_method"]
           default_rate: number
           id?: string
+          id_number?: string | null
           is_active?: boolean
           name: string
           notes?: string | null
@@ -2456,6 +2602,7 @@ export type Database = {
           default_compensation_method?: Database["public"]["Enums"]["compensation_method"]
           default_rate?: number
           id?: string
+          id_number?: string | null
           is_active?: boolean
           name?: string
           notes?: string | null
@@ -2780,7 +2927,55 @@ export type Database = {
           staff_name: string | null
           staff_type: Database["public"]["Enums"]["staff_type"] | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "staff_attendance_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_attendance_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      host_payout_allocation_summaries: {
+        Row: {
+          allocation_id: string | null
+          amount: number | null
+          created_at: string | null
+          event_id: string | null
+          event_number: string | null
+          event_title: string | null
+          organization_id: string | null
+          payout_date: string | null
+          payout_id: string | null
+          payout_status:
+            | Database["public"]["Enums"]["host_payment_status"]
+            | null
+          staff_member_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "host_payout_allocations_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "host_payout_allocations_org_payout_fk"
+            columns: ["organization_id", "payout_id"]
+            isOneToOne: false
+            referencedRelation: "host_payouts"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
       }
       host_payout_summaries: {
         Row: {
@@ -2837,14 +3032,34 @@ export type Database = {
           note: string | null
           organization_id: string | null
           paid_total: number | null
+          pre_vat_total: number | null
           quotation_id: string | null
           remaining_balance: number | null
           total_amount: number | null
+          vat_amount: number | null
+          vat_percent: number | null
+          vat_registered: boolean | null
+          vat_registration_number: string | null
           void_reason: string | null
           voided_at: string | null
           voided_by: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "invoices_org_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "invoices_org_quotation_fk"
+            columns: ["organization_id", "quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
       }
       payments_command_idempotency: {
         Row: {
@@ -3130,6 +3345,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string | null
+          pre_vat_total: number | null
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -3150,6 +3366,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string | null
           valid_until: string | null
+          vat_amount: number | null
+          vat_percent: number | null
+          vat_registered: boolean | null
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         Relationships: []
@@ -3796,6 +4016,7 @@ export type Database = {
           location_snapshot: string
           notes: string
           organization_id: string
+          pre_vat_total: number
           prospect_company: string
           prospect_whatsapp: string
           quotation_number: string
@@ -3816,6 +4037,10 @@ export type Database = {
           transport_zone: string
           updated_at: string
           valid_until: string
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string
           venue_snapshot: string
         }[]
       }
@@ -3952,6 +4177,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -3975,6 +4201,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -4019,6 +4249,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -4042,6 +4273,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -4178,6 +4413,56 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      attach_evidence: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_evidence_type: Database["public"]["Enums"]["attachment_evidence_type"]
+          p_file_name: string
+          p_idempotency_key?: string
+          p_metadata?: Json
+          p_mime_type: string
+          p_org_id: string
+          p_size_bytes: number
+          p_storage_path: string
+          p_supersede?: boolean
+        }
+        Returns: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          evidence_type: Database["public"]["Enums"]["attachment_evidence_type"]
+          file_name: string
+          id: string
+          metadata: Json | null
+          mime_type: string
+          organization_id: string
+          size_bytes: number
+          storage_path: string
+          superseded_at: string | null
+          uploaded_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "attachment_evidence"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      attachment_evidence_read_gate: {
+        Args: {
+          p_evidence_type: Database["public"]["Enums"]["attachment_evidence_type"]
+          p_org_id: string
+        }
+        Returns: boolean
+      }
+      attachment_evidence_write_gate: {
+        Args: {
+          p_evidence_type: Database["public"]["Enums"]["attachment_evidence_type"]
+          p_org_id: string
+        }
+        Returns: boolean
+      }
       begin_command: {
         Args: {
           p_command_scope: string
@@ -4213,6 +4498,18 @@ export type Database = {
       }
       can_manage_commercial: { Args: { p_org_id: string }; Returns: boolean }
       can_read_cost: { Args: { p_org_id: string }; Returns: boolean }
+      can_view_financial_evidence: {
+        Args: { p_org_id: string }
+        Returns: boolean
+      }
+      can_view_operational_evidence: {
+        Args: { p_org_id: string }
+        Returns: boolean
+      }
+      can_view_sensitive_staff_evidence: {
+        Args: { p_org_id: string }
+        Returns: boolean
+      }
       cancel_event: {
         Args: {
           p_event_id: string
@@ -4324,6 +4621,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -4347,6 +4645,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -4356,42 +4658,14 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      close_event_financially: {
-        Args: {
-          p_event_id: string
-          p_idempotency_key?: string
-          p_note?: string
-          p_org_id: string
-        }
-        Returns: {
-          close_note: string | null
-          closed_at: string
-          closed_by: string
-          collected_at_close: number | null
-          costs_at_close: number | null
-          created_at: string
-          event_id: string
-          id: string
-          margin_at_close: number | null
-          organization_id: string
-          outstanding_at_close: number | null
-          profit_at_close: number | null
-          reopen_reason: string | null
-          reopened_at: string | null
-          reopened_by: string | null
-          revenue_at_close: number | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "event_financial_closures"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
       clock_staff_in: {
         Args: {
           p_assignment_id: string
           p_event_id: string
+          p_evidence_file_name: string
+          p_evidence_mime_type: string
+          p_evidence_path: string
+          p_evidence_size_bytes: number
           p_idempotency_key: string
           p_notes: string
           p_org_id: string
@@ -4433,6 +4707,10 @@ export type Database = {
       clock_staff_out: {
         Args: {
           p_event_id: string
+          p_evidence_file_name: string
+          p_evidence_mime_type: string
+          p_evidence_path: string
+          p_evidence_size_bytes: number
           p_idempotency_key: string
           p_notes: string
           p_org_id: string
@@ -4466,6 +4744,38 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "staff_attendance"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      close_event_financially: {
+        Args: {
+          p_event_id: string
+          p_idempotency_key?: string
+          p_note?: string
+          p_org_id: string
+        }
+        Returns: {
+          close_note: string | null
+          closed_at: string
+          closed_by: string
+          collected_at_close: number | null
+          costs_at_close: number | null
+          created_at: string
+          event_id: string
+          id: string
+          margin_at_close: number | null
+          organization_id: string
+          outstanding_at_close: number | null
+          profit_at_close: number | null
+          reopen_reason: string | null
+          reopened_at: string | null
+          reopened_by: string | null
+          revenue_at_close: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_financial_closures"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -4677,9 +4987,14 @@ export type Database = {
           issued_at: string
           note: string | null
           organization_id: string
+          pre_vat_total: number
           quotation_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           total_amount: number
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           void_reason: string | null
           voided_at: string | null
           voided_by: string | null
@@ -4787,6 +5102,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -4810,6 +5126,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -5023,6 +5343,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -5046,6 +5367,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -5222,6 +5547,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -5245,6 +5571,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -5291,6 +5621,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -5314,11 +5645,49 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
           from: "*"
           to: "quotations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      link_evidence: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_evidence_type: Database["public"]["Enums"]["attachment_evidence_type"]
+          p_file_name: string
+          p_metadata?: Json
+          p_mime_type: string
+          p_org_id: string
+          p_size_bytes: number
+          p_storage_path: string
+        }
+        Returns: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          evidence_type: Database["public"]["Enums"]["attachment_evidence_type"]
+          file_name: string
+          id: string
+          metadata: Json | null
+          mime_type: string
+          organization_id: string
+          size_bytes: number
+          storage_path: string
+          superseded_at: string | null
+          uploaded_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "attachment_evidence"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -5421,6 +5790,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -5444,6 +5814,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -5746,6 +6120,48 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      record_host_payout_multi: {
+        Args: {
+          p_allocations: Json
+          p_amount: number
+          p_evidence_file_name?: string
+          p_evidence_mime_type?: string
+          p_evidence_path?: string
+          p_evidence_size_bytes?: number
+          p_idempotency_key?: string
+          p_org_id: string
+          p_payment_method: Database["public"]["Enums"]["payment_method"]
+          p_payout_date: string
+          p_reason: string
+          p_reference: string
+          p_staff_member_id: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          organization_id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          payout_date: string
+          reason: string | null
+          recorded_by: string
+          reference: string | null
+          request_fingerprint: string
+          staff_member_id: string
+          status: Database["public"]["Enums"]["host_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "host_payouts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       record_staff_advance: {
         Args: {
           p_advance_date: string
@@ -5863,6 +6279,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -5886,6 +6303,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -6105,6 +6526,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -6128,6 +6550,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -6227,6 +6653,9 @@ export type Database = {
           p_primary_color?: string
           p_quotation_number_prefix?: string
           p_region?: string
+          p_vat_percent?: number
+          p_vat_registered?: boolean
+          p_vat_registration_number?: string
           p_whatsapp?: string
         }
         Returns: {
@@ -6254,6 +6683,9 @@ export type Database = {
           quotation_number_prefix: string
           region: string | null
           updated_at: string
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           whatsapp: string | null
         }
         SetofOptions: {
@@ -6323,6 +6755,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -6346,6 +6779,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -6485,6 +6922,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -6508,6 +6946,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -6690,6 +7132,7 @@ export type Database = {
           location_snapshot: string | null
           notes: string | null
           organization_id: string
+          pre_vat_total: number
           prospect_company: string | null
           prospect_whatsapp: string | null
           quotation_number: string | null
@@ -6713,6 +7156,10 @@ export type Database = {
           transport_zone: string | null
           updated_at: string
           valid_until: string | null
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           venue_snapshot: string | null
         }
         SetofOptions: {
@@ -6877,9 +7324,14 @@ export type Database = {
           issued_at: string
           note: string | null
           organization_id: string
+          pre_vat_total: number
           quotation_id: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           total_amount: number
+          vat_amount: number
+          vat_percent: number
+          vat_registered: boolean
+          vat_registration_number: string | null
           void_reason: string | null
           voided_at: string | null
           voided_by: string | null
@@ -7039,6 +7491,16 @@ export type Database = {
     Enums: {
       app_role: "OWNER" | "MANAGER" | "SUPERVISOR" | "WAREHOUSE" | "ACCOUNTANT"
       assignment_status: "ACTIVE" | "RELEASED" | "CANCELLED"
+      attachment_evidence_type:
+        | "STAFF_ID"
+        | "STAFF_CONTRACT"
+        | "ATTENDANCE_CHECKIN"
+        | "ATTENDANCE_CHECKOUT"
+        | "HOST_PAYOUT_RECEIPT"
+        | "EXPENSE_RECEIPT"
+        | "DELIVERY_PROOF"
+        | "RETURN_PROOF"
+        | "EQUIPMENT_DAMAGE"
       attendance_status: "PRESENT" | "LATE" | "PARTIAL" | "ABSENT" | "VOIDED"
       catalog_item_status: "ACTIVE" | "INACTIVE"
       catalog_item_type:
@@ -7265,6 +7727,17 @@ export const Constants = {
     Enums: {
       app_role: ["OWNER", "MANAGER", "SUPERVISOR", "WAREHOUSE", "ACCOUNTANT"],
       assignment_status: ["ACTIVE", "RELEASED", "CANCELLED"],
+      attachment_evidence_type: [
+        "STAFF_ID",
+        "STAFF_CONTRACT",
+        "ATTENDANCE_CHECKIN",
+        "ATTENDANCE_CHECKOUT",
+        "HOST_PAYOUT_RECEIPT",
+        "EXPENSE_RECEIPT",
+        "DELIVERY_PROOF",
+        "RETURN_PROOF",
+        "EQUIPMENT_DAMAGE",
+      ],
       attendance_status: ["PRESENT", "LATE", "PARTIAL", "ABSENT", "VOIDED"],
       catalog_item_status: ["ACTIVE", "INACTIVE"],
       catalog_item_type: [
