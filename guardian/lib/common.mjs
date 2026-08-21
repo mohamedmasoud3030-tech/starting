@@ -2,19 +2,18 @@
 /**
  * Database Guardian — shared helpers.
  *
- * The Guardian is a permanent, code-based system in this repository that
- * detects and prevents database problems automatically:
- *   - deterministic checks (static file analysis + dynamic SQL probes)
- *   - PostgreSQL/Supabase tests (pgTAP under supabase/tests/)
- *   - CI/local gates that block CRITICAL/HIGH regressions
- *   - a machine-readable report (PASS/FAIL, severity, finding ID, evidence)
- *
- * Dynamic Guardian runs are intentionally scratch-only: this module will not
- * create/drop databases on a remote host. Live/production databases must never
- * be passed to withScratchDatabase().
+ * Dynamic Guardian runs are intentionally scratch-only. Every destructive
+ * CREATE/DROP DATABASE path is restricted to localhost/loopback, uses a unique
+ * database name, and cleans it up in a finally block.
  */
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import {
+  readFileSync,
+  readdirSync,
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+} from "node:fs";
 import { join, dirname } from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -30,14 +29,22 @@ export const MIGRATIONS_DIR = join(ROOT, "supabase", "migrations");
 export const TESTS_DIR = join(ROOT, "supabase", "tests");
 export const NATIVE_DIR = join(ROOT, "scripts", "native-db");
 
-export const SEVERITY_RANK = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, INFO: 0 };
+export const SEVERITY_RANK = {
+  CRITICAL: 4,
+  HIGH: 3,
+  MEDIUM: 2,
+  LOW: 1,
+  INFO: 0,
+};
 
 export function hashFile(filePath) {
   return createHash("sha256").update(readFileSync(filePath)).digest("hex");
 }
 
 export function migrationFiles() {
-  return readdirSync(MIGRATIONS_DIR).filter((f) => f.endsWith(".sql")).sort();
+  return readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
 }
 
 export function readJson(filePath) {
@@ -49,19 +56,86 @@ export function writeJson(filePath, data) {
   writeFileSync(filePath, JSON.stringify(data, null, 2) + "\n");
 }
 
+/** Return a credential-free DB label safe for logs/artifacts. */
+export function redactDatabaseUrl(dbUrl) {
+  try {
+    const parsed = new URL(dbUrl);
+    parsed.username = "";
+    parsed.password = "";
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.toString().replace(/\/$/, parsed.pathname === "/" ? "/" : "");
+  } catch {
+    return "<invalid-db-url>";
+  }
+}
+
 /**
- * Collects findings for a single check run.
+ * Scratch replays are destructive by design, so only PostgreSQL loopback URLs
+ * are accepted. This check must run BEFORE any network connection attempt.
  */
+export function assertLocalScratchDatabaseUrl(dbUrl) {
+  let parsed;
+  try {
+    parsed = new URL(dbUrl);
+  } catch {
+    throw new Error("GUARDIAN_INVALID_DB_URL");
+  }
+
+  if (!new Set(["postgres:", "postgresql:"]).has(parsed.protocol)) {
+    throw new Error(`GUARDIAN_INVALID_DB_PROTOCOL: ${parsed.protocol}`);
+  }
+
+  const localHosts = new Set([
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "::1",
+    "[::1]",
+  ]);
+  if (!localHosts.has(parsed.hostname)) {
+    throw new Error(
+      `GUARDIAN_REMOTE_DB_FORBIDDEN: scratch replay may only use a local PostgreSQL server (got ${parsed.hostname})`,
+    );
+  }
+}
+
+function databaseUrlWithName(dbUrl, databaseName) {
+  const parsed = new URL(dbUrl);
+  parsed.pathname = `/${databaseName}`;
+  return parsed.toString();
+}
+
+function quoteIdent(identifier) {
+  return `"${String(identifier).replaceAll('"', '""')}"`;
+}
+
+/** Collect findings for one Guardian run. */
 export class Report {
   constructor({ runId, startedAt, cli }) {
     this.runId = runId;
     this.startedAt = startedAt;
-    this.cli = cli;
+    // Never persist DB credentials in machine-readable artifacts.
+    this.cli = {
+      ...cli,
+      dbUrl: cli?.dbUrl ? redactDatabaseUrl(cli.dbUrl) : undefined,
+      skip: cli?.skip instanceof Set ? [...cli.skip] : cli?.skip,
+    };
     this.findings = [];
     this.meta = {};
   }
 
-  add(check, { status = "FAIL", severity = "MEDIUM", id, title, evidence = "", detail = "" }) {
+  add(
+    check,
+    {
+      status = "FAIL",
+      severity = "MEDIUM",
+      id,
+      title,
+      evidence = "",
+      detail = "",
+    },
+  ) {
     this.findings.push({
       id,
       check: check.id,
@@ -76,7 +150,13 @@ export class Report {
   }
 
   pass(check, id, title, evidence = "") {
-    this.add(check, { status: "PASS", severity: "INFO", id, title, evidence });
+    this.add(check, {
+      status: "PASS",
+      severity: "INFO",
+      id,
+      title,
+      evidence,
+    });
   }
 
   fail(check, { severity, id, title, evidence, detail }) {
@@ -100,7 +180,6 @@ export class Report {
     return worst;
   }
 
-  /** Findings at or above the given severity (FAIL only). */
   failuresAtOrAbove(severity) {
     const rank = SEVERITY_RANK[severity];
     return this.findings.filter(
@@ -110,54 +189,35 @@ export class Report {
 }
 
 /**
- * Guardian scratch databases are destructive by design (CREATE/DROP DATABASE),
- * therefore only loopback/local PostgreSQL targets are allowed.
- */
-export function assertLocalScratchDatabaseUrl(dbUrl) {
-  let parsed;
-  try {
-    parsed = new URL(dbUrl);
-  } catch {
-    throw new Error("GUARDIAN_INVALID_DB_URL");
-  }
-
-  const localHosts = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
-  if (!localHosts.has(parsed.hostname)) {
-    throw new Error(
-      `GUARDIAN_REMOTE_DB_FORBIDDEN: scratch replay may only use a local PostgreSQL server (got ${parsed.hostname})`,
-    );
-  }
-}
-
-/**
- * Opens an isolated scratch database on a LOCAL target server. The database
- * name is unique per process/run and is removed afterwards. No fixed database
- * name is dropped, avoiding collisions between concurrent agents/runs.
+ * Open an isolated scratch database on a LOCAL server. The unique DB is always
+ * cleaned up, including connection/setup/check failures after creation.
  */
 export async function withScratchDatabase(dbUrl, name, fn) {
   assertLocalScratchDatabaseUrl(dbUrl);
 
-  const safePrefix = String(name).replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 30) || "guardian";
+  const safePrefix =
+    String(name).replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 30) || "guardian";
   const scratchName = `${safePrefix}_${process.pid}_${Date.now()}`;
-  const quotedName = `"${scratchName}"`;
+  const quotedName = quoteIdent(scratchName);
 
   const admin = new pg.Client({ connectionString: dbUrl });
   await admin.connect();
   try {
     await admin.query(`create database ${quotedName}`);
   } finally {
-    await admin.end();
+    await admin.end().catch(() => {});
   }
 
-  const scratchUrl = dbUrl.replace(/\/[^/?]+(\?|$)/, `/${scratchName}$1`);
-  const db = new pg.Client({ connectionString: scratchUrl });
-  await db.connect();
-  await db.query("set check_function_bodies = on");
-
+  let db;
   try {
+    db = new pg.Client({
+      connectionString: databaseUrlWithName(dbUrl, scratchName),
+    });
+    await db.connect();
+    await db.query("set check_function_bodies = on");
     return await fn(db);
   } finally {
-    await db.end();
+    if (db) await db.end().catch(() => {});
 
     const cleanup = new pg.Client({ connectionString: dbUrl });
     try {
@@ -169,16 +229,13 @@ export async function withScratchDatabase(dbUrl, name, fn) {
   }
 }
 
-/**
- * Replays the native harness bootstrap (auth replica + storage replica + pgTAP
- * shims) on a plain PostgreSQL server so the migrations and tests can run.
- * Skipped automatically when the local server already exposes an auth schema.
- */
+/** Apply the plain-Postgres auth/storage/pgTAP compatibility bootstrap. */
 export async function applyNativeBootstrap(db) {
   const r = await db.query(
     `select exists (select 1 from pg_namespace where nspname='auth') as has_auth`,
   );
   if (r.rows[0].has_auth) return false;
+
   for (const f of ["setup_auth.sql", "setup_storage.sql", "pgtap_shims.sql"]) {
     const p = join(NATIVE_DIR, f);
     if (existsSync(p)) await db.query(readFileSync(p, "utf8"));
@@ -186,7 +243,7 @@ export async function applyNativeBootstrap(db) {
   return true;
 }
 
-/** Runs every migration file (sorted) on the given connection. */
+/** Replay all migrations in lexicographic order on the supplied scratch DB. */
 export async function replayMigrations(db) {
   const files = migrationFiles();
   for (const f of files) {
@@ -199,7 +256,7 @@ export async function replayMigrations(db) {
   return { ok: true, count: files.length };
 }
 
-/** Runs a subset of migration files (already filtered/sorted) on the connection. */
+/** Replay an explicit ordered migration subset on the supplied scratch DB. */
 export async function replayMigrationSubset(db, files) {
   for (const f of files) {
     try {
@@ -211,7 +268,7 @@ export async function replayMigrationSubset(db, files) {
   return { ok: true, count: files.length };
 }
 
-/** Git helpers — list changed paths vs a base ref (default: origin/main). */
+/** Git helpers. */
 export function git(args) {
   try {
     return execSync(`git ${args}`, { cwd: ROOT, encoding: "utf8" }).trim();
@@ -221,7 +278,9 @@ export function git(args) {
 }
 
 export function changedPaths(baseRef = "origin/main") {
-  return git(`diff --name-only ${baseRef}...HEAD`).split("\n").filter(Boolean);
+  return git(`diff --name-only ${baseRef}...HEAD`)
+    .split("\n")
+    .filter(Boolean);
 }
 
 export function currentBranch() {
@@ -234,5 +293,7 @@ export function shortHead() {
 
 export function listFiles(dir, ext = "") {
   if (!existsSync(dir)) return [];
-  return readdirSync(dir).filter((f) => f.endsWith(ext)).sort();
+  return readdirSync(dir)
+    .filter((f) => f.endsWith(ext))
+    .sort();
 }
