@@ -40,6 +40,24 @@
 - ⚠️ البيئة الحية (Vercel / مشروع Supabase الإنتاجي) لم تُتحقق في بيئة العمل — راجع
   `PROJECT_STATUS.md`.
 
+## Database Guardian 🛡️
+
+نظام دائم داخل المستودع يكتشف ويمنع مشاكل قاعدة البيانات تلقائياً:
+فحوص Deterministic + اختبارات PostgreSQL/Supabase + بوابة GitHub CI +
+تقرير machine-readable (PASS/FAIL/severity/finding ID/evidence).
+يُشغَّل تلقائياً على أي PR يغيّر `supabase/**` أو `guardian/**` ويمنع الدمج عند
+CRITICAL/HIGH.
+
+```bash
+npm run db:guardian            # static + dynamic (DB_URL أو قاعدة محلية)
+npm run db:guardian:static     # فحوص الملفات فقط
+npm run db:guardian:snapshot   # تحديث snapshots العقد بعد أي تغيير في migrations
+```
+
+التوثيق الكامل: [`guardian/README.md`](guardian/README.md) ·
+دليل التشغيل: [`docs/operations/database-guardian.md`](docs/operations/database-guardian.md) ·
+العقد: [`guardian/contract/canonical-contract.json`](guardian/contract/canonical-contract.json)
+
 ## البدء السريع
 
 ```bash

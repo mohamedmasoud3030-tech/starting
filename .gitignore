@@ -50,3 +50,6 @@ coverage/
 
 # Production env values belong in the hosting platform, not the repo
 .env.production
+
+# Database Guardian generated reports (regenerated on every run; CI uploads them as artifacts)
+guardian/reports/
