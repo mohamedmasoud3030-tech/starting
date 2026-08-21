@@ -59,11 +59,14 @@
 ## الترحيلات (Migrations)
 
 - الترحيلات المطبَّقة **خالدة** — لا تعدّل ملفاً طُبِّق سابقاً (Guardian يفحص
-  SHA-256 لكل ملف ويفشل عند أي تعديل).
+  SHA-256 لكل ملف ويفشل عند أي تعديل أو حذف).
 - أي تغيير جديد يكون **بترحيل جديد**.
 - السلسلة يجب أن تعمل من قاعدة فارغة (`supabase db reset`).
-- بعد إضافة/تعديل migrations شغّل `npm run db:guardian:snapshot` لتحديث
-  snapshots العقد، وإلا يفشل `G-SCHEMA-DRIFT` في CI.
+- بعد **إضافة migration جديدة فقط** شغّل `npm run db:guardian:snapshot` لتحديث
+  `expected-schema.json` وإضافة بصمة الملف الجديد. أمر snapshot **يرفض** إعادة
+  كتابة بصمة migration تاريخية ولا يُستخدم لتطبيع تعديل قديم.
+- `applied-baseline.json` لا يتقدم تلقائياً مع snapshot؛ يُحدّث فقط بعد التأكد
+  بشكل منفصل أن migrations الجديدة أصبحت baseline مستقرة/مطبقة معتمدة.
 - كل تغيير schema له **اختبار regression** (pgTAP في `supabase/tests/`) يثبت
   العيب قبل الإصلاح ويمر بعده.
 
@@ -83,11 +86,16 @@
 
 ## حارس قاعدة البيانات (Database Guardian)
 
-- `npm run db:guardian` يجب أن يمر (0 FAIL بدرجة ≥ HIGH) قبل أي دمج يلمس
-  `supabase/**` أو `guardian/**` — مفروض في `.github/workflows/guardian.yml`.
+- لأي تغيير يلمس قاعدة البيانات، `npm run gate` هو البوابة المحلية الكاملة ويجب
+  أن يمر **بدون `--skip-db`**؛ عدم توفر PostgreSQL محلي يجعل البوابة تفشل بدلاً
+  من إعطاء نجاح زائف.
+- `npm run db:guardian` يعمل فقط ضد PostgreSQL/Supabase **محلي** مخصص للفحص؛
+  الحارس يرفض أي `DB_URL` بعيد لأنه ينشئ/يحذف قواعد scratch أثناء replay.
+- `.github/workflows/guardian.yml` يشغّل static + dynamic تلقائياً للتغييرات ذات الصلة
+  عندما تكون GitHub Actions متاحة، ويمنع CRITICAL/HIGH.
 - لا تُعدَّل `guardian/contract/migration-hashes.json` أو `expected-schema.json`
-  يدوياً — تُولَّد بـ `npm run db:guardian:snapshot` من إعادة تشغيل نظيفة.
+  يدوياً؛ snapshot آمن يضيف بصمات migrations الجديدة فقط ولا يمس البصمات التاريخية.
 - لا تُضف grants لـ `anon`، ولا سياسات DELETE على الجداول المالية/الرئيسية، ولا
-  دالة SECURITY DEFINER بدون `SET search_path` + ACL صريح (لا anon) + guard دور.
+  دالة SECURITY DEFINER بدون `SET search_path` + ACL صريح (لا anon) + guard تفويض.
 - لا تُسقط فلترة org من أي view — الفلتر شرط عقد صارم (CRITICAL).
 - النقود: لا float، scale 3 دائماً (انظر قسم النقود).
