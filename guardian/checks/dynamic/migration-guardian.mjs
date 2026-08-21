@@ -1,22 +1,28 @@
 #!/usr/bin/env node
 /**
- * Migration Guardian — replays the whole chain and proves both replay modes:
+ * Migration Guardian — proves both replay modes:
  *
- *   1. From scratch: every migration on an empty database must succeed.
- *   2. On near-current state: migrations recorded in applied-baseline.json are
- *      applied first (simulating the existing database), then the NEW
- *      migrations are applied on top — catching migrations that only break on
- *      an already-migrated database.
+ *   1. From scratch: already proven by the shared dynamic replay before this
+ *      check is invoked.
+ *   2. Incremental: applied-baseline.json must be an exact ordered PREFIX of
+ *      the current migration chain; that baseline is replayed first, then only
+ *      the newer suffix is applied.
  *
- * Neither mode edits any migration file. The replay DB used by the other
- * dynamic checks is the "from scratch" proof; this check additionally does the
- * incremental proof in a separate scratch database.
+ * applied-baseline.json is advanced separately after a verified deployment /
+ * stable baseline. db:guardian:snapshot intentionally does not modify it.
  */
 import { join } from "node:path";
-import { readJson, CONTRACT_DIR, migrationFiles, replayMigrationSubset, withScratchDatabase, applyNativeBootstrap } from "../../lib/common.mjs";
+import {
+  readJson,
+  CONTRACT_DIR,
+  migrationFiles,
+  replayMigrationSubset,
+  withScratchDatabase,
+  applyNativeBootstrap,
+} from "../../lib/common.mjs";
 
 export const id = "G-MIGRATION-GUARDIAN";
-export const title = "Migrations replay from scratch and on near-current state";
+export const title = "Migrations replay from scratch and on the verified applied baseline";
 export const category = "migrations";
 export const defaultSeverity = "CRITICAL";
 export const mode = "dynamic";
@@ -25,46 +31,116 @@ export async function run(ctx) {
   const { report, cli } = ctx;
   const files = migrationFiles();
   const baselinePath = join(CONTRACT_DIR, "applied-baseline.json");
-  let baselineFiles = [];
+
+  let baseline;
   try {
-    baselineFiles = readJson(baselinePath).files ?? [];
+    baseline = readJson(baselinePath);
   } catch {
-    /* baseline absent → treat all files as new (still proves scratch replay) */
-  }
-
-  // 1. From scratch — proven by the shared replay DB used by all dynamic checks.
-  report.pass(this, `${id}-SCRATCH`, "Full chain replays from an empty database", `${files.length} migrations`);
-
-  // 2. Near-current-state: apply baseline, then the new files.
-  if (baselineFiles.length === 0) {
-    report.pass(this, `${id}-INCREMENTAL`, "Incremental replay skipped — no applied-baseline recorded yet", "Run `npm run db:guardian:snapshot` after the next deployment to record the applied set");
+    report.fail(this, {
+      severity: "HIGH",
+      id: `${id}-BASELINE-MISSING`,
+      title: "applied-baseline.json is missing; incremental migration replay cannot be proven",
+      evidence: baselinePath,
+      detail:
+        "Record a separately verified stable/applied migration prefix. Do not use db:guardian:snapshot to auto-advance it.",
+    });
     return;
   }
-  const known = baselineFiles.filter((f) => files.includes(f));
-  const news = files.filter((f) => !baselineFiles.includes(f));
+
+  const baselineFiles = baseline.files ?? [];
+  if (baselineFiles.length === 0) {
+    report.fail(this, {
+      severity: "HIGH",
+      id: `${id}-BASELINE-EMPTY`,
+      title: "Applied migration baseline is empty",
+      evidence: baselinePath,
+      detail:
+        "Incremental safety requires a known stable migration prefix. Advance it only after independent deployment/stability verification.",
+    });
+    return;
+  }
+
+  // 1. From scratch — the runner reaches this check only after the shared replay
+  // completed successfully.
+  report.pass(
+    this,
+    `${id}-SCRATCH`,
+    "Full chain replays from an empty scratch database",
+    `${files.length} migrations`,
+  );
+
+  // 2. Baseline must be an exact ordered prefix. Filtering missing filenames or
+  // tolerating reordering would make the incremental proof unlike production.
+  const prefix = files.slice(0, baselineFiles.length);
+  const prefixMatches =
+    prefix.length === baselineFiles.length &&
+    prefix.every((file, index) => file === baselineFiles[index]);
+
+  if (!prefixMatches) {
+    const firstMismatch = Math.max(
+      0,
+      baselineFiles.findIndex((file, index) => prefix[index] !== file),
+    );
+    report.fail(this, {
+      severity: "CRITICAL",
+      id: `${id}-BASELINE-NOT-PREFIX`,
+      title: "Applied baseline is not an exact prefix of the current migration chain",
+      evidence: [
+        `baseline[${firstMismatch}]=${baselineFiles[firstMismatch] ?? "<none>"}`,
+        `current[${firstMismatch}]=${prefix[firstMismatch] ?? "<none>"}`,
+        `baselineCount=${baselineFiles.length}`,
+        `currentCount=${files.length}`,
+      ].join("\n"),
+      detail:
+        "A historical migration was inserted, removed, renamed, or reordered relative to the verified baseline. Revert history and add a new migration at the end.",
+    });
+    return;
+  }
+
+  const news = files.slice(baselineFiles.length);
 
   await withScratchDatabase(cli.dbUrl, "guardian_incremental", async (db) => {
     await applyNativeBootstrap(db);
-    const base = await replayMigrationSubset(db, known);
+
+    const base = await replayMigrationSubset(db, baselineFiles);
     if (!base.ok) {
-      report.fail(this, { severity: "CRITICAL", id: `${id}-BASELINE-FAIL`, title: "Baseline migrations no longer replay", evidence: `${base.failedFile}: ${base.error}` });
+      report.fail(this, {
+        severity: "CRITICAL",
+        id: `${id}-BASELINE-FAIL`,
+        title: "Verified baseline migrations no longer replay",
+        evidence: `${base.failedFile}: ${base.error}`,
+      });
       return;
     }
+
     if (news.length === 0) {
-      report.pass(this, `${id}-INCREMENTAL`, "No new migrations to apply on the recorded baseline", `${known.length} baseline files`);
+      report.pass(
+        this,
+        `${id}-INCREMENTAL`,
+        "No migrations newer than the verified baseline",
+        `${baselineFiles.length} baseline files`,
+      );
       return;
     }
+
     const inc = await replayMigrationSubset(db, news);
     if (!inc.ok) {
       report.fail(this, {
         severity: "CRITICAL",
         id: `${id}-INCREMENTAL-FAIL`,
-        title: `New migration ${inc.failedFile} fails when applied on the recorded baseline`,
+        title: `New migration ${inc.failedFile} fails when applied on the verified baseline`,
         evidence: `${inc.failedFile}: ${inc.error}`,
-        detail: "The migration chain works from an empty database but breaks on the near-current state. Fix the new migration (never edit applied ones).",
+        detail:
+          "The full chain may replay from empty while the upgrade path still breaks. Fix only the new migration; never edit the verified baseline files.",
       });
-    } else {
-      report.pass(this, `${id}-INCREMENTAL`, "New migrations apply cleanly on the recorded baseline", `${news.join(", ")}`);
+      return;
     }
+
+    report.pass(
+      this,
+      `${id}-INCREMENTAL`,
+      "New migrations apply cleanly on the verified baseline",
+      `${news.length} new file(s): ${news.join(", ")}`,
+    );
   });
 }
