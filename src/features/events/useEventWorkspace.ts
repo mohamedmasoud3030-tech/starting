@@ -15,6 +15,8 @@ import {
 import { useEventAttendance, useEventPayroll } from "@/features/staff/staff.api";
 import { useEventInstallments, useEventInvoice } from "@/features/payments/invoices.api";
 import { useEventFinance } from "@/features/payments";
+import { useEventFinancialClosures } from "@/features/finance/finance.api";
+import { useEventWarehouse } from "@/features/warehouse/warehouse.api";
 import { useProcurementDataSource } from "@/features/procurement";
 import {
   arabicError,
@@ -59,6 +61,8 @@ export function useEventWorkspace() {
   const data = useWorkspaceData(orgId, eventId, canCost);
   const finance = useEventFinance(orgId, eventId);
   const attendance = useEventAttendance(orgId, eventId);
+  const closures = useEventFinancialClosures(orgId, eventId);
+  const warehouse = useEventWarehouse(orgId, eventId, canCost);
   const audit = useEventAudit(orgId, eventId, canCommercial);
   const payroll = useEventPayroll(orgId, eventId);
   const invoice = useEventInvoice(orgId, eventId);
@@ -142,7 +146,9 @@ export function useEventWorkspace() {
   }, [inv, invoiceRows.data]);
 
   const isLoading = event.isLoading || data.isLoading;
-  const isMissing = !event.data || !data.data;
+  const isError = event.isError || data.isError;
+  const isMissing = event.isSuccess && data.isSuccess && (!event.data || !data.data);
+  const financiallyClosed = (closures.data ?? []).some((c) => c.reopenedAt === null);
 
   // Overview / pricing / payments summaries need the loaded event + data.
   const overviewVoiceSummary = useMemo(() => {
@@ -221,6 +227,8 @@ export function useEventWorkspace() {
     data,
     finance,
     attendance,
+    closures,
+    warehouse,
     payroll,
     audit,
     invoice,
@@ -237,7 +245,9 @@ export function useEventWorkspace() {
     error,
     // guards
     isLoading,
+    isError,
     isMissing,
+    financiallyClosed,
     // derived
     voiceSummary,
   };

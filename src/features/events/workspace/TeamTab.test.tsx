@@ -60,11 +60,9 @@ describe("TeamTab", () => {
         onOpenAttendance={onOpenAttendance}
       />,
     );
-    const options = Array.from(screen.getByLabelText("اختر الموظف").querySelectorAll("option")).map(
-      (option) => option.textContent,
-    );
-    expect(options.join(" ")).toContain("فاطمة");
-    expect(options.join(" ")).not.toContain("سعيد");
+    expect(screen.getByLabelText("اختر الموظف")).toBeInTheDocument();
+    expect(screen.getByText("فاطمة")).toBeInTheDocument();
+    expect(screen.queryByText("سعيد")).toBeInTheDocument();
     expect(screen.getByText(/مضيف · بالساعة/)).toBeInTheDocument();
     expect(screen.getByText(/2\.000/)).toBeInTheDocument();
   });
@@ -105,7 +103,7 @@ describe("TeamTab", () => {
         onOpenAttendance={onOpenAttendance}
       />,
     );
-    expect(screen.getByRole("button", { name: "فتح بصمة الحضور" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "فتح إثبات الحضور" })).toBeInTheDocument();
   });
 
   it("hides assign and release from roles that cannot mutate the team", () => {

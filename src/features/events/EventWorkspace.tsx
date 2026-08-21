@@ -1,6 +1,11 @@
 import { useState } from "react";
-import { InlineError } from "@/components/ui/ErrorState";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
+import {
+  pickAttendanceForRoster,
+  rosterCounts,
+  rosterVisualStatus,
+} from "@/features/staff/attendanceRoster.model";
 import { EditEventDialog } from "./workspace/EditEventDialog";
 import { AttendancePanel } from "@/features/staff/AttendancePanel";
 import { HostPayrollPanel } from "@/features/staff/HostPayrollPanel";
@@ -30,6 +35,18 @@ export function EventWorkspace() {
   if (ws.isLoading) {
     return <LoadingState label="جارٍ تحميل المناسبة…" />;
   }
+  if (ws.isError) {
+    return (
+      <ErrorState
+        title="تعذر تحميل المناسبة"
+        message="أعد المحاولة قبل الاعتماد على حالة هذه المناسبة."
+        onRetry={() => {
+          void ws.event.refetch();
+          void ws.data.refetch();
+        }}
+      />
+    );
+  }
   if (ws.isMissing) {
     return <p>تعذر العثور على المناسبة.</p>;
   }
@@ -53,6 +70,18 @@ export function EventWorkspace() {
   });
 
   const linkedQuote = pickLinkedQuote(d.quotes, ev.accepted_quotation_id);
+
+  const activeAssignments = d.assignments.filter((a) => a.status === "ACTIVE");
+  const roster =
+    ws.attendance.isSuccess
+      ? rosterCounts(
+          activeAssignments.map((assignment) =>
+            rosterVisualStatus(
+              pickAttendanceForRoster(ws.attendance.data ?? [], assignment.staff_member_id),
+            ),
+          ),
+        )
+      : null;
 
   return (
     <div className="space-y-5">
@@ -84,8 +113,18 @@ export function EventWorkspace() {
           report={readinessReport}
           history={d.history}
           acceptedQuote={linkedQuote}
-          financiallyClosed={false}
+          financiallyClosed={ws.financiallyClosed}
           onOpenTab={ws.setTab}
+          command={{
+            assignedCount: activeAssignments.length,
+            roster,
+            finance: ws.finance.data ?? null,
+            financeLoaded: ws.finance.isSuccess,
+            invoiceStatus: ws.invoice.data?.status ?? null,
+            warehouse: ws.warehouse.data?.summary ?? null,
+            warehouseLoaded: ws.warehouse.isSuccess,
+            canAttendance: ws.canAttendance,
+          }}
         />
       )}
 
@@ -107,6 +146,7 @@ export function EventWorkspace() {
           run={ws.run}
           canAssign={ws.canAttendance}
           canCost={ws.canCost}
+          guestCount={ev.guest_count}
           onOpenAttendance={
             ws.canAttendance ? () => ws.setTab("الحضور") : undefined
           }

@@ -16,6 +16,7 @@ import {
   validateReturnQuantities,
   type WarehouseLine,
 } from "./warehouse.model";
+import { equipmentLifecycleLabel } from "@/features/events/eventCommand.model";
 import { HandoverEvidenceSection } from "./HandoverEvidenceSection";
 
 /** Large touch-friendly quantity stepper: minimal typing on a warehouse floor. */
@@ -139,7 +140,19 @@ export function WarehouseLineCard({
           <h3 className="text-lg font-black">{line.equipmentName}</h3>
           <p className="text-sm text-slate-500">{line.equipmentUnit}</p>
         </div>
-        {line.isReconciled && <Badge tone="success">تمت التسوية</Badge>}
+        <div className="flex flex-wrap gap-2">
+          <Badge tone={line.outstanding > 0 ? "warning" : "brand"}>
+            {equipmentLifecycleLabel({
+              remainingToDispatch: line.remainingToDispatch,
+              dispatched: line.dispatched,
+              outstanding: line.outstanding,
+            })}
+          </Badge>
+          {line.damaged > 0 && <Badge tone="danger">تلف</Badge>}
+          {line.lost > 0 && <Badge tone="danger">فقد</Badge>}
+          {line.outstanding > 0 && <Badge tone="warning">لم يعد</Badge>}
+          {line.isReconciled && <Badge tone="success">تمت التسوية</Badge>}
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">

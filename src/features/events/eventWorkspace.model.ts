@@ -24,6 +24,41 @@ export const WORKSPACE_TABS = [
 
 export type WorkspaceTab = (typeof WORKSPACE_TABS)[number];
 
+/** Owner-facing grouping so daily work is Overview / Operations / Finance / Documents. */
+export const WORKSPACE_TAB_GROUPS: ReadonlyArray<{
+  id: "overview" | "operations" | "finance" | "documents" | "more";
+  label: string;
+  tabs: ReadonlyArray<WorkspaceTab>;
+}> = [
+  { id: "overview", label: "نظرة عامة", tabs: ["ملخص"] },
+  {
+    id: "operations",
+    label: "التشغيل",
+    tabs: ["الفريق", "الحضور", "المعدات", "المخزن", "المواد"],
+  },
+  {
+    id: "finance",
+    label: "المالية",
+    tabs: ["المدفوعات", "الفواتير", "المالية", "الأجور"],
+  },
+  { id: "documents", label: "المستندات", tabs: ["التسعير", "السجل"] },
+  { id: "more", label: "المزيد", tabs: ["المشتريات"] },
+];
+
+export function groupForTab(tab: WorkspaceTab): (typeof WORKSPACE_TAB_GROUPS)[number]["id"] {
+  const found = WORKSPACE_TAB_GROUPS.find((group) => group.tabs.includes(tab));
+  return found?.id ?? "overview";
+}
+
+export function visibleTabGroups(
+  tabs: ReadonlyArray<WorkspaceTab>,
+): Array<(typeof WORKSPACE_TAB_GROUPS)[number] & { tabs: WorkspaceTab[] }> {
+  return WORKSPACE_TAB_GROUPS.map((group) => ({
+    ...group,
+    tabs: group.tabs.filter((tab) => tabs.includes(tab)),
+  })).filter((group) => group.tabs.length > 0);
+}
+
 /**
  * Capability required to get anything out of a tab.
  *

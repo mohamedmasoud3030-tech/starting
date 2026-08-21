@@ -3,11 +3,13 @@ import {
   EVENT_STATUS_LABELS,
   eventPermissions,
   eventQuotesOrFilter,
+  groupForTab,
   jobPathForEventStatus,
   jobPathForQuoteStatus,
   pickLinkedQuote,
   readinessText,
   resolveActiveTab,
+  visibleTabGroups,
   visibleWorkspaceTabs,
   voiceSummaryForTab,
   WORKSPACE_TABS,
@@ -151,6 +153,18 @@ describe("visibleWorkspaceTabs — no dead-end tabs", () => {
     const tabs = visibleWorkspaceTabs(eventPermissions("SUPERVISOR"));
     const canonical = WORKSPACE_TABS.filter((t) => tabs.includes(t));
     expect(tabs).toEqual(canonical);
+  });
+
+  it("groups remaining tabs so the owner does not hunt through modules", () => {
+    expect(groupForTab("ملخص")).toBe("overview");
+    expect(groupForTab("الحضور")).toBe("operations");
+    expect(groupForTab("المالية")).toBe("finance");
+    expect(groupForTab("التسعير")).toBe("documents");
+    const groups = visibleTabGroups(visibleWorkspaceTabs(eventPermissions("WAREHOUSE")));
+    expect(groups.map((g) => g.id)).not.toContain("finance");
+    expect(groups.find((g) => g.id === "operations")?.tabs).toEqual(
+      expect.arrayContaining(["المعدات", "المخزن", "المواد"]),
+    );
   });
 });
 

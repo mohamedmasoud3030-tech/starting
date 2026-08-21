@@ -12,9 +12,9 @@ import {
 type HandoverKind = "DELIVERY_PROOF" | "RETURN_PROOF" | "EQUIPMENT_DAMAGE";
 
 const KINDS: { type: HandoverKind; label: string }[] = [
-  { type: "DELIVERY_PROOF", label: "صورة التسليم" },
-  { type: "RETURN_PROOF", label: "صورة الإرجاع" },
-  { type: "EQUIPMENT_DAMAGE", label: "صورة التلف / الفقد" },
+  { type: "DELIVERY_PROOF", label: "دليل التسليم" },
+  { type: "RETURN_PROOF", label: "دليل الإرجاع" },
+  { type: "EQUIPMENT_DAMAGE", label: "تلف / فقد" },
 ];
 
 /**
