@@ -103,7 +103,7 @@
       "host_payouts": "RECORDED → VOIDED only (host_payout_guard)",
       "staff_advances": "RECORDED → VOIDED only (staff_advance_guard)",
       "staff_attendance": "documented void transition only (staff_attendance_guard)",
-      "event_expenses": "RECORDED → VOIDED only (event_expenses_append_only_guard, Guardian 0078)",
+      "event_expenses": "RECORDED → VOIDED only; financial/source fields are immutable and VOID audit metadata is write-once (event_expenses_append_only_guard, Guardian 0078 + 0079)",
       "event_financial_closures": "open → reopened_at set once (event_financial_closures_guard, Guardian 0078)",
       "audit_events": "append-only, no UPDATE/DELETE (audit_events_append_only_guard, Guardian 0078)"
     }
