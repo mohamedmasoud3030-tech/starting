@@ -1,9 +1,9 @@
 {
   "schemaVersion": "1.0.0",
-  "project": "Hospitality Operations — Al Rayan Turkish Restaurant (Arabic-first RTL)",
+  "project": "Hospitality Operations (Arabic-first RTL)",
   "repository": "mohamedmasoud3030-tech/starting",
   "domain": "Hospitality / Event Operations (weddings, funerals, majalis, meetings, meals, events in the Sultanate of Oman) — NOT property management.",
-  "description": "Canonical Database Contract — machine-readable invariants the Database Guardian enforces. Human-readable companion: guardian/README.md and guardian/contract/business-invariants.md. Any violation is a Guardian finding; CRITICAL/HIGH findings block merges in CI.",
+  "description": "Canonical Database Contract — machine-readable invariants the Database Guardian enforces. Human-readable companion: guardian/README.md and guardian/contract/business-invariants.md. CRITICAL/HIGH violations block the portable release gate and block CI when the Guardian workflow is installed.",
   "roles": {
     "tenantRoot": "organizations",
     "membership": "organization_memberships",
@@ -18,7 +18,7 @@
     "bannedTypes": ["double precision", "real", "float4", "float8", "integer money"],
     "bannedExpressions": ["::float", "::float8", "::double precision", "::real"],
     "frontendMustUseExactMath": true,
-    "notes": "AGENTS.md documents numeric(12,3) exclusively; the contract clarifies derived totals legitimately use numeric(14,3). Both are exact NUMERIC with scale 3; binary float is banned everywhere."
+    "notes": "AGENTS.md and this contract use numeric(12,3) for unit prices/rates and allow numeric(14,3) for derived totals. Both are exact NUMERIC with OMR scale 3; binary float is banned for persisted money."
   },
   "tenantIsolation": {
     "required": true,
@@ -46,12 +46,12 @@
       "table": "quotations",
       "linesTable": "quotation_lines",
       "statuses": ["DRAFT", "ISSUED", "EXPIRED", "ACCEPTED", "REJECTED", "CONVERTED", "CANCELLED", "SUPERSEDED"],
-      "transitionRule": "A DRAFT is editable via update_quotation_draft(); once ISSUED the snapshot (numbers, prices, VAT) is immutable; acceptance converts the event to CONFIRMED; a revision supersedes prior ISSUED quotations of the same event. quotation_lines are immutable for non-DRAFT quotations (protect_quotation_snapshot / prevent_quotation_line_mutation triggers)."
+      "transitionRule": "A DRAFT is editable via update_quotation_draft(); once ISSUED the commercial snapshot is immutable except for documented lifecycle metadata; acceptance converts the event to CONFIRMED; a revision supersedes prior ISSUED quotations of the same event. quotation_lines are immutable for non-DRAFT quotations (protect_quotation_snapshot / prevent_quotation_line_mutation triggers)."
     },
     "attendance": {
       "table": "staff_attendance",
       "statuses": ["PRESENT", "LATE", "PARTIAL", "ABSENT", "VOIDED"],
-      "transitionRule": "Earned amounts derive from wage_method/wage_rate and check-in/out via compute_earned_amount(); attendance rows are append-only except the documented RECORDED→VOIDED transition; clock in/out pairs are enforced."
+      "transitionRule": "Earned amounts derive from wage_method/wage_rate and check-in/out via compute_earned_amount(); attendance rows are append-only except the documented void transition; clock in/out pairs are enforced."
     },
     "equipment": {
       "reservationsTable": "event_equipment_reservations",
@@ -80,7 +80,7 @@
     "noHardDeleteOnFinancialTables": true,
     "documentNumberUniquePerOrg": true,
     "overpaymentForbidden": true,
-    "doublePostingForbidden": true,
+    "duplicatePaymentDetectionRequired": true,
     "commandIdempotencyRequired": true,
     "financialTables": [
       "invoices", "invoice_installments", "customer_payments", "host_payouts",
@@ -102,7 +102,7 @@
       "customer_payments": "RECORDED → VOIDED only (customer_payment_guard); amount/method/reference immutable",
       "host_payouts": "RECORDED → VOIDED only (host_payout_guard)",
       "staff_advances": "RECORDED → VOIDED only (staff_advance_guard)",
-      "staff_attendance": "→ VOIDED only (staff_attendance_guard)",
+      "staff_attendance": "documented void transition only (staff_attendance_guard)",
       "event_expenses": "RECORDED → VOIDED only (event_expenses_append_only_guard, Guardian 0078)",
       "event_financial_closures": "open → reopened_at set once (event_financial_closures_guard, Guardian 0078)",
       "audit_events": "append-only, no UPDATE/DELETE (audit_events_append_only_guard, Guardian 0078)"
@@ -114,7 +114,9 @@
     "replayFromEmptyMustSucceed": true,
     "replayOnNearCurrentStateMustSucceed": true,
     "everyChangeHasRegressionTest": true,
-    "noEditingOfAppliedMigrationHashes": true
+    "noEditingOfAppliedMigrationHashes": true,
+    "snapshotMustNotRewriteRecordedMigrationHashes": true,
+    "appliedBaselineAdvancesSeparatelyAfterVerifiedDeployment": true
   },
   "security": {
     "secdefAcl": "authenticated-only EXECUTE for RPCs; internal-only for trigger helpers; anon EXECUTE forbidden",
