@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Camera } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -6,6 +7,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { InlineError } from "@/components/ui/ErrorState";
 import { formatOMR } from "@/lib/money";
 import { defaultMuscatShift, todayInMuscat } from "@/lib/dates";
+import { uploadEvidenceFile, evidenceError } from "@/features/attachments/attachments.api";
 import {
   attendanceError,
   isOpenPunch,
@@ -37,10 +39,15 @@ function fmtTime(iso: string | null): string {
   });
 }
 
+type SelfieTarget =
+  | { kind: "IN"; assignment: ClockAssignment }
+  | { kind: "OUT"; staffMemberId: string };
+
 /**
- * Phone punch clock for event hosts. Physical fingerprint hardware is the
- * wrong first product: hosts work at venues, not a factory gate. One tap
- * records دخول الآن / خروج الآن against the existing attendance ledger.
+ * Phone punch clock for event hosts. A selfie photo is captured as attendance
+ * evidence (uploaded to the private bucket and linked atomically by the clock
+ * command). This is a simple camera photo — NOT facial recognition and not a
+ * biometric check; the wage stays 0.000 until clock-out.
  */
 export function AttendanceClock({
   orgId,
@@ -58,35 +65,62 @@ export function AttendanceClock({
   const clockOut = useClockStaffOut(orgId, eventId);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [selfieTarget, setSelfieTarget] = useState<SelfieTarget | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const active = assignments.filter((row) => row.status === "ACTIVE");
   const rows = attendance.data ?? [];
   const today = todayInMuscat();
   const shift = defaultMuscatShift();
 
-  async function punchIn(assignment: ClockAssignment) {
+  function startIn(assignment: ClockAssignment) {
     setError("");
-    setBusyId(assignment.id);
-    try {
-      await clockIn.mutateAsync({
-        staffMemberId: assignment.staffMemberId,
-        assignmentId: assignment.id,
-        shift,
-      });
-    } catch (cause) {
-      setError(attendanceError(cause));
-    } finally {
-      setBusyId(null);
-    }
+    setSelfieTarget({ kind: "IN", assignment });
+    fileInput.current?.click();
   }
 
-  async function punchOut(staffMemberId: string) {
+  function startOut(staffMemberId: string) {
     setError("");
-    setBusyId(staffMemberId);
+    setSelfieTarget({ kind: "OUT", staffMemberId });
+    fileInput.current?.click();
+  }
+
+  async function onSelfie(file: File | null) {
+    const target = selfieTarget;
+    setSelfieTarget(null);
+    if (fileInput.current) fileInput.current.value = "";
+    if (!file || !target || !orgId) return;
+
+    const kind =
+      target.kind === "IN" ? "ATTENDANCE_CHECKIN" : "ATTENDANCE_CHECKOUT";
+    const staffMemberId =
+      target.kind === "IN" ? target.assignment.staffMemberId : target.staffMemberId;
+
+    setBusyId(target.kind === "IN" ? target.assignment.id : target.staffMemberId);
     try {
-      await clockOut.mutateAsync({ staffMemberId });
+      // Upload first; if this fails, the punch is never recorded.
+      const uploaded = await uploadEvidenceFile(orgId, kind, "staff_attendance", file);
+      if (target.kind === "IN") {
+        await clockIn.mutateAsync({
+          staffMemberId: target.assignment.staffMemberId,
+          assignmentId: target.assignment.id,
+          shift,
+          evidencePath: uploaded.storagePath,
+          evidenceFileName: uploaded.fileName,
+          evidenceMimeType: uploaded.mimeType,
+          evidenceSizeBytes: uploaded.sizeBytes,
+        });
+      } else {
+        await clockOut.mutateAsync({
+          staffMemberId,
+          evidencePath: uploaded.storagePath,
+          evidenceFileName: uploaded.fileName,
+          evidenceMimeType: uploaded.mimeType,
+          evidenceSizeBytes: uploaded.sizeBytes,
+        });
+      }
     } catch (cause) {
-      setError(attendanceError(cause));
+      setError(attendanceError(cause) || evidenceError(cause));
     } finally {
       setBusyId(null);
     }
@@ -108,15 +142,24 @@ export function AttendanceClock({
           بصمة الحضور
         </h2>
         <p className="mt-1 text-slate-600">
-          اضغط دخول عند وصول المضيف، وخروج عند انصرافه. الأجر يُحسب بعد الخروج
-          بدقة الريال العماني — بدون جهاز بصمة.
+          اضغط دخول عند وصول المضيف، وخروج عند انصرافه — مع صورة حضور تُحفظ
+          كإثبات خاص. الأجر يُحسب بعد الخروج بدقة الريال العماني.
         </p>
         <p className="mt-1 text-sm text-slate-500">
-          الوردية الحالية: {SHIFT_LABELS[shift]} · قبل الرابعة عصراً صباحي، وبعدها مسائي.
+          الوردية الحالية: {SHIFT_LABELS[shift]} · صورة الحضور ليست تحققاً بيومترياً ولا تعرّفاً على الوجه.
         </p>
       </div>
 
       {error && <InlineError message={error} />}
+
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/*"
+        capture="user"
+        className="hidden"
+        onChange={(e) => void onSelfie(e.target.files?.[0] ?? null)}
+      />
 
       {attendance.isLoading ? (
         <p>جارٍ تحميل الحضور…</p>
@@ -167,10 +210,11 @@ export function AttendanceClock({
                           <Badge tone="success">داخل الآن</Badge>
                           <Button
                             size="lg"
-                            onClick={() => void punchOut(assignment.staffMemberId)}
+                            onClick={() => startOut(assignment.staffMemberId)}
                             disabled={pending}
                             aria-label={`خروج الآن — ${name}`}
                           >
+                            <Camera className="h-5 w-5" />
                             {pending ? "جارٍ التسجيل…" : "خروج الآن"}
                           </Button>
                         </>
@@ -179,10 +223,11 @@ export function AttendanceClock({
                       ) : (
                         <Button
                           size="lg"
-                          onClick={() => void punchIn(assignment)}
+                          onClick={() => startIn(assignment)}
                           disabled={pending}
                           aria-label={`دخول الآن — ${name}`}
                         >
+                          <Camera className="h-5 w-5" />
                           {pending ? "جارٍ التسجيل…" : "دخول الآن"}
                         </Button>
                       )}

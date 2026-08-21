@@ -37,6 +37,9 @@ const settings: OrganizationSettingsRow = {
   event_number_prefix: "EV",
   manager_name: "يعقوب الخصيبي",
   manager_title: "المالك",
+  vat_registered: true,
+  vat_percent: 5,
+  vat_registration_number: "OM-VAT-1",
   created_at: "",
   updated_at: "",
 };

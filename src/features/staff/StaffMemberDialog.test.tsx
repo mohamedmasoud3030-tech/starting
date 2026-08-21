@@ -10,6 +10,13 @@ vi.mock("./staff.api", () => ({
   useSaveStaffMember: () => ({ mutateAsync, isPending: false }),
 }));
 
+vi.mock("@/features/attachments/attachments.api", () => ({
+  useEvidence: () => ({ data: [], isLoading: false }),
+  useAttachEvidence: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useEvidenceUrl: () => ({ data: null }),
+  evidenceError: (e: unknown) => String(e),
+}));
+
 function memberRow(): StaffMemberRow {
   return {
     id: "staff-1",
@@ -20,6 +27,7 @@ function memberRow(): StaffMemberRow {
     defaultRateMilli: 25000,
     phone: "91234567",
     whatsapp: null,
+    idNumber: null,
     notes: null,
   };
 }

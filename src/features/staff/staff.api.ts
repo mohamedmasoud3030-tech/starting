@@ -128,6 +128,7 @@ export interface StaffMemberRow {
   defaultRateMilli: MilliOMR;
   phone: string | null;
   whatsapp: string | null;
+  idNumber: string | null;
   notes: string | null;
 }
 
@@ -347,6 +348,10 @@ export interface ClockStaffInInput {
   assignmentId: string;
   shift?: StaffShift | null;
   notes?: string;
+  evidencePath: string;
+  evidenceFileName: string;
+  evidenceMimeType: string;
+  evidenceSizeBytes: number;
 }
 
 export function useClockStaffIn(orgId: string | null, eventId: string) {
@@ -360,6 +365,10 @@ export function useClockStaffIn(orgId: string | null, eventId: string) {
         p_assignment_id: v.assignmentId,
         p_shift: v.shift ?? null,
         p_notes: v.notes?.trim() ? v.notes : null,
+        p_evidence_path: v.evidencePath,
+        p_evidence_file_name: v.evidenceFileName,
+        p_evidence_mime_type: v.evidenceMimeType,
+        p_evidence_size_bytes: v.evidenceSizeBytes,
         p_idempotency_key: crypto.randomUUID(),
       }),
     onSuccess: () => invalidateAttendanceReads(q, orgId, eventId),
@@ -369,12 +378,23 @@ export function useClockStaffIn(orgId: string | null, eventId: string) {
 export function useClockStaffOut(orgId: string | null, eventId: string) {
   const q = useQueryClient();
   return useMutation({
-    mutationFn: (v: { staffMemberId: string; notes?: string }) =>
+    mutationFn: (v: {
+      staffMemberId: string;
+      notes?: string;
+      evidencePath: string;
+      evidenceFileName: string;
+      evidenceMimeType: string;
+      evidenceSizeBytes: number;
+    }) =>
       callRpc<Record<string, unknown>>("clock_staff_out", {
         p_org_id: orgId,
         p_event_id: eventId,
         p_staff_member_id: v.staffMemberId,
         p_notes: v.notes?.trim() ? v.notes : null,
+        p_evidence_path: v.evidencePath,
+        p_evidence_file_name: v.evidenceFileName,
+        p_evidence_mime_type: v.evidenceMimeType,
+        p_evidence_size_bytes: v.evidenceSizeBytes,
         p_idempotency_key: crypto.randomUUID(),
       }),
     onSuccess: () => invalidateAttendanceReads(q, orgId, eventId),
@@ -482,33 +502,97 @@ export function useHostPayouts(orgId: string | null, staffMemberId: string | nul
   });
 }
 
-export function useRecordPayout(orgId: string | null) {
+export interface PayoutAllocationInput {
+  eventId: string;
+  amountMilli: MilliOMR;
+}
+
+/**
+ * Multi-event payout: one payout settling earnings from one or more events.
+ * The allocation total must equal the payout amount (enforced server-side);
+ * receipt evidence is optional and attached in the same transaction.
+ */
+export function useRecordPayoutMulti(orgId: string | null) {
   const q = useQueryClient();
   return useMutation({
     mutationFn: (v: {
       staffMemberId: string;
-      eventId: string | null;
       amountMilli: MilliOMR;
       payoutDate: string;
       method: PaymentMethod;
       reference: string;
       reason: string;
+      allocations: PayoutAllocationInput[];
+      receipt?: {
+        evidencePath: string;
+        evidenceFileName: string;
+        evidenceMimeType: string;
+        evidenceSizeBytes: number;
+      } | null;
     }) =>
-      callRpc<Record<string, unknown>>("record_host_payout", {
+      callRpc<Record<string, unknown>>("record_host_payout_multi", {
         p_org_id: orgId,
         p_staff_member_id: v.staffMemberId,
-        p_event_id: v.eventId,
         p_amount: toDbNumeric(v.amountMilli),
         p_payout_date: v.payoutDate,
         p_payment_method: v.method,
         p_reference: v.reference || null,
         p_reason: v.reason || null,
+        p_allocations: JSON.stringify(
+          v.allocations.map((a) => ({
+            event_id: a.eventId,
+            amount: toDbNumeric(a.amountMilli),
+          })),
+        ),
+        p_evidence_path: v.receipt?.evidencePath ?? null,
+        p_evidence_file_name: v.receipt?.evidenceFileName ?? null,
+        p_evidence_mime_type: v.receipt?.evidenceMimeType ?? null,
+        p_evidence_size_bytes: v.receipt?.evidenceSizeBytes ?? null,
         p_idempotency_key: crypto.randomUUID(),
       }),
     onSuccess: () => {
       void q.invalidateQueries({ queryKey: ["host-payouts", orgId] });
       void q.invalidateQueries({ queryKey: ["event-payroll", orgId] });
       void q.invalidateQueries({ queryKey: ["org-payroll-archive", orgId] });
+    },
+  });
+}
+
+export interface PayoutAllocationRow {
+  allocationId: string;
+  payoutId: string;
+  staffMemberId: string;
+  payoutDate: string;
+  payoutStatus: string;
+  eventId: string;
+  eventNumber: string | null;
+  eventTitle: string | null;
+  amountMilli: MilliOMR;
+}
+
+export function useHostPayoutAllocations(orgId: string | null, payoutId: string | null) {
+  return useQuery({
+    queryKey: ["host-payout-allocations", orgId, payoutId],
+    enabled: !!orgId && !!payoutId,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("host_payout_allocation_summaries")
+        .select("*")
+        .eq("organization_id", orgId!)
+        .eq("payout_id", payoutId!)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((row): PayoutAllocationRow => ({
+        allocationId: String(row.allocation_id),
+        payoutId: String(row.payout_id),
+        staffMemberId: String(row.staff_member_id),
+        payoutDate: String(row.payout_date),
+        payoutStatus: String(row.payout_status),
+        eventId: String(row.event_id),
+        eventNumber: row.event_number,
+        eventTitle: row.event_title,
+        amountMilli: fromDbAmount(row.amount),
+      }));
     },
   });
 }
@@ -571,6 +655,7 @@ export function useOrgStaffMembers(orgId: string | null) {
         defaultRateMilli: fromDbAmount(row.default_rate),
         phone: row.phone,
         whatsapp: row.whatsapp,
+        idNumber: row.id_number,
         notes: row.notes,
       }));
     },
@@ -589,6 +674,7 @@ export interface StaffMemberFormValues {
   staffType: StaffType;
   phone: string;
   whatsapp: string;
+  idNumber: string;
   compensationMethod: CompensationMethod;
   rateMilli: MilliOMR;
   isActive: boolean;
@@ -611,6 +697,7 @@ export function useSaveStaffMember(orgId: string | null) {
         name: values.name.trim(),
         phone: values.phone.trim() || null,
         whatsapp: values.whatsapp.trim() || null,
+        id_number: values.idNumber.trim() || null,
         staff_type: values.staffType,
         is_active: values.isActive,
         default_compensation_method: values.compensationMethod,
@@ -698,5 +785,14 @@ export function attendanceError(error: unknown): string {
   if (message.includes("PAYOUT_ALREADY_VOIDED")) return "هذا الصرف ملغى بالفعل";
   if (message.includes("IDEMPOTENCY_KEY_PAYLOAD_MISMATCH")) return "تعارض في الطلب — حاول مجدداً";
   if (message.includes("IDEMPOTENCY_KEY_REQUIRED")) return "معرّف الطلب مفقود";
+  if (message.includes("SELFIE_REQUIRED")) return "صورة الحضور مطلوبة — أعد التقاطها ثم حاول";
+  if (message.includes("ATTACHMENT_OBJECT_MISSING")) return "لم يُحفظ الملف — أعد الرفع ثم حاول";
+  if (message.includes("ATTACHMENT_MIME_NOT_ALLOWED")) return "نوع الملف غير مدعوم";
+  if (message.includes("ATTACHMENT_SIZE_EXCEEDED")) return "حجم الملف يتجاوز الحد الأقصى";
+  if (message.includes("PAYOUT_ALLOCATION_TOTAL_MISMATCH")) return "مجموع توزيع المناسبات يجب أن يساوي مبلغ الصرف بالضبط";
+  if (message.includes("PAYOUT_ALLOCATION_EVENT_NOT_IN_ORG")) return "إحدى المناسبات لا تتبع منظمتك";
+  if (message.includes("PAYOUT_ALLOCATION_AMOUNT_INVALID")) return "مبلغ التوزيع يجب أن يكون أكبر من صفر";
+  if (message.includes("PAYOUT_ALLOCATION_EVENT_REQUIRED")) return "حدد المناسبة لكل توزيع";
+  if (message.includes("PAYOUT_ALLOCATIONS_INVALID")) return "توزيع المناسبات غير صالح";
   return message;
 }

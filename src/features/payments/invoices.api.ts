@@ -28,6 +28,11 @@ export interface InvoiceSummary {
   issuedAt: string;
   dueAt: string | null;
   totalMilli: MilliOMR;
+  preVatMilli: MilliOMR;
+  vatRegistered: boolean;
+  vatPercent: number;
+  vatAmountMilli: MilliOMR;
+  vatRegistrationNumber: string | null;
   status: InvoiceStatus;
   note: string | null;
   paidMilli: MilliOMR;
@@ -64,6 +69,11 @@ function mapInvoice(row: Record<string, unknown>): InvoiceSummary {
     issuedAt: String(row.issued_at),
     dueAt: (row.due_at as string) ?? null,
     totalMilli: fromDbAmount(row.total_amount as never),
+    preVatMilli: fromDbAmount(row.pre_vat_total as never),
+    vatRegistered: Boolean(row.vat_registered),
+    vatPercent: Number(row.vat_percent ?? 0),
+    vatAmountMilli: fromDbAmount(row.vat_amount as never),
+    vatRegistrationNumber: (row.vat_registration_number as string) ?? null,
     status: (row.invoice_status as InvoiceStatus) ?? "ISSUED",
     note: (row.note as string) ?? null,
     paidMilli: fromDbAmount(row.paid_total as never),

@@ -21,7 +21,7 @@ import {
   useOrgPayrollArchive,
   useOrgStaffMembers,
   useRecordAdvance,
-  useRecordPayout,
+  useRecordPayoutMulti,
   useStaffAdvances,
   type PayrollRow,
   type StaffMemberRow,
@@ -30,12 +30,20 @@ import { STAFF_TYPE_LABELS } from "./labels";
 import { StaffMemberDialog } from "./StaffMemberDialog";
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_OPTIONS } from "@/features/payments/presentation";
 
-function HostDetail({ orgId, staff }: { orgId: string | null; staff: StaffMemberRow }) {
+function HostDetail({
+  orgId,
+  staff,
+  rows,
+}: {
+  orgId: string | null;
+  staff: StaffMemberRow;
+  rows: PayrollRow[];
+}) {
   const canMutate = useCanMutate();
   const advances = useStaffAdvances(orgId, staff.id);
   const payouts = useHostPayouts(orgId, staff.id);
   const recordAdvance = useRecordAdvance(orgId);
-  const recordPayout = useRecordPayout(orgId);
+  const recordPayout = useRecordPayoutMulti(orgId);
 
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"ADVANCE" | "PAYOUT">("PAYOUT");
@@ -45,32 +53,53 @@ function HostDetail({ orgId, staff }: { orgId: string | null; staff: StaffMember
   const [reference, setReference] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
+  const [allocations, setAllocations] = useState<Record<string, MilliOMR>>({});
+
+  const unpaidEvents = rows.filter((r) => r.lateMilli > 0);
+  const allocationTotal = unpaidEvents.reduce(
+    (sum, r) => sum + (allocations[r.eventId] ?? 0),
+    0 as MilliOMR,
+  );
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
-    if (!amountMilli || amountMilli <= 0) {
-      setError("يرجى إدخال مبلغ صحيح أكبر من صفر");
-      return;
-    }
     try {
       if (mode === "ADVANCE") {
-        await recordAdvance.mutateAsync({ staffMemberId: staff.id, amountMilli, advanceDate: date, reason });
+        if (!amountMilli || amountMilli <= 0) {
+          setError("يرجى إدخال مبلغ صحيح أكبر من صفر");
+          return;
+        }
+        await recordAdvance.mutateAsync({
+          staffMemberId: staff.id,
+          amountMilli,
+          advanceDate: date,
+          reason,
+        });
       } else {
+        const split = unpaidEvents
+          .filter((r) => (allocations[r.eventId] ?? 0) > 0)
+          .map((r) => ({ eventId: r.eventId, amountMilli: allocations[r.eventId] ?? 0 }));
+        if (allocationTotal <= 0) {
+          setError("حدد مبلغاً لمناسبة واحدة على الأقل");
+          return;
+        }
         await recordPayout.mutateAsync({
           staffMemberId: staff.id,
-          eventId: null,
-          amountMilli,
+          amountMilli: allocationTotal,
           payoutDate: date,
           method,
           reference,
           reason,
+          allocations: split,
+          receipt: null,
         });
       }
       setOpen(false);
       setAmountMilli(0);
       setReference("");
       setReason("");
+      setAllocations({});
     } catch (cause) {
       setError(attendanceError(cause));
     }
@@ -89,7 +118,7 @@ function HostDetail({ orgId, staff }: { orgId: string | null; staff: StaffMember
     <div className="space-y-3">
       <div className="flex justify-end">
         <Button size="sm" onClick={() => setOpen(true)} disabled={recordAdvance.isPending || recordPayout.isPending}>
-          سلفة / صرف عام
+          سلفة / صرف لمناسبات
         </Button>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
@@ -121,7 +150,7 @@ function HostDetail({ orgId, staff }: { orgId: string | null; staff: StaffMember
                   <li key={p.id} className="flex justify-between text-sm">
                     <span>
                       {p.payoutDate} · {PAYMENT_METHOD_LABELS[p.method]}
-                      {p.eventNumber ? ` · ${p.eventNumber}` : " · عام"}
+                      {p.eventNumber ? ` · ${p.eventNumber}` : " · متعدد / عام"}
                     </span>
                     <span className={p.status === "VOIDED" ? "line-through opacity-60" : ""} dir="ltr">
                       {formatOMR(p.amountMilli)}
@@ -139,17 +168,49 @@ function HostDetail({ orgId, staff }: { orgId: string | null; staff: StaffMember
       <Dialog
         open={open}
         onOpenChange={setOpen}
-        title={mode === "ADVANCE" ? "سلفة مضيف" : "صرف عام لمضيف"}
-        description="هذه العملية تخص الرصيد العام للمضيف. الصرف المرتبط بمناسبة محددة يُسجّل من مساحة عمل المناسبة."
+        title={mode === "ADVANCE" ? "سلفة مضيف" : "صرف من مستحقات المناسبات"}
+        description={
+          mode === "ADVANCE"
+            ? "السلفة تخص رصيد المضيف العام وتُخصم مرة واحدة."
+            : "وزّع المبلغ على مناسبات المضيف غير المدفوعة؛ المجموع يساوي مبلغ الصرف تلقائياً."
+        }
       >
         <form className="space-y-3" onSubmit={submit}>
           <Field label="نوع العملية" htmlFor="d-mode">
             <Select id="d-mode" value={mode} onChange={(e) => setMode(e.target.value as "ADVANCE" | "PAYOUT")}>
-              <option value="PAYOUT">صرف عام (مدفوع)</option>
+              <option value="PAYOUT">صرف من مستحقات المناسبات</option>
               <option value="ADVANCE">سلفة عامة</option>
             </Select>
           </Field>
-          <MoneyInput id="d-amount" label="المبلغ (ر.ع.)" value={amountMilli} onChange={(m) => setAmountMilli(m ?? 0)} required />
+          {mode === "PAYOUT" ? (
+            unpaidEvents.length === 0 ? (
+              <p className="text-sm text-slate-500">لا توجد مناسبات بمستحقات غير مدفوعة لهذا المضيف.</p>
+            ) : (
+              <div className="space-y-2 rounded-xl border bg-slate-50 p-3">
+                {unpaidEvents.map((r) => (
+                  <div key={r.eventId} className="flex items-center justify-between gap-2">
+                    <span className="text-sm">
+                      {r.eventTitle ?? r.eventNumber ?? "—"}
+                      <span className="text-slate-500"> · متبقي {formatOMR(r.lateMilli)}</span>
+                    </span>
+                    <MoneyInput
+                      label=""
+                      id={`alloc-${r.eventId}`}
+                      value={allocations[r.eventId] ?? 0}
+                      onChange={(m) =>
+                        setAllocations((prev) => ({ ...prev, [r.eventId]: m ?? 0 }))
+                      }
+                    />
+                  </div>
+                ))}
+                <p className="pt-1 font-black">
+                  إجمالي الصرف: <span dir="ltr">{formatOMR(allocationTotal)}</span>
+                </p>
+              </div>
+            )
+          ) : (
+            <MoneyInput id="d-amount" label="المبلغ (ر.ع.)" value={amountMilli} onChange={(m) => setAmountMilli(m ?? 0)} required />
+          )}
           <Field label="التاريخ" htmlFor="d-date" required>
             <Input id="d-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
           </Field>
@@ -271,7 +332,7 @@ function StaffSummaryCard({
                 <p className="mt-2 text-sm text-slate-500">لا أوراق حضور بعد.</p>
               )}
             </div>
-            <HostDetail orgId={orgId} staff={staff} />
+            <HostDetail orgId={orgId} staff={staff} rows={rows} />
           </div>
         )}
       </CardBody>

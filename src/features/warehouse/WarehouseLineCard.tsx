@@ -16,6 +16,7 @@ import {
   validateReturnQuantities,
   type WarehouseLine,
 } from "./warehouse.model";
+import { HandoverEvidenceSection } from "./HandoverEvidenceSection";
 
 /** Large touch-friendly quantity stepper: minimal typing on a warehouse floor. */
 function QuantityStepper({
@@ -73,18 +74,22 @@ function QuantityStepper({
 
 /** One equipment line with dispatch / return flows (local presentation state). */
 export function WarehouseLineCard({
+  orgId,
   line,
   eventStatus,
   role,
   canReadCost,
+  canCaptureEvidence,
   onDispatch,
   onReturn,
   busy,
 }: {
+  orgId: string | null;
   line: WarehouseLine;
   eventStatus: string;
   role: AppRole | null;
   canReadCost: boolean;
+  canCaptureEvidence: boolean;
   onDispatch: (line: WarehouseLine, quantity: number, reference: string) => void;
   onReturn: (
     line: WarehouseLine,
@@ -291,6 +296,14 @@ export function WarehouseLineCard({
             </Button>
           </div>
         </div>
+      )}
+
+      {orgId && (
+        <HandoverEvidenceSection
+          orgId={orgId}
+          reservationId={line.reservationId}
+          canEdit={canCaptureEvidence}
+        />
       )}
     </Card>
   );

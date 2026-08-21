@@ -43,6 +43,11 @@ export interface QuotationRow {
   notes: string | null;
   subtotal: string;
   total_selling: string;
+  pre_vat_total: number | null;
+  vat_registered: boolean | null;
+  vat_percent: number | null;
+  vat_amount: number | null;
+  vat_registration_number: string | null;
   transport_required: boolean;
   transport_zone: string | null;
   transport_amount: string;

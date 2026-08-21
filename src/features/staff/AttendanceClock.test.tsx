@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   attendance: [] as AttendanceSummary[],
   clockIn: vi.fn(),
   clockOut: vi.fn(),
+  upload: vi.fn(),
 }));
 
 vi.mock("./staff.api", async () => {
@@ -16,6 +17,16 @@ vi.mock("./staff.api", async () => {
     useEventAttendance: () => ({ data: mocks.attendance, isLoading: false }),
     useClockStaffIn: () => ({ mutateAsync: mocks.clockIn, isPending: false }),
     useClockStaffOut: () => ({ mutateAsync: mocks.clockOut, isPending: false }),
+  };
+});
+
+vi.mock("@/features/attachments/attachments.api", async () => {
+  const actual = await vi.importActual<typeof import("@/features/attachments/attachments.api")>(
+    "@/features/attachments/attachments.api",
+  );
+  return {
+    ...actual,
+    uploadEvidenceFile: mocks.upload,
   };
 });
 
@@ -68,13 +79,26 @@ const staffList = [
 ];
 
 describe("AttendanceClock", () => {
+  const uploaded = {
+    storagePath: "org-1/ATTENDANCE_CHECKIN/staff_attendance/selfie.jpg",
+    fileName: "selfie.jpg",
+    mimeType: "image/jpeg",
+    sizeBytes: 100,
+  };
+
   beforeEach(() => {
     mocks.attendance = [];
     mocks.clockIn.mockReset();
     mocks.clockOut.mockReset();
+    mocks.upload.mockReset();
     mocks.clockIn.mockResolvedValue({});
     mocks.clockOut.mockResolvedValue({});
+    mocks.upload.mockResolvedValue(uploaded);
   });
+
+  function selfieFile(): File {
+    return new File(["x"], "selfie.jpg", { type: "image/jpeg" });
+  }
 
   it("asks the owner to assign staff first when the roster is empty", () => {
     render(
@@ -99,10 +123,17 @@ describe("AttendanceClock", () => {
       />,
     );
     await userEvent.click(screen.getByRole("button", { name: "دخول الآن — سعيد" }));
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await userEvent.upload(fileInput, selfieFile());
+    expect(mocks.upload).toHaveBeenCalled();
     expect(mocks.clockIn).toHaveBeenCalledWith({
       staffMemberId: "staff-1",
       assignmentId: "asg-1",
       shift: "MORNING",
+      evidencePath: uploaded.storagePath,
+      evidenceFileName: uploaded.fileName,
+      evidenceMimeType: uploaded.mimeType,
+      evidenceSizeBytes: uploaded.sizeBytes,
     });
   });
 
@@ -118,7 +149,15 @@ describe("AttendanceClock", () => {
     );
     expect(screen.getByText(/المستحق يظهر بعد الخروج/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "خروج الآن — سعيد" }));
-    expect(mocks.clockOut).toHaveBeenCalledWith({ staffMemberId: "staff-1" });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await userEvent.upload(fileInput, selfieFile());
+    expect(mocks.clockOut).toHaveBeenCalledWith({
+      staffMemberId: "staff-1",
+      evidencePath: uploaded.storagePath,
+      evidenceFileName: uploaded.fileName,
+      evidenceMimeType: uploaded.mimeType,
+      evidenceSizeBytes: uploaded.sizeBytes,
+    });
     expect(screen.queryByRole("button", { name: "دخول الآن — سعيد" })).not.toBeInTheDocument();
   });
 

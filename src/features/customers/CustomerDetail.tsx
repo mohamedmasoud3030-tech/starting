@@ -1,11 +1,13 @@
 import { useParams } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
+import { Phone, MessageCircle } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { CUSTOMER_TYPE_LABELS } from "@/lib/domain";
 import { formatOMR, fromDbAmount } from "@/lib/money";
+import { omanTelUrl, omanWhatsAppUrl } from "@/lib/phone";
 import { useCustomer360 } from "@/features/intelligence/intelligence.api";
 
 /**
@@ -25,6 +27,9 @@ export function CustomerDetail() {
 
   const repeatCustomer = row.events_count >= 2;
 
+  const telUrl = omanTelUrl(row.phone);
+  const whatsappUrl = omanWhatsAppUrl(row.phone);
+
   return (
     <div className="space-y-5">
       <Link to="/customers" className="font-bold text-brand-700">→ العودة إلى العملاء</Link>
@@ -32,9 +37,31 @@ export function CustomerDetail() {
         title={row.name}
         description={row.phone ?? ""}
         actions={
-          <Badge tone={row.is_active ? "brand" : "neutral"}>
-            {CUSTOMER_TYPE_LABELS[row.customer_type as keyof typeof CUSTOMER_TYPE_LABELS] ?? row.customer_type}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            {telUrl && (
+              <a
+                href={telUrl}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-800 hover:bg-slate-50"
+              >
+                <Phone className="h-4 w-4" />
+                اتصال
+              </a>
+            )}
+            {whatsappUrl && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 text-sm font-bold text-emerald-700 hover:bg-emerald-50"
+              >
+                <MessageCircle className="h-4 w-4" />
+                واتساب
+              </a>
+            )}
+            <Badge tone={row.is_active ? "brand" : "neutral"}>
+              {CUSTOMER_TYPE_LABELS[row.customer_type as keyof typeof CUSTOMER_TYPE_LABELS] ?? row.customer_type}
+            </Badge>
+          </div>
         }
       />
 

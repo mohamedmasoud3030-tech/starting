@@ -85,6 +85,10 @@ describe("attendance mutations refresh the dashboard gap count", () => {
       staffMemberId: "staff-1",
       assignmentId: "asg-1",
       shift: "MORNING",
+      evidencePath: "org/ATTENDANCE_CHECKIN/staff_attendance/a.jpg",
+      evidenceFileName: "a.jpg",
+      evidenceMimeType: "image/jpeg",
+      evidenceSizeBytes: 100,
     });
 
     const keys = invalidatedKeys();
@@ -95,7 +99,13 @@ describe("attendance mutations refresh the dashboard gap count", () => {
 
   it("useClockStaffOut refreshes payroll after earned wages are written", async () => {
     const { result } = renderHook(() => useClockStaffOut(ORG, EVENT), { wrapper });
-    await result.current.mutateAsync({ staffMemberId: "staff-1" });
+    await result.current.mutateAsync({
+      staffMemberId: "staff-1",
+      evidencePath: "org/ATTENDANCE_CHECKOUT/staff_attendance/b.jpg",
+      evidenceFileName: "b.jpg",
+      evidenceMimeType: "image/jpeg",
+      evidenceSizeBytes: 100,
+    });
 
     const keys = invalidatedKeys();
     expect(keys).toContainEqual(["attendance-gaps", ORG]);
