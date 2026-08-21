@@ -28,6 +28,7 @@ import {
   EVENT_STATUS_ARABIC,
   toArabicDigits,
 } from "@/features/ownerVoice/screenSummary";
+import { staffingCoverageLabel, staffingPlan } from "@/lib/staffing";
 import type { AttendanceGap } from "@/features/staff/staff.api";
 import { buildEventWhatsAppUrl } from "./operationalDashboard.model";
 import { FirstStepsCard } from "./FirstStepsCard";
@@ -47,6 +48,7 @@ export function HomePage() {
     dashboardLoaded,
     readinessByEventId,
     attendanceGaps,
+    staffingByEventId,
     attentionSummary,
     hasLoadError,
     eventsTruncated,
@@ -140,6 +142,12 @@ export function HomePage() {
             {dashboard.todayEvents.map((event) => {
               const readiness = readinessByEventId[event.id];
               const whatsappUrl = buildEventWhatsAppUrl(event);
+              const staffing = staffingByEventId?.[event.id];
+              const plan = staffingPlan({
+                guestCount: event.guest_count,
+                assigned: staffing?.assigned ?? null,
+              });
+              const coverage = staffingCoverageLabel(plan);
 
               return (
                 <Card key={event.id} className="p-5">
@@ -179,13 +187,19 @@ export function HomePage() {
                     </span>
                   </div>
 
+                  <p className="mt-3 text-sm text-slate-700">
+                    المعيّن: {staffing ? staffing.assigned : "غير متاح"}
+                    {" · "}حضر: {staffing ? staffing.arrived : "غير متاح"}
+                    {coverage ? ` · ${coverage}` : ""}
+                  </p>
+
                   <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
                     <Link
                       to="/events/$eventId"
                       params={{ eventId: event.id }}
                       className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800"
                     >
-                      فتح مساحة العمل
+                      فتح المناسبة
                     </Link>
                     {whatsappUrl ? (
                       <a

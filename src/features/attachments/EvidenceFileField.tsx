@@ -23,6 +23,7 @@ export function EvidenceFileField({
   label,
   hint,
   accept = "image/jpeg,image/png,image/webp,application/pdf",
+  capture,
   supersede = true,
   canEdit,
 }: {
@@ -33,6 +34,8 @@ export function EvidenceFileField({
   label: string;
   hint?: string;
   accept?: string;
+  /** Rear camera on phones when the file is a photo. */
+  capture?: boolean;
   supersede?: boolean;
   canEdit: boolean;
 }) {
@@ -87,9 +90,12 @@ export function EvidenceFileField({
               فتح الملف (PDF)
             </a>
           )}
-          <span className="text-xs text-slate-500" dir="ltr">
-            {current.fileName}
-          </span>
+          <div className="text-xs text-slate-500">
+            <p dir="ltr">{current.fileName}</p>
+            <p>
+              {new Date(current.createdAt).toLocaleString("ar-OM", { timeZone: "Asia/Muscat" })}
+            </p>
+          </div>
           {canEdit && (
             <Button
               type="button"
@@ -121,6 +127,7 @@ export function EvidenceFileField({
           ref={inputRef}
           type="file"
           accept={accept}
+          capture={capture ? "environment" : undefined}
           className="hidden"
           onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
         />

@@ -19,6 +19,7 @@ import {
   useVoidPayment,
 } from "./payments.api";
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_OPTIONS } from "./presentation";
+import { FINANCE_LABELS } from "@/lib/financeLabels";
 import { InlineError } from "@/components/ui/ErrorState";
 
 /**
@@ -114,16 +115,16 @@ export function EventPaymentsPanel({
       {f && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Card><CardBody>
-            <p className="text-sm text-slate-500">الإيراد المقبول</p>
+            <p className="text-sm text-slate-500">{FINANCE_LABELS.agreed}</p>
             <p className="text-2xl font-black">{formatOMR(f.acceptedRevenueMilli)}</p>
             <p className="mt-1 text-xs text-slate-400">وفق عرض السعر المعتمد</p>
           </CardBody></Card>
           <Card className="border-emerald-200"><CardBody>
-            <p className="text-sm text-slate-500">المدفوع</p>
+            <p className="text-sm text-slate-500">{FINANCE_LABELS.collected}</p>
             <p className="text-2xl font-black">{formatOMR(f.amountPaidMilli)}</p>
           </CardBody></Card>
           <Card className={f.outstandingMilli > 0 ? "border-amber-300" : "border-emerald-200"}><CardBody>
-            <p className="text-sm text-slate-500">المتبقي على العميل</p>
+            <p className="text-sm text-slate-500">{FINANCE_LABELS.remaining}</p>
             <p className="text-2xl font-black">{formatOMR(f.outstandingMilli)}</p>
           </CardBody></Card>
           <Card><CardBody>
