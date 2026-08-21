@@ -6,12 +6,12 @@
  * detects and prevents database problems automatically:
  *   - deterministic checks (static file analysis + dynamic SQL probes)
  *   - PostgreSQL/Supabase tests (pgTAP under supabase/tests/)
- *   - GitHub CI gates that block merges on CRITICAL/HIGH regressions
+ *   - CI/local gates that block CRITICAL/HIGH regressions
  *   - a machine-readable report (PASS/FAIL, severity, finding ID, evidence)
  *
- * This module provides the plumbing: findings, the report collector, DB
- * connection/replay helpers, and small text utilities. No check logic lives
- * here — checks live in guardian/checks/.
+ * Dynamic Guardian runs are intentionally scratch-only: this module will not
+ * create/drop databases on a remote host. Live/production databases must never
+ * be passed to withScratchDatabase().
  */
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
@@ -103,42 +103,82 @@ export class Report {
   /** Findings at or above the given severity (FAIL only). */
   failuresAtOrAbove(severity) {
     const rank = SEVERITY_RANK[severity];
-    return this.findings.filter((f) => f.status === "FAIL" && SEVERITY_RANK[f.severity] >= rank);
+    return this.findings.filter(
+      (f) => f.status === "FAIL" && SEVERITY_RANK[f.severity] >= rank,
+    );
   }
 }
 
 /**
- * Opens a scratch database on the target server (drops any existing one with
- * the same name first). Returns the connection to the scratch DB.
+ * Guardian scratch databases are destructive by design (CREATE/DROP DATABASE),
+ * therefore only loopback/local PostgreSQL targets are allowed.
+ */
+export function assertLocalScratchDatabaseUrl(dbUrl) {
+  let parsed;
+  try {
+    parsed = new URL(dbUrl);
+  } catch {
+    throw new Error("GUARDIAN_INVALID_DB_URL");
+  }
+
+  const localHosts = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
+  if (!localHosts.has(parsed.hostname)) {
+    throw new Error(
+      `GUARDIAN_REMOTE_DB_FORBIDDEN: scratch replay may only use a local PostgreSQL server (got ${parsed.hostname})`,
+    );
+  }
+}
+
+/**
+ * Opens an isolated scratch database on a LOCAL target server. The database
+ * name is unique per process/run and is removed afterwards. No fixed database
+ * name is dropped, avoiding collisions between concurrent agents/runs.
  */
 export async function withScratchDatabase(dbUrl, name, fn) {
+  assertLocalScratchDatabaseUrl(dbUrl);
+
+  const safePrefix = String(name).replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 30) || "guardian";
+  const scratchName = `${safePrefix}_${process.pid}_${Date.now()}`;
+  const quotedName = `"${scratchName}"`;
+
   const admin = new pg.Client({ connectionString: dbUrl });
   await admin.connect();
-  await admin.query(`drop database if exists ${name}`);
-  await admin.query(`create database ${name}`);
-  await admin.end();
+  try {
+    await admin.query(`create database ${quotedName}`);
+  } finally {
+    await admin.end();
+  }
 
-  const scratchUrl = dbUrl.replace(/\/[^/?]+(\?|$)/, `/${name}$1`);
+  const scratchUrl = dbUrl.replace(/\/[^/?]+(\?|$)/, `/${scratchName}$1`);
   const db = new pg.Client({ connectionString: scratchUrl });
   await db.connect();
   await db.query("set check_function_bodies = on");
+
   try {
     return await fn(db);
   } finally {
     await db.end();
+
+    const cleanup = new pg.Client({ connectionString: dbUrl });
+    try {
+      await cleanup.connect();
+      await cleanup.query(`drop database if exists ${quotedName}`);
+    } finally {
+      await cleanup.end().catch(() => {});
+    }
   }
 }
 
 /**
  * Replays the native harness bootstrap (auth replica + storage replica + pgTAP
  * shims) on a plain PostgreSQL server so the migrations and tests can run.
- * Skipped automatically when the server is a real Supabase stack.
+ * Skipped automatically when the local server already exposes an auth schema.
  */
 export async function applyNativeBootstrap(db) {
   const r = await db.query(
     `select exists (select 1 from pg_namespace where nspname='auth') as has_auth`,
   );
-  if (r.rows[0].has_auth) return false; // real Supabase — no bootstrap needed
+  if (r.rows[0].has_auth) return false;
   for (const f of ["setup_auth.sql", "setup_storage.sql", "pgtap_shims.sql"]) {
     const p = join(NATIVE_DIR, f);
     if (existsSync(p)) await db.query(readFileSync(p, "utf8"));
