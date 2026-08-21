@@ -36,23 +36,25 @@
 - ✅ `npm run build` + `npm run smoke:production` — نجاح (أكبر chunk ≈ 208 KiB من حد 500)
 - ✅ قاعدة البيانات: **61 ترحيلاً** تُعاد من قاعدة فارغة + **16 ملف pgTAP (590 تأكيداً)**
   كلها ناجحة + **8 براهين تزامن** ناجحة
-- ✅ `npm audit` — 0 ثغرات معروفة · CI على `main` أخضر بالكامل
+- ✅ `npm audit` — 0 ثغرات معروفة · CI على `main` أخضر بالكامل وقت هذا التحقق
 - ⚠️ البيئة الحية (Vercel / مشروع Supabase الإنتاجي) لم تُتحقق في بيئة العمل — راجع
   `PROJECT_STATUS.md`.
 
 ## Database Guardian 🛡️
 
-نظام دائم داخل المستودع يكتشف ويمنع مشاكل قاعدة البيانات تلقائياً:
-فحوص Deterministic + اختبارات PostgreSQL/Supabase + بوابة GitHub CI +
-تقرير machine-readable (PASS/FAIL/severity/finding ID/evidence).
-يُشغَّل تلقائياً على أي PR يغيّر `supabase/**` أو `guardian/**` ويمنع الدمج عند
-CRITICAL/HIGH.
+نظام دائم داخل المستودع لفحص migrations/RLS/RPCs والعزل والسلامة المالية. بوابة
+الإصدار المحمولة لا تعتمد على GitHub Actions، ويوجد أيضاً workflow آلي عند توفر CI.
 
 ```bash
-npm run db:guardian            # static + dynamic (DB_URL أو قاعدة محلية)
-npm run db:guardian:static     # فحوص الملفات فقط
-npm run db:guardian:snapshot   # تحديث snapshots العقد بعد أي تغيير في migrations
+npm run gate                  # البوابة الكاملة؛ تتطلب PostgreSQL محلياً وتفشل إذا غاب
+npm run gate -- --skip-db     # frontend/static فقط — ليس اعتماداً لتغيير DB
+npm run db:guardian           # static + dynamic على scratch DB محلية فقط
+npm run db:guardian:static    # فحوص الملفات فقط
+npm run db:guardian:snapshot  # بعد إضافة migration جديدة فقط؛ لا يعيد كتابة hashes تاريخية
 ```
+
+**لا تستخدم `db:guardian` ضد Supabase production أو أي host بعيد.** الـdynamic runner
+ينشئ/يحذف قواعد scratch ولذلك يرفض غير localhost/loopback.
 
 التوثيق الكامل: [`guardian/README.md`](guardian/README.md) ·
 دليل التشغيل: [`docs/operations/database-guardian.md`](docs/operations/database-guardian.md) ·
