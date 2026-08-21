@@ -27,14 +27,14 @@ export async function run(ctx) {
   for (const t of files) {
     const sql = readFileSync(join(TESTS_DIR, t), "utf8");
     const planMatch = sql.match(/\bselect\s+plan\s*\(\s*(\d+)\s*\)/i);
-    const hasFinish = /\bselect\s+\*\s+from\s+finish\s*\(\s*\)/i.test(sql);
+    const hasFinish = /\bselect\s+(?:\*\s+from\s+)?finish\s*\(\s*\)/i.test(sql);
 
     if (!planMatch) {
       failed.push(`${t}: missing literal select plan(N)`);
       continue;
     }
     if (!hasFinish) {
-      failed.push(`${t}: missing select * from finish()`);
+      failed.push(`${t}: missing finish()`);
       continue;
     }
 
@@ -48,7 +48,7 @@ export async function run(ctx) {
       failed.push(`${t}: ${e.message}`);
     } finally {
       // If a suite raised before its own ROLLBACK, recover the connection.
-      await db.query("rollback");
+      await db.query("rollback").catch(() => {});
       await db.query("delete from public._pgtap_results");
       await db.query("delete from public._pgtap_plan");
     }
