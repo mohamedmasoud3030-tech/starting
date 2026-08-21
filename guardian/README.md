@@ -1,155 +1,177 @@
 # Database Guardian — نظام حارس قاعدة البيانات
 
-نظام دائم داخل هذا المستودع يكتشف ويمنع مشاكل قاعدة البيانات تلقائياً:
-فحوص Deterministic، اختبارات PostgreSQL/Supabase حقيقية، بوابة GitHub CI،
-وتقرير machine-readable لكل تشغيل. لا يعتمد على رأي نموذج كحقيقة — كل قاعدة
-في [`contract/canonical-contract.json`](contract/canonical-contract.json)
-مُطبَّقة بالكود وتُختبر سلوكياً.
+نظام دائم داخل هذا المستودع لاكتشاف ومنع مشاكل قاعدة البيانات بطريقة قابلة للتكرار:
+فحوص deterministic، اختبارات PostgreSQL/Supabase، بوابة إصدار محمولة، GitHub CI،
+وتقارير machine-readable. قواعد المجال مأخوذة من schema والكود والاختبارات الفعلية
+لمشروع **Hospitality / Event Operations** ومثبتة في
+[`contract/canonical-contract.json`](contract/canonical-contract.json) و
+[`contract/business-invariants.md`](contract/business-invariants.md).
 
-> A permanent, code-based database health system: deterministic checks, real
-> PostgreSQL/Supabase tests, a GitHub CI merge gate, and a machine-readable
-> report. Every rule in the canonical contract is enforced by code and
-> verified behaviorally — never by opinion. Domain: **Hospitality / Event
-> Operations** (organizations, events, quotations, attendance, equipment,
-> consumables, procurement, payments) — the invariants come from this
-> repository's own schema and tests (`guardian/contract/business-invariants.md`).
-
----
-
-## التشغيل (Run)
+## التشغيل
 
 ```bash
-# بوابة الإصدار المحمولة — كل شيء (typecheck, lint, test, build, Guardian static,
-# ومع قاعدة متاحة: إعادة تشغيل migrations + pgTAP + Guardian dynamic)
-npm run gate                     # أو: pnpm gate
+# البوابة الكاملة — DB محلية مطلوبة، ولا يوجد false-green عند غيابها
+npm run gate
 
-# كل الفحوص (static + dynamic ضد قاعدة PostgreSQL متاحة)
-pnpm db:guardian                 # أو: npm run db:guardian
-DB_URL=postgresql://… pnpm db:guardian          # ضد أي قاعدة (مثلاً Supabase الحية)
-pnpm db:guardian -- --mode static               # فحوص الملفات فقط (بدون قاعدة)
-pnpm db:guardian:snapshot        # إعادة توليد snapshots العقد (expected-schema,
-                                 # migration-hashes, applied-baseline)
-pnpm db:guardian -- --fail-on CRITICAL          # تغيير حد المنع (الافتراضي HIGH)
-pnpm db:guardian -- --skip G-WRITE-PATHS        # استثناء فحص معيّن
+# تخطٍ صريح للـDB: مناسب لفحص frontend/static فقط، وليس اعتماد تغيير DB
+npm run gate -- --skip-db
+
+# Guardian static + dynamic على PostgreSQL محلي scratch فقط
+npm run db:guardian
+DB_URL=postgresql://postgres:postgres@127.0.0.1:5433/postgres npm run db:guardian
+
+# فحوص الملفات فقط
+npm run db:guardian:static
+
+# بعد إضافة migration جديدة فقط: snapshot آمن
+npm run db:guardian:snapshot
 ```
 
-**الخروج غير الصفري** عند وجود أي FAIL بدرجة ≥ `--fail-on` (الافتراضي `HIGH`).
+الخروج غير الصفري يحدث عند وجود FAIL بدرجة `HIGH` أو `CRITICAL` افتراضياً.
 
-في بيئة التطوير المحلية بدون Supabase CLI/Docker، شغّل حارس PostgreSQL محلياً
-ثم وجّه Guardian إليه:
+### ممنوع تشغيل الـdynamic Guardian على Production
+
+`db:guardian` يعيد migrations داخل **قواعد scratch** ويحتاج صلاحيات CREATE/DROP DATABASE.
+لهذا السبب يقبل runner فقط `localhost` / loopback ويرفض أي `DB_URL` بعيد. لا تمرر
+Supabase direct/pooler production URL. فحص قاعدة حية — إن احتجناه لاحقاً — يجب أن يكون
+بأداة read-only منفصلة لا تنشئ ولا تحذف أي قاعدة.
+
+### قاعدة محلية نموذجية
 
 ```bash
-# scratch harness خارج المستودع (npm-only egress sandbox):
-#   node start-pg.mjs          → PostgreSQL 18 على المنفذ 5433 (postgres/postgres)
-DB_URL=postgresql://postgres:postgres@127.0.0.1:5433/postgres pnpm db:guardian
+DB_URL=postgresql://postgres:postgres@127.0.0.1:5433/postgres npm run gate
 ```
 
-في CI، يشغّل `.github/workflows/guardian.yml`:
-1. **static** (بدون قاعدة) على أي PR يلمس `supabase/**`, `guardian/**`,
-   `package.json`, أو `src/lib/database.types.ts`.
-2. **dynamic** عبر Supabase stack كامل: `supabase db reset` + `supabase test db`
-   (السلطة النهائية لـ pgTAP) + `pnpm db:guardian`.
+المسار الرسمي في GitHub Actions يستخدم Supabase stack محلي داخل runner؛ ليس مشروع
+Supabase حي.
 
-**أي تغيير مستقبلي للقاعدة** (migration/RPC/RLS/types) سيشغّل Guardian تلقائياً
-ويمنع الدمج عند وجود CRITICAL/HIGH.
+## GitHub CI
 
----
+`.github/workflows/guardian.yml` يعمل عند تغييرات:
 
-## المخرجات (Report)
+- `supabase/**`
+- `guardian/**`
+- `scripts/release-gate.mjs`
+- `package.json`
+- `src/lib/database.types.ts`
 
-كل تشغيل يكتب إلى `guardian/reports/latest/`:
+ويشغّل:
+
+1. Guardian static.
+2. Supabase local stack + `supabase db reset`.
+3. `supabase test db`.
+4. Guardian dynamic على `127.0.0.1:54322`.
+
+إذا تعطلت GitHub Actions لأسباب billing/infrastructure، يبقى `npm run gate` بوابة
+محمولة مستقلة يمكن تشغيلها محلياً.
+
+## بوابة الإصدار المحمولة
+
+`npm run gate` يشغّل بالترتيب:
+
+1. `typecheck`
+2. `lint`
+3. frontend tests
+4. `build`
+5. Guardian static
+6. migration replay + pgTAP على DB محلية
+7. Guardian dynamic
+
+**غياب DB = FAIL** افتراضياً. لا يصبح DB `SKIPPED` إلا لو أعطى المشغّل
+`--skip-db` صراحة، ويُسجل ذلك في `guardian/reports/latest/release-gate.json`.
+
+## Snapshot وMigration Immutability
+
+`contract/migration-hashes.json` هو سجل بصمات migrations التي تم قفلها. القاعدة:
+
+- migration مسجلة لا تُعدّل ولا تُحذف.
+- `db:guardian:snapshot` يفحص hashes التاريخية **قبل** أي كتابة.
+- لو تغيّر hash تاريخي، snapshot يرفض العملية ولا يمحو الدليل.
+- snapshot يضيف hashes للـmigrations الجديدة فقط؛ لا يعيد كتابة القديمة.
+- `expected-schema.json` يُعاد توليده من replay نظيف فقط إذا لم توجد findings مانعة.
+- `applied-baseline.json` **لا يتقدم تلقائياً** مع snapshot؛ هو baseline مستقرة سابقة
+  ويُحدّث فقط بعد تحقق منفصل من أن migrations الأحدث أصبحت مطبقة/مستقرة.
+
+بهذا يظل `G-MIGRATION-IMMUTABILITY` حارساً حقيقياً ولا يمكن تجاوزه بمجرد إعادة snapshot.
+
+## المخرجات
+
+كل تشغيل يكتب إلى `guardian/reports/latest/`، وهو مجلد مولد وموجود في `.gitignore`:
 
 | ملف | المحتوى |
 | --- | --- |
-| `report.json` | التقرير machine-readable: findings كاملة (id, check, severity, status, title, evidence) |
-| `summary.md` | ملخص PASS/FAIL حسب الدرجة + تفاصيل كل FAIL |
-| `findings.csv` | نفس الـ findings بصيغة CSV |
-| `inventory.md` / `inventory.json` | الجرد الكامل: tables, columns/types, constraints, indexes, views, triggers, functions/RPCs, RLS policies, SECURITY DEFINER |
-| `write-paths.md` / `write-paths.json` | خريطة Frontend → RPC → table → trigger → function |
+| `report.json` | findings كاملة: id / check / severity / status / evidence |
+| `summary.md` | ملخص PASS/FAIL |
+| `findings.csv` | findings بصيغة CSV |
+| `inventory.md` / `inventory.json` | tables / columns / constraints / views / triggers / functions / RLS |
+| `write-paths.md` / `write-paths.json` | Frontend → RPC → table write paths |
+| `release-gate.json` | نتيجة البوابة المحمولة وخطواتها |
 
-**حالة كل فحص:** `PASS` أو `FAIL` مع `severity` (`CRITICAL/HIGH/MEDIUM/LOW/INFO`)
-و`finding ID` وأدلة (`evidence`) قابلة للتتبع.
+## الفحوص
 
----
+### Static
 
-## الفحوص (Checks)
-
-### Static — بلا قاعدة بيانات
 | ID | ماذا يفحص |
 | --- | --- |
-| `G-MIGRATION-IMMUTABILITY` | SHA-256 لكل migration مقابل `contract/migration-hashes.json`. تعديل migration مطبَّق = **CRITICAL**؛ الإصلاح دائماً migration جديد. |
-| `G-MIGRATION-HYGIENE` | أنماط ممنوعة على مستوى البيانات: float للنقود، DROP/DELETE لجدول مالي/رئيسي، منح `anon` غير مُلغاة لاحقاً، SECURITY DEFINER بدون `search_path`، تكرار أرقام الترتيب. |
-| `G-WRITE-PATHS` | كل عملية business لها مسار كتابة واحد: يستخرج RPCs المُستدعاة من الواجهة، الجداول التي تكتبها (من جسم الدالة)، والكتابات المباشرة من العميل، ويقارنها بقائمة `writePaths.allowedDirectClientWrites` في العقد. |
+| `G-MIGRATION-IMMUTABILITY` | SHA-256 للمigrations المسجلة؛ تعديل/حذف تاريخي = CRITICAL. |
+| `G-MIGRATION-HYGIENE` | أنماط schema خطرة: float للنقود، DROP/DELETE غير الآمن، ACL/SECDEF غير الآمن، وغير ذلك. |
+| `G-WRITE-PATHS` | مسارات الكتابة من الواجهة/RPC والجداول مقابل العقد المسموح. |
 
-### Dynamic — ضد قاعدة معاد تشغيلها (scratch) أو أي قاعدة مستهدفة
+### Dynamic — scratch محلي فقط
+
 | ID | ماذا يفحص |
 | --- | --- |
-| `G-INVENTORY` | الجرد الكامل (فوق). |
-| `G-SCHEMA-DRIFT` | Git migrations ↔ expected-schema.json ↔ actual schema. جدول ناقص = CRITICAL؛ عمود/قيد/فهرس ناقص = HIGH/MEDIUM؛ أي تغيير في migrations بدون تحديث snapshot = HIGH. |
-| `G-FUNCTION-ACL` | كل SECURITY DEFINER: `search_path` مثبّت، لا ACL افتراضي (PUBLIC)، لا تنفيذ من `anon`، ودالة تكتب بدون guard = CRITICAL. |
-| `G-VIEW-SECURITY` | كل view إمّا `security_invoker=true` أو مُفلتر org في جسمه؛ view بلا الاثنين = CRITICAL (تسريب عابر للمنظمات). |
-| `G-RLS-INTEGRITY` | RLS مفعّل على كل جدول، لا سياسات DELETE على المالي/الرئيسي، لا منح anon، FKs بين جداول org-scoped تشمل `organization_id`. |
-| `G-DATA-INTEGRITY` | orphans / broken FKs، علاقات عابرة للمنظمات، تكرار سجلات business، حالات مستحيلة (إغلاق مع outstanding، سالب، check-out قبل check-in)، انتقالات حالة غير صالحة. |
-| `G-FINANCIAL-INTEGRITY` | النقود NUMERIC حصراً (scale 3)، reconciliation invoices/payments/installments، منع overpayment، كشف double posting، عدم قابلية تعديل المستندات المعتمدة، منع hard-delete، تفرد أرقام المستندات لكل منظمة، idempotency. |
-| `G-MIGRATION-GUARDIAN` | إعادة التشغيل من قاعدة فارغة + تشغيل migrations الجديدة فوق الحالة القريبة من الحالية (`applied-baseline.json`). |
-| `G-TENANT-ISOLATION` | تنفيذ كل `supabase/tests/*.test.sql` عبر shims النهج الأصلي (و`supabase test db` في CI هو السلطة). |
+| `G-INVENTORY` | جرد schema الفعلي بعد replay. |
+| `G-SCHEMA-DRIFT` | replay النظيف مقابل `expected-schema.json`. |
+| `G-FUNCTION-ACL` | **كل** SECURITY DEFINER بما فيها read-model helpers: search_path + ACL + no anon + authorization guards للكتابة. |
+| `G-VIEW-SECURITY` | view يجب أن تكون security_invoker أو تحمل org filtering مثبتاً ومختبراً. |
+| `G-RLS-INTEGRITY` | RLS / org-scoped FKs / grants / DELETE policies. |
+| `G-DATA-INTEGRITY` | orphans / cross-org / حالات مستحيلة / سلامة العلاقات. |
+| `G-FINANCIAL-INTEGRITY` | exact OMR، reconciliation، overpayment، duplicate-payment detection، immutability، hard-delete، uniqueness، idempotency. |
+| `G-MIGRATION-GUARDIAN` | replay من فارغ + تطبيق migrations الجديدة فوق `applied-baseline.json`. |
+| `G-TENANT-ISOLATION` | اختبارات pgTAP الخاصة بالعزل وسلوك RPC/views. |
 
-## بوابة الإصدار المحمولة (Portable Release Gate)
+### ملاحظات مهمة على الفحص المالي
 
-`npm run gate` (`scripts/release-gate.mjs`) يعمل في أي بيئة، مع أو بدون قاعدة:
-1. `typecheck` · 2. `lint` · 3. `npm test` · 4. `build` · 5. Guardian static —
-   ثم، إذا كانت قاعدة PostgreSQL متاحة (`DB_URL` أو المحلية): إعادة تشغيل
-   migrations + كل pgTAP + Guardian dynamic. النتيجة:
-   `guardian/reports/latest/release-gate.json` (machine-readable) وخروج 0/1.
-   نفس الخطوات هي ما ينفذه `.github/workflows/guardian.yml` + `ci.yml` في GitHub
-   Actions — أي أن التحقق مستقل عن CI. الأعمال الاختيارية تُسجَّل `SKIPPED`
-   ولا تُعدّ فشلاً.
+- مجموع الفواتير يجمع **كل invoice row**؛ لا يستخدم `SUM(DISTINCT total_amount)` لأن
+  فاتورتين شرعيتين قد تكونان بنفس القيمة.
+- تطابق `event/reference/amount/method` بين دفعتين هو **إشارة مراجعة** لاحتمال double
+  posting وليس قاعدة تمنع كل حالة متشابهة بصورة مطلقة.
+- لا نستخدم `quotations.updated_at > issued_at` كدليل عبث؛ انتقالات
+  `ISSUED → ACCEPTED → CONVERTED` تحدث بشكل شرعي وتحدث `updated_at`. الحماية الصحيحة
+  هي trigger immutable snapshot + اختبارات السلوك.
 
----
-
-## اختبارات pgTAP الجديدة (supabase/tests/)
+## اختبارات pgTAP المضافة
 
 | الملف | يثبت |
 | --- | --- |
-| `guardian_schema_contract.test.sql` | العقد البنيوي: RLS، النقود الدقيقة، ACL الخاص بـ SECURITY DEFINER (لا anon)، views مفلترة org، تفرد أرقام المستندات، FKs org-scoped. |
-| `guardian_tenant_isolation.test.sql` | سلوكياً: Company A لا تقرأ/تعدل Company B عبر SELECT/INSERT/UPDATE/DELETE/RPCs/Views/SECURITY DEFINER، وحراس append-only على مستوى القاعدة. |
-| `guardian_financial_integrity.test.sql` | reconciliation، overpayment، double posting، جمود المستندات المعتمدة، منع hard-delete (expenses/closures/audit)، دقة OMR. |
-| `guardian_data_integrity.test.sql` | منع orphans وcross-org عبر FKs المركبة، الحالات المستحيلة، انتقالات الحالة غير الصالحة، فحوص الكشف على بيانات نظيفة. |
+| `guardian_schema_contract.test.sql` | RLS، exact money، SECDEF ACL، view filtering، uniqueness، org-scoped FKs. |
+| `guardian_tenant_isolation.test.sql` | عزل المنظمات عبر SELECT/INSERT/UPDATE/DELETE/RPC/views. |
+| `guardian_financial_integrity.test.sql` | reconciliation، overpayment، duplicate detection، immutability، hard-delete، OMR precision. |
+| `guardian_data_integrity.test.sql` | FK/cross-org والحالات غير الصالحة. |
 
----
+## العقد الكانوني
 
-## العقد (Canonical Database Contract)
+أهم القواعد في `contract/canonical-contract.json`:
 
-`contract/canonical-contract.json` هو مصدر الحقيقة الآلي. أهم القواعد:
+- OMR exact NUMERIC، scale 3؛ unit/rates غالباً `numeric(12,3)` والمجاميع المشتقة
+  يمكن أن تكون `numeric(14,3)`.
+- RLS وعزل `organization_id` إلزاميان.
+- SECURITY DEFINER: search_path مثبت، ACL صريح، لا anon، وتفويض server-side للكتابة.
+- financial ledgers append-only، لا hard-delete، أرقام مستندات فريدة لكل منظمة.
+- overpayment ممنوع؛ duplicate-looking payments يجب كشفها ومراجعتها.
+- migrations التاريخية immutable؛ كل تغيير جديد في migration جديدة مع regression test.
 
-- **النقود:** NUMERIC فقط، scale 3، أبداً float. الأسعار الوحدوية `numeric(12,3)`
-  والمجاميع المشتقة `numeric(14,3)`.
-- **العزل:** RLS على كل جدول؛ FKs بين جداول org-scoped تشمل `organization_id`؛
-  لا منح `anon`؛ كل view إمّا invoker أو مفلتر org.
-- **المالي:** مستندات معتمدة غير قابلة للتعديل؛ ledgers append-only؛ لا hard-delete؛
-  رقم مستند فريد لكل منظمة؛ منع overpayment وdouble posting؛ idempotency للأوامر.
-- **الترحيلات:** خالدة بعد التطبيق؛ أي إصلاح = migration جديد؛ إعادة تشغيل من فارغ
-  وعلى الحالة القريبة من الحالية؛ كل تغيير له اختبار regression.
+## بروتوكول الإصلاح
 
-`migration-hashes.json` و`expected-schema.json` و`applied-baseline.json` تُولَّد
-بأمر `db:guardian:snapshot` من إعادة تشغيل نظيفة، ويجب أن تتطابق مع الـ migrations
-في أي PR (وإلا يفشل `G-SCHEMA-DRIFT`).
-
----
-
-## الإصلاح (Fix Protocol)
-
-عند اكتشاف مشكلة:
 **Finding → Evidence → Root Cause → failing regression test → أصغر إصلاح صحيح →
 Guardian كامل → مراجعة مستقلة.**
 
-لا يُصلَح أي شيء حساس بالتخمين. الاختبار الفاشل يُكتب أولاً (يثبت العيب على
-الحالة الحالية)، ثم يُطبَّق الإصلاح حتى يمر الكل.
-
 ## قواعد صارمة
 
-- لا تعديل على Production مباشرة؛ الاختبارات التدميرية على قواعد Test/ephemeral فقط.
-- لا حذف بيانات.
-- لا إنشاء Supabase preview/experimental branch من تلقاء النفس.
-- لا تعديل Business Logic سليم لمجرد تبسيط الاختبارات.
-- لا توسيع النطاق إلى redesign أو frontend غير مرتبط بالقاعدة.
+- لا تعديل Production مباشرة.
+- لا reset أو CREATE/DROP DATABASE على host بعيد.
+- لا حذف بيانات حية.
+- لا Supabase preview/experimental branch من تلقاء النفس.
+- لا تعديل migration تاريخية؛ الإصلاح دائماً migration جديدة.
+- لا تغيير Business Logic سليم فقط لإرضاء الاختبار.
