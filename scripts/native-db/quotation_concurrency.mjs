@@ -47,6 +47,7 @@ async function main() {
   await admin.query(`create database ${dbName}`); await admin.end();
   const db = connection(); await db.connect();
   await db.query(readFileSync(join(here, "setup_auth.sql"), "utf8"));
+  await db.query(readFileSync(join(here, "setup_storage.sql"), "utf8"));
   for (const migration of readdirSync(join(root, "supabase", "migrations")).filter((name) => name.endsWith(".sql")).sort()) {
     await db.query(readFileSync(join(root, "supabase", "migrations", migration), "utf8"));
   }

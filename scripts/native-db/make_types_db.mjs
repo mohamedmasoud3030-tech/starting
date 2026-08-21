@@ -32,6 +32,7 @@ await admin.end();
 const db = new pg.Client({ connectionString: dbUrl.replace(/\/postgres(\?|$)/, `/${dbName}$1`) });
 await db.connect();
 await db.query(readFileSync(join(root, "scripts/native-db/setup_auth.sql"), "utf8"));
+await db.query(readFileSync(join(root, "scripts/native-db/setup_storage.sql"), "utf8"));
 for (const m of readdirSync(join(root, "supabase", "migrations")).filter((f) => f.endsWith(".sql")).sort()) {
   await db.query(readFileSync(join(root, "supabase", "migrations", m), "utf8"));
 }

@@ -150,6 +150,7 @@ async function main() {
   const db = connect();
   await db.connect();
   await db.query(readFileSync(join(__dirname, "setup_auth.sql"), "utf8"));
+  await db.query(readFileSync(join(__dirname, "setup_storage.sql"), "utf8"));
   for (const migration of readdirSync(join(root, "supabase", "migrations"))
     .filter((name) => name.endsWith(".sql"))
     .sort()) {
