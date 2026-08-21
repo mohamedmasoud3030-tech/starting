@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /**
- * Migration hygiene — banned patterns in migration files.
+ * Migration hygiene — deterministic file checks that need no database.
  *
- * Deterministic, file-based rules that never need a database. Scans only
- * TOP-LEVEL statements (comments and PL/pgSQL function bodies are stripped):
- *   - float money (double precision / real / ::float casts on money columns) → CRITICAL
- *   - destructive DDL/DML on financial or master tables → CRITICAL
- *   - `grant … to anon` on tables/functions not revoked by a later migration → CRITICAL
- *   - SECURITY DEFINER without a pinned search_path → HIGH
- *   - duplicate migration ordering tokens → HIGH
- *   - views created without security_invoker → MEDIUM (dynamic check is authoritative)
+ * Rules:
+ *   - binary-float money declarations / casts                    → CRITICAL
+ *   - destructive top-level DDL/DML on protected tables         → CRITICAL/HIGH
+ *   - net explicit grants to anon after ordered grant/revoke     → CRITICAL
+ *   - SECURITY DEFINER without pinned search_path                → HIGH
+ *   - duplicate migration ordering tokens                        → HIGH
+ *
+ * Dynamic ACL/RLS/schema checks remain authoritative for final PostgreSQL
+ * semantics; this check is the fast fail-safe available without a DB.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -23,16 +24,54 @@ export const mode = "static";
 
 const MONEY_COL_RE = /(?:^|\s)([a-z_]*?(?:price|amount|cost|total|balance|paid|due|vat|discount|rate|salary|wage|payout|fee|value|charge)[a-z_]*)\s+(double precision|real)\b/gi;
 const FLOAT_CAST_RE = /::\s*(float4|float8|double\s+precision|real)\b/gi;
-const SECDEF_NO_PATH_RE = /create\s+(?:or\s+replace\s+)?function\b[\s\S]*?\bsecurity\s+definer\b[\s\S]*?language\s+(?:plpgsql|sql)\b[\s\S]*?\$[a-z_]*\$/gi;
 
-/** Remove comments and $$ / $tag$ … $tag$ bodies so only top-level DDL/DML is scanned. */
+/** Remove comments and dollar-quoted bodies so only top-level SQL remains. */
 function stripCommentsAndBodies(sql) {
   let s = sql
     .replace(/--[^\n]*/g, "")
     .replace(/\/\*[\s\S]*?\*\//g, "");
-  // Replace PL/pgSQL dollar-quoted bodies ($$ … $$ and $tag$ … $tag$) with a marker.
-  s = s.replace(/\$[a-z_]*\$[\s\S]*?\$[a-z_]*\$/gi, " $BODY$ ");
+
+  // Match the SAME dollar delimiter on both ends.
+  s = s.replace(/(\$[a-z_0-9]*\$)[\s\S]*?\1/gi, " $BODY$ ");
   return s;
+}
+
+/**
+ * Extract CREATE FUNCTION/PROCEDURE headers up to their opening dollar quote.
+ * This handles both common keyword orders:
+ *   language plpgsql security definer set search_path ... as $$
+ *   security definer language plpgsql set search_path ... as $$
+ */
+function securityDefinerHeaders(rawSql) {
+  const findings = [];
+  const startRe = /create\s+(?:or\s+replace\s+)?(?:function|procedure)\s+(?:public\.)?([a-z_][a-z_0-9]*)\s*\(/gi;
+  startRe.lastIndex = 0;
+  let m;
+
+  while ((m = startRe.exec(rawSql)) !== null) {
+    const tail = rawSql.slice(startRe.lastIndex);
+    const asMatch = /\bas\s+(\$[a-z_0-9]*\$)/i.exec(tail);
+    if (!asMatch) continue;
+
+    const delimiter = asMatch[1];
+    const openingAbsolute =
+      startRe.lastIndex + asMatch.index + asMatch[0].lastIndexOf(delimiter);
+    const header = rawSql.slice(m.index, openingAbsolute);
+    const bodyStart = openingAbsolute + delimiter.length;
+    const bodyEnd = rawSql.indexOf(delimiter, bodyStart);
+
+    if (/\bsecurity\s+definer\b/i.test(header)) {
+      findings.push({
+        name: m[1],
+        header,
+        searchPathPinned: /\bset\s+search_path\s*=/i.test(header),
+      });
+    }
+
+    if (bodyEnd >= 0) startRe.lastIndex = bodyEnd + delimiter.length;
+  }
+
+  return findings;
 }
 
 export async function run(ctx) {
@@ -40,84 +79,180 @@ export async function run(ctx) {
   const files = migrationFiles();
   const financial = new Set(contract.financial?.financialTables ?? []);
   const master = new Set([
-    "catalog_categories", "catalog_items", "packages", "package_items",
-    "suppliers", "customers", "organizations",
+    "catalog_categories",
+    "catalog_items",
+    "packages",
+    "package_items",
+    "suppliers",
+    "customers",
+    "organizations",
   ]);
   const protectedTables = new Set([...financial, ...master]);
 
-  const topLevel = files.map((f) => ({ f, sql: stripCommentsAndBodies(readFileSync(join(MIGRATIONS_DIR, f), "utf8")) }));
+  const sources = files.map((file) => {
+    const raw = readFileSync(join(MIGRATIONS_DIR, file), "utf8");
+    return { file, raw, top: stripCommentsAndBodies(raw) };
+  });
 
-  // ---- float money -----------------------------------------------------------
+  // ---- exact money -----------------------------------------------------------
   const floatMoney = [];
   const floatCast = [];
-  for (const { f, sql } of topLevel) {
-    for (const m of sql.matchAll(MONEY_COL_RE)) floatMoney.push(`[${f}] money column "${m[1]}" declared as float type "${m[2]}"`);
-    for (const m of sql.matchAll(FLOAT_CAST_RE)) floatCast.push(`[${f}] ${m[0].trim()} (money math must stay exact)`);
+  for (const { file, top } of sources) {
+    MONEY_COL_RE.lastIndex = 0;
+    FLOAT_CAST_RE.lastIndex = 0;
+    for (const m of top.matchAll(MONEY_COL_RE)) {
+      floatMoney.push(
+        `[${file}] money-like column "${m[1]}" declared as ${m[2]}`,
+      );
+    }
+    for (const m of top.matchAll(FLOAT_CAST_RE)) {
+      floatCast.push(`[${file}] ${m[0].trim()}`);
+    }
   }
 
-  // ---- destructive DDL/DML on protected tables (top-level only) --------------
+  // ---- destructive top-level SQL --------------------------------------------
   const dropProtected = [];
   const hardDelete = [];
   const dropColumnProtected = [];
-  for (const { f, sql } of topLevel) {
-    for (const m of sql.matchAll(/drop\s+table\s+(?:if\s+exists\s+)?(?:public\.)?([a-z_]+)/gi)) {
-      if (protectedTables.has(m[1])) dropProtected.push(`[${f}] DROP TABLE on protected table "${m[1]}"`);
-    }
-    for (const m of sql.matchAll(/delete\s+from\s+(?:public\.)?([a-z_]+)/gi)) {
-      if (protectedTables.has(m[1])) hardDelete.push(`[${f}] top-level hard DELETE FROM protected table "${m[1]}"`);
-    }
-    for (const m of sql.matchAll(/alter\s+table\s+(?:public\.)?([a-z_]+)\s+drop\s+column\b/gi)) {
-      if (protectedTables.has(m[1])) dropColumnProtected.push(`[${f}] DROP COLUMN on protected table "${m[1]}" (retention risk)`);
-    }
-  }
-
-  // ---- anon grants paired against later revokes ------------------------------
-  const granted = []; // {kind, name, file}
-  const revoked = new Set(); // "kind:name"
-  for (const { f, sql } of topLevel) {
-    for (const m of sql.matchAll(/grant\s+[\s\S]*?\bon\s+(table|sequence|function)\s+(?:public\.)?([a-z_0-9]+)/gi)) {
-      if (/\bto\s+anon\b/i.test(m[0]) && !/grant\s+usage\s+on\s+schema/i.test(m[0])) {
-        granted.push({ kind: m[1], name: m[2], file: f, text: m[0].trim().replace(/\s+/g, " ").slice(0, 140) });
+  for (const { file, top } of sources) {
+    for (const m of top.matchAll(
+      /drop\s+table\s+(?:if\s+exists\s+)?(?:public\.)?([a-z_]+)/gi,
+    )) {
+      if (protectedTables.has(m[1])) {
+        dropProtected.push(`[${file}] DROP TABLE ${m[1]}`);
       }
     }
-    for (const m of sql.matchAll(/revoke\s+[\s\S]*?\bon\s+(table|sequence|function)\s+(?:public\.)?([a-z_0-9]+)/gi)) {
-      if (/\bfrom\s+anon\b/i.test(m[0])) revoked.add(`${m[1]}:${m[2]}`);
+
+    for (const m of top.matchAll(/delete\s+from\s+(?:public\.)?([a-z_]+)/gi)) {
+      if (protectedTables.has(m[1])) {
+        hardDelete.push(`[${file}] DELETE FROM ${m[1]}`);
+      }
+    }
+
+    for (const m of top.matchAll(
+      /alter\s+table\s+(?:public\.)?([a-z_]+)\s+drop\s+column\b/gi,
+    )) {
+      if (protectedTables.has(m[1])) {
+        dropColumnProtected.push(`[${file}] DROP COLUMN on ${m[1]}`);
+      }
     }
   }
-  const netAnonGrants = granted.filter((g) => !revoked.has(`${g.kind}:${g.name}`));
 
-  // ---- SECURITY DEFINER without pinned search_path (top-level bodies) --------
+  // ---- ordered explicit anon grants -----------------------------------------
+  // Track final state in migration/statement order. A revoke BEFORE a later
+  // grant must not incorrectly cancel that later grant.
+  const anonState = new Map(); // kind:name -> evidence of latest explicit grant
+  for (const { file, top } of sources) {
+    const statements = top.split(";").map((s) => s.trim()).filter(Boolean);
+    for (const statement of statements) {
+      const target = /\bon\s+(table|sequence|function)\s+(?:public\.)?([a-z_0-9]+)/i.exec(
+        statement,
+      );
+      if (!target) continue;
+
+      const key = `${target[1].toLowerCase()}:${target[2].toLowerCase()}`;
+      if (/^grant\b/i.test(statement) && /\bto\b[\s\S]*\banon\b/i.test(statement)) {
+        anonState.set(key, {
+          file,
+          text: statement.replace(/\s+/g, " ").slice(0, 220),
+        });
+      }
+      if (/^revoke\b/i.test(statement) && /\bfrom\b[\s\S]*\banon\b/i.test(statement)) {
+        anonState.delete(key);
+      }
+    }
+  }
+  const netAnonGrants = [...anonState.values()];
+
+  // ---- SECURITY DEFINER search_path -----------------------------------------
   const secdefNoPath = [];
-  for (const { f, sql } of topLevel) {
-    for (const m of sql.matchAll(SECDEF_NO_PATH_RE)) {
-      if (!/search_path/i.test(m[0])) secdefNoPath.push(`[${f}] SECURITY DEFINER function without pinned search_path`);
+  for (const { file, raw } of sources) {
+    for (const fn of securityDefinerHeaders(raw)) {
+      if (!fn.searchPathPinned) {
+        secdefNoPath.push(
+          `[${file}] ${fn.name}() SECURITY DEFINER without SET search_path`,
+        );
+      }
     }
   }
 
-  // ---- duplicate ordering tokens ---------------------------------------------
-  const tokens = files.map((f) => (f.match(/^(\d+)/) ?? [])[1]).filter(Boolean);
-  const seen = new Map();
+  // ---- migration ordering ----------------------------------------------------
+  const seen = new Set();
   const dupes = [];
-  for (const t of tokens) {
-    if (seen.has(t)) dupes.push(t);
-    seen.set(t, true);
+  for (const file of files) {
+    const token = (file.match(/^(\d+)/) ?? [])[1];
+    if (!token) continue;
+    if (seen.has(token)) dupes.push(token);
+    seen.add(token);
   }
 
-  const failOrPass = (count, sev, key, titleText, evidenceArr) => {
+  const failOrPass = (count, severity, key, titleText, evidence) => {
     if (count > 0) {
-      report.fail(this, { severity: sev, id: `${id}-${key}`, title: titleText, evidence: evidenceArr.slice(0, 30).join("\n") });
+      report.fail(this, {
+        severity,
+        id: `${id}-${key}`,
+        title: titleText,
+        evidence: evidence.slice(0, 30).join("\n"),
+      });
     } else {
-      report.pass(this, `${id}-${key}`, titleText, "0 occurrences across all migration files");
+      report.pass(
+        this,
+        `${id}-${key}`,
+        titleText,
+        "0 occurrences across all migration files",
+      );
     }
   };
 
-  failOrPass(floatMoney.length, "CRITICAL", "FLOAT-MONEY", "Money columns must never be binary float types", floatMoney);
-  failOrPass(floatCast.length, "CRITICAL", "FLOAT-CAST", "Float casts are banned in money math", floatCast);
-  failOrPass(dropProtected.length, "CRITICAL", "DROP-PROTECTED", "Protected tables must never be DROPped in a migration", dropProtected);
-  failOrPass(hardDelete.length, "CRITICAL", "HARD-DELETE", "Protected tables must never be hard-DELETEd at migration time", hardDelete);
-  failOrPass(dropColumnProtected.length, "HIGH", "DROP-COLUMN-PROTECTED", "Columns on protected tables must not be dropped (retention)", dropColumnProtected);
-  failOrPass(netAnonGrants.length, "CRITICAL", "ANON-GRANT", "Anonymous role must never receive net grants on tables/functions", netAnonGrants.map((g) => `[${g.file}] ${g.text}`));
-  failOrPass(secdefNoPath.length, "HIGH", "SECDEF-SEARCH-PATH", "SECURITY DEFINER functions must pin search_path", secdefNoPath);
+  failOrPass(
+    floatMoney.length,
+    "CRITICAL",
+    "FLOAT-MONEY",
+    "Money columns must never be binary float types",
+    floatMoney,
+  );
+  failOrPass(
+    floatCast.length,
+    "CRITICAL",
+    "FLOAT-CAST",
+    "Float casts are banned by the persisted-money contract",
+    floatCast,
+  );
+  failOrPass(
+    dropProtected.length,
+    "CRITICAL",
+    "DROP-PROTECTED",
+    "Protected tables must never be dropped in migrations",
+    dropProtected,
+  );
+  failOrPass(
+    hardDelete.length,
+    "CRITICAL",
+    "HARD-DELETE",
+    "Protected tables must never be hard-deleted at migration time",
+    hardDelete,
+  );
+  failOrPass(
+    dropColumnProtected.length,
+    "HIGH",
+    "DROP-COLUMN-PROTECTED",
+    "Columns on protected tables must not be dropped without an explicit retention migration",
+    dropColumnProtected,
+  );
+  failOrPass(
+    netAnonGrants.length,
+    "CRITICAL",
+    "ANON-GRANT",
+    "Anonymous role must not retain explicit grants on protected DB objects",
+    netAnonGrants.map((g) => `[${g.file}] ${g.text}`),
+  );
+  failOrPass(
+    secdefNoPath.length,
+    "HIGH",
+    "SECDEF-SEARCH-PATH",
+    "SECURITY DEFINER functions must pin search_path",
+    secdefNoPath,
+  );
 
   if (dupes.length > 0) {
     report.fail(this, {
@@ -125,9 +260,15 @@ export async function run(ctx) {
       id: `${id}-DUP-NUMBER`,
       title: "Duplicate migration ordering tokens detected",
       evidence: dupes.join(", "),
-      detail: "Two migration files carry the same numeric ordering token; replay order may be ambiguous.",
+      detail:
+        "Two migration files carry the same leading numeric ordering token; replay order becomes ambiguous.",
     });
   } else {
-    report.pass(this, `${id}-DUP-NUMBER`, "Migration ordering tokens are unique", `${files.length} files`);
+    report.pass(
+      this,
+      `${id}-DUP-NUMBER`,
+      "Migration ordering tokens are unique",
+      `${files.length} files`,
+    );
   }
 }
