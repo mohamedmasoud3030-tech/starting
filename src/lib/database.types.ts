@@ -20,6 +20,7 @@ export type Database = {
           metadata: Json | null
           mime_type: string
           organization_id: string
+          reclaimed_at: string | null
           size_bytes: number
           storage_path: string
           superseded_at: string | null
@@ -35,6 +36,7 @@ export type Database = {
           metadata?: Json | null
           mime_type: string
           organization_id: string
+          reclaimed_at?: string | null
           size_bytes: number
           storage_path: string
           superseded_at?: string | null
@@ -50,6 +52,7 @@ export type Database = {
           metadata?: Json | null
           mime_type?: string
           organization_id?: string
+          reclaimed_at?: string | null
           size_bytes?: number
           storage_path?: string
           superseded_at?: string | null
@@ -4437,6 +4440,7 @@ export type Database = {
           metadata: Json | null
           mime_type: string
           organization_id: string
+          reclaimed_at: string | null
           size_bytes: number
           storage_path: string
           superseded_at: string | null
@@ -4786,6 +4790,14 @@ export type Database = {
           p_method: Database["public"]["Enums"]["pricing_method"]
           p_quantity: number
           p_unit: number
+        }
+        Returns: number
+      }
+      complete_evidence_reclaim: {
+        Args: {
+          p_max_age_days?: number
+          p_org_id: string
+          p_storage_paths: string[]
         }
         Returns: number
       }
@@ -5464,6 +5476,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      install_attachments_storage_policies: { Args: never; Returns: undefined }
       integrity_findings: {
         Args: { p_org_id: string }
         Returns: {
@@ -5680,6 +5693,7 @@ export type Database = {
           metadata: Json | null
           mime_type: string
           organization_id: string
+          reclaimed_at: string | null
           size_bytes: number
           storage_path: string
           superseded_at: string | null
@@ -5901,6 +5915,32 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      reclaim_evidence: {
+        Args: { p_max_age_days?: number; p_org_id: string }
+        Returns: {
+          bucket_id: string
+          entity_id: string
+          entity_type: string
+          evidence_type: Database["public"]["Enums"]["attachment_evidence_type"]
+          object_created_at: string
+          object_id: string
+          reason: string
+          storage_path: string
+        }[]
+      }
+      reclaim_evidence_candidates: {
+        Args: { p_cutoff: string; p_org_id: string }
+        Returns: {
+          bucket_id: string
+          entity_id: string
+          entity_type: string
+          evidence_type: Database["public"]["Enums"]["attachment_evidence_type"]
+          object_created_at: string
+          object_id: string
+          reason: string
+          storage_path: string
+        }[]
       }
       reconcile_event_consumables: {
         Args: {
