@@ -172,8 +172,28 @@ grant select on table public.attachment_evidence to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 4. Private storage bucket + org/role-scoped storage policies.
---    (Default storage.objects policies are removed so no permissive
---    authenticated fallback can reach this private bucket.)
+--    A single, idempotent, BUCKET-SCOPED installer owns every policy on the
+--    `attachments` bucket. It manages only the KNOWN attachments policy names
+--    and creates only the two policies the product needs:
+--
+--    F1 (policy teardown safety): the original blanket
+--    `drop policy on storage.objects` loop was removed. It could destroy
+--    policies belonging to OTHER buckets sharing the same Supabase project.
+--    A fresh Supabase storage schema ships with NO policies on
+--    storage.objects — RLS is deny-by-default — so there is no broad
+--    "permissive authenticated fallback" to neutralise; the scoped policies
+--    below are the ONLY ones granting access, and unrelated bucket policies
+--    are left untouched. Future buckets add their own policies independently.
+--
+--    F2 (immutable evidence objects): there is deliberately NO UPDATE policy.
+--    Evidence is append-only. Replacing evidence uploads a NEW object + NEW
+--    attachment_evidence row and marks the previous row superseded_at; the
+--    original blob is never mutated. An existing blob cannot be overwritten:
+--    UPDATE grants nothing for the bucket, and re-INSERTING an existing path
+--    is blocked by the storage.objects (bucket_id, name) unique constraint.
+--
+--    There is NO DELETE policy: the only removal is the explicit, role-gated,
+--    auditable `reclaim_evidence` COMMAND (migration 0078).
 --
 --    COMPATIBILITY (CI bootstrap): the bucket is created without referencing
 --    the legacy storage.buckets."public" column. Supabase CLI applies
@@ -191,61 +211,46 @@ insert into storage.buckets (id, name)
 values ('attachments', 'attachments')
 on conflict (id) do nothing;
 
-do $storage_policies$
-declare
-  pol record;
+create or replace function public.install_attachments_storage_policies()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
 begin
-  for pol in
-    select policyname from pg_policies
-     where schemaname = 'storage' and tablename = 'objects'
-  loop
-    execute format('drop policy if exists %I on storage.objects', pol.policyname);
-  end loop;
+  -- Drop ONLY the known attachments policy names so replay is idempotent.
+  drop policy if exists "attachments_select_org_role" on storage.objects;
+  drop policy if exists "attachments_insert_org_role" on storage.objects;
+  drop policy if exists "attachments_update_org_role" on storage.objects;
+
+  create policy "attachments_select_org_role" on storage.objects
+    for select to authenticated
+    using (
+      bucket_id = 'attachments'
+      and public.is_org_member(((storage.foldername(name))[1])::uuid)
+      and public.attachment_evidence_read_gate(
+            ((storage.foldername(name))[1])::uuid,
+            ((storage.foldername(name))[2])::public.attachment_evidence_type
+          )
+    );
+
+  create policy "attachments_insert_org_role" on storage.objects
+    for insert to authenticated
+    with check (
+      bucket_id = 'attachments'
+      and public.is_org_member(((storage.foldername(name))[1])::uuid)
+      and public.attachment_evidence_write_gate(
+            ((storage.foldername(name))[1])::uuid,
+            ((storage.foldername(name))[2])::public.attachment_evidence_type
+          )
+    );
 end;
-$storage_policies$;
+$$;
 
-create policy "attachments_select_org_role" on storage.objects
-  for select to authenticated
-  using (
-    bucket_id = 'attachments'
-    and public.is_org_member(((storage.foldername(name))[1])::uuid)
-    and public.attachment_evidence_read_gate(
-          ((storage.foldername(name))[1])::uuid,
-          ((storage.foldername(name))[2])::public.attachment_evidence_type
-        )
-  );
+select public.install_attachments_storage_policies();
 
-create policy "attachments_insert_org_role" on storage.objects
-  for insert to authenticated
-  with check (
-    bucket_id = 'attachments'
-    and public.is_org_member(((storage.foldername(name))[1])::uuid)
-    and public.attachment_evidence_write_gate(
-          ((storage.foldername(name))[1])::uuid,
-          ((storage.foldername(name))[2])::public.attachment_evidence_type
-        )
-  );
-
-create policy "attachments_update_org_role" on storage.objects
-  for update to authenticated
-  using (
-    bucket_id = 'attachments'
-    and public.is_org_member(((storage.foldername(name))[1])::uuid)
-    and public.attachment_evidence_write_gate(
-          ((storage.foldername(name))[1])::uuid,
-          ((storage.foldername(name))[2])::public.attachment_evidence_type
-        )
-  )
-  with check (
-    bucket_id = 'attachments'
-    and public.is_org_member(((storage.foldername(name))[1])::uuid)
-    and public.attachment_evidence_write_gate(
-          ((storage.foldername(name))[1])::uuid,
-          ((storage.foldername(name))[2])::public.attachment_evidence_type
-        )
-  );
-
--- No DELETE policy: evidence objects are never destructively removed.
+-- Internal only: this is invoked by migrations / tests as the migration owner.
+revoke all on function public.install_attachments_storage_policies() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- 5. Internal link primitive (NOT client-callable). Verifies the uploaded
