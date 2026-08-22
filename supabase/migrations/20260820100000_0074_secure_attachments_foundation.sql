@@ -174,9 +174,21 @@ grant select on table public.attachment_evidence to authenticated;
 -- 4. Private storage bucket + org/role-scoped storage policies.
 --    (Default storage.objects policies are removed so no permissive
 --    authenticated fallback can reach this private bucket.)
+--
+--    COMPATIBILITY (CI bootstrap): the bucket is created without referencing
+--    the legacy storage.buckets."public" column. Supabase CLI applies
+--    user-defined migrations BEFORE the built-in storage schema is finalized
+--    (supabase/cli #1277), and the "public" column is only added by the later
+--    storage migration 0008-add-public-to-buckets — so referencing it here
+--    fails with 'ERROR: column "public" of relation "buckets" does not exist'
+--    during `supabase start`, breaking `db reset` / `test db` / types-drift.
+--    Privacy is NOT lost: the bucket is private via the DB-enforced RLS
+--    policies on storage.objects below (no public/anonymous read grant) and
+--    the client only ever reads via short-lived signed URLs. The column's
+--    default is FALSE, so omitting it yields the same private behaviour.
 -- ---------------------------------------------------------------------------
-insert into storage.buckets (id, name, public)
-values ('attachments', 'attachments', false)
+insert into storage.buckets (id, name)
+values ('attachments', 'attachments')
 on conflict (id) do nothing;
 
 do $storage_policies$
