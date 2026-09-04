@@ -86,6 +86,7 @@ jobs:
           supabase test db 2>&1 | tee /tmp/pgtap.log
           RC=${PIPESTATUS[0]}
           if [ "$RC" != "0" ]; then
+            printf '::error file=.github/workflows/ci.yml,line=84::supabase test db FAILED — tail: %s\n' "$(tail -c 5500 /tmp/pgtap.log | sed ':a;N;$!ba;s/\n/ %0A/g;s/::/%3A%3A/g;s/\r//g')"
             {
               echo "### \`supabase test db\` failed — failing tail"
               echo '```text'
@@ -94,7 +95,7 @@ jobs:
             } > /tmp/pgtap-report.md
             PR=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" --jq '.[0].number' 2>/dev/null || true)
             if [ -n "$PR" ]; then
-              gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file /tmp/pgtap-report.md || true
+              gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file /tmp/pgtap-report.md || echo "pr comment failed (permissions?)"
             fi
           fi
           exit $RC
