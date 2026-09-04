@@ -98,6 +98,182 @@ export function useWarehouseSheetLines(orgId: string | null, eventId: string | n
   });
 }
 
+/**
+ * Row contracts for the 0081 operational/payroll projections. These are
+ * explicit (not `DocRow`) because the server genuinely returns NULL in the
+ * nullable fields — the print surfaces must render them, never coerce them
+ * into fabricated values.
+ */
+export interface EventTeamSheetRow {
+  staff_member_id: string;
+  staff_name: string;
+  staff_phone: string | null;
+  /** staff_type code (HOST/HOSTESS/SUPERVISOR/DRIVER/WAREHOUSE/OTHER). */
+  assignment_role: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  /** Worst live attendance state aggregated over the event (null = none). */
+  presence_status: "PRESENT" | "LATE" | "PARTIAL" | "ABSENT" | null;
+  check_in: string | null;
+  check_out: string | null;
+  assignment_notes: string | null;
+}
+
+export interface EventWorkOrderHeaderRow {
+  event_number: string;
+  title: string;
+  event_type: string;
+  status: string;
+  start_at: string;
+  end_at: string;
+  guest_count: number;
+  venue_name: string;
+  location_details: string | null;
+  contact_name: string | null;
+  contact_phone: string | null;
+  notes: string | null;
+  customer_name: string;
+  responsible_user_name: string | null;
+}
+
+export interface EventProcurementOpsRow {
+  order_number: string;
+  supplier_name: string;
+  order_date: string;
+  expected_delivery_at: string | null;
+  /** Procurement lifecycle status code (never CANCELLED in this projection). */
+  order_status: string;
+  order_notes: string | null;
+  item_name: string;
+  unit: string;
+  /** numeric(12,3) transported as exact decimal text (never JS floats). */
+  quantity: string | number;
+}
+
+export interface PayrollPeriodRow {
+  staff_member_id: string;
+  staff_name: string;
+  shift_count: number;
+  /** numeric(14,3) transported as exact decimal text (never JS floats). */
+  earned_total: string | number;
+  advances_total: string | number;
+  payouts_total: string | number;
+  balance_total: string | number;
+}
+
+export function eventTeamSheetQueryKey(orgId: string | null, eventId: string | null) {
+  return ["doc-event-team-sheet", orgId, eventId] as const;
+}
+
+/**
+ * The event team sheet (كشف فريق المناسبة): the ACTIVE assignment roster with
+ * the non-confidential attendance state (arrival/departure + worst live
+ * status). Wage rates, expected compensation and earned amounts are NOT part
+ * of this projection by design — an operational roster sheet must never
+ * carry pay data (the SQL gate is membership; see 0081).
+ */
+export function useEventTeamSheet(orgId: string | null, eventId: string | null) {
+  return useQuery({
+    queryKey: eventTeamSheetQueryKey(orgId, eventId),
+    enabled: !!orgId && !!eventId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("event_team_sheet", {
+        p_org_id: orgId!,
+        p_event_id: eventId!,
+      });
+      if (error) throw error;
+      return (data ?? []) as EventTeamSheetRow[];
+    },
+  });
+}
+
+export function eventWorkOrderQueryKey(orgId: string | null, eventId: string | null) {
+  return ["doc-event-work-order", orgId, eventId] as const;
+}
+
+/**
+ * The event work order header (أمر تشغيل المناسبة): customer + event +
+ * venue + office-responsible person, all from the canonical event row. This
+ * is an operations document — no commercial totals, costs or margins are
+ * projected anywhere in the family (SQL gate: membership; see 0081).
+ */
+export function useEventWorkOrderHeader(orgId: string | null, eventId: string | null) {
+  return useQuery({
+    queryKey: eventWorkOrderQueryKey(orgId, eventId),
+    enabled: !!orgId && !!eventId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("event_work_order_header", {
+        p_org_id: orgId!,
+        p_event_id: eventId!,
+      });
+      if (error) throw error;
+      const rows = (data ?? []) as EventWorkOrderHeaderRow[];
+      return rows[0] ?? null;
+    },
+  });
+}
+
+export function eventProcurementOpsQueryKey(orgId: string | null, eventId: string | null) {
+  return ["doc-event-procurement-ops", orgId, eventId] as const;
+}
+
+/**
+ * Procurement/vendor dependencies behind the work order: one row per live
+ * (non-cancelled) order line, carrying only item text, quantity, unit and
+ * the delivery state. Agreed costs are confidential procurement data and are
+ * excluded from the projection (SQL gate: membership; see 0081).
+ */
+export function useEventProcurementOpsLines(orgId: string | null, eventId: string | null) {
+  return useQuery({
+    queryKey: eventProcurementOpsQueryKey(orgId, eventId),
+    enabled: !!orgId && !!eventId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("event_procurement_ops_lines", {
+        p_org_id: orgId!,
+        p_event_id: eventId!,
+      });
+      if (error) throw error;
+      return (data ?? []) as EventProcurementOpsRow[];
+    },
+  });
+}
+
+export function payrollPeriodQueryKey(
+  orgId: string | null,
+  from: string | null,
+  to: string | null,
+) {
+  return ["doc-payroll-period", orgId, from, to] as const;
+}
+
+/**
+ * The payroll period sheet (كشف صرف / رواتب فترة): one row per host with any
+ * RECORDED payroll fact in [from, to]. Earned comes from live attendance in
+ * the period, advances and payouts from the host-wide ledgers by their record
+ * dates, and `balance_total` = earned − advances − payouts (the same exact
+ * money rule the payroll workspace applies, scoped to the period).
+ * Gate: payroll.read — empty rows for an unauthorized caller (0081).
+ */
+export function usePayrollPeriodSheet(
+  orgId: string | null,
+  from: string | null,
+  to: string | null,
+) {
+  return useQuery({
+    queryKey: payrollPeriodQueryKey(orgId, from, to),
+    enabled: !!orgId && !!from && !!to,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("payroll_period_sheet", {
+        p_org_id: orgId!,
+        p_from: from!,
+        p_to: to!,
+      });
+      if (error) throw error;
+      return (data ?? []) as PayrollPeriodRow[];
+    },
+  });
+}
+
 export function hostStatementQueryKey(orgId: string | null, staffMemberId: string | null) {
   return ["doc-host-statement", orgId, staffMemberId] as const;
 }

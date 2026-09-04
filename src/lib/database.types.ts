@@ -5472,6 +5472,20 @@ export type Database = {
         Args: { p_event_id: string; p_org_id: string }
         Returns: boolean
       }
+      event_procurement_ops_lines: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: {
+          expected_delivery_at: string
+          item_name: string
+          order_date: string
+          order_notes: string
+          order_number: string
+          order_status: string
+          quantity: number
+          supplier_name: string
+          unit: string
+        }[]
+      }
       event_readiness: {
         Args: { p_event_id: string; p_org_id: string }
         Returns: Json
@@ -5483,6 +5497,21 @@ export type Database = {
           event_id: string
           staff_missing: number
           status: string
+        }[]
+      }
+      event_team_sheet: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: {
+          assignment_notes: string
+          assignment_role: string
+          check_in: string
+          check_out: string
+          presence_status: string
+          scheduled_end: string
+          scheduled_start: string
+          staff_member_id: string
+          staff_name: string
+          staff_phone: string
         }[]
       }
       event_warehouse_sheet_lines: {
@@ -5503,6 +5532,25 @@ export type Database = {
       event_warehouse_summary: {
         Args: { p_event_id: string; p_org_id: string }
         Returns: Json
+      }
+      event_work_order_header: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: {
+          contact_name: string
+          contact_phone: string
+          customer_name: string
+          end_at: string
+          event_number: string
+          event_type: string
+          guest_count: number
+          location_details: string
+          notes: string
+          responsible_user_name: string
+          start_at: string
+          status: string
+          title: string
+          venue_name: string
+        }[]
       }
       expire_quotation: {
         Args: {
@@ -5973,6 +6021,18 @@ export type Database = {
       next_document_number: {
         Args: { p_kind: string; p_org: string; p_prefix?: string }
         Returns: string
+      }
+      payroll_period_sheet: {
+        Args: { p_from: string; p_org_id: string; p_to: string }
+        Returns: {
+          advances_total: number
+          balance_total: number
+          earned_total: number
+          payouts_total: number
+          shift_count: number
+          staff_member_id: string
+          staff_name: string
+        }[]
       }
       persist_quotation_draft: {
         Args: {

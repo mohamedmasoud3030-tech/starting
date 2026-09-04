@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Printer, ScrollText } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -10,7 +10,17 @@ import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Select } from "@/components/ui/Select";
+import { Spinner } from "@/components/ui/Spinner";
 import { MoneyInput } from "@/components/MoneyInput";
+import { buildDocumentIdentity } from "@/components/documents/documentIdentity";
+import { useOrganizationSettings } from "@/features/settings/settings.api";
+import {
+  useHostStatement,
+  usePayrollPeriodSheet,
+} from "@/features/documents/documents.api";
+import { HostStatement } from "@/features/documents/HostStatement";
+import { PayrollPeriodSheet } from "@/features/documents/PayrollPeriodSheet";
+import { PrintDocumentDialog } from "@/features/documents/PrintDocumentDialog";
 import { formatOMR, type MilliOMR } from "@/lib/money";
 import { todayInMuscat } from "@/lib/dates";
 import type { PaymentMethod } from "@/lib/dbTypes";
@@ -250,6 +260,93 @@ function useCanMutate(): boolean {
     : !!currentRole && PAYROLL_PAY_ROLES.includes(currentRole);
 }
 
+/**
+ * Payroll period sheet (كشف صرف / رواتب فترة) — pick a Muscat-calendar period
+ * and print the org-wide payable sheet. Sums come from the canonical
+ * payroll_period_sheet projection (0081), which returns NOTHING unless the
+ * caller holds payroll.read; totals reconcile to the printed rows.
+ */
+function PayrollPeriodCard({ orgId }: { orgId: string | null }) {
+  const { currentOrganization } = useAuth();
+  const settings = useOrganizationSettings(orgId);
+  const today = todayInMuscat();
+  const [from, setFrom] = useState(() => `${today.slice(0, 7)}-01`);
+  const [to, setTo] = useState(today);
+  const [open, setOpen] = useState(false);
+  const period = usePayrollPeriodSheet(
+    orgId,
+    open ? from : null,
+    open ? to : null,
+  );
+  const invalidRange = from !== "" && to !== "" && to < from;
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-center gap-2">
+        <Printer className="h-5 w-5 text-brand-700" />
+        <h2 className="font-black">كشف صرف / رواتب فترة</h2>
+      </div>
+      <p className="mt-1 text-sm leading-6 text-slate-500">
+        حدد الفترة ثم اطبع كشف الرواتب لكل المضيفين: الاستحقاق والسلف والصرف
+        خلالها. يعرض الكشف المجاميع فقط لا معدلات الأجور، وهو مخصص لمن يملك
+        صلاحية قراءة الأجور — ويُصفّى في الخادم وفق الصلاحية نفسها.
+      </p>
+      <div className="mt-3 flex flex-wrap items-end gap-3">
+        <Field label="من تاريخ" htmlFor="period-from">
+          <Input
+            id="period-from"
+            type="date"
+            dir="ltr"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </Field>
+        <Field label="إلى تاريخ" htmlFor="period-to">
+          <Input
+            id="period-to"
+            type="date"
+            dir="ltr"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </Field>
+        <Button disabled={!from || !to || invalidRange} onClick={() => setOpen(true)}>
+          طباعة كشف رواتب الفترة
+        </Button>
+      </div>
+      {invalidRange && (
+        <p role="alert" className="mt-2 text-sm font-bold text-red-700">
+          يجب أن يكون تاريخ النهاية بعد تاريخ البداية أو مثله.
+        </p>
+      )}
+
+      <PrintDocumentDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="كشف صرف / رواتب فترة"
+        description="الأرقام من سجلات الأجور الرسمية — الإجماليات مجموع المطبوع في الكشف نفسه."
+      >
+        {period.isLoading && (
+          <div className="flex justify-center py-10">
+            <Spinner className="h-7 w-7" />
+          </div>
+        )}
+        {!period.isLoading && (
+          <PayrollPeriodSheet
+            identity={buildDocumentIdentity(
+              currentOrganization,
+              settings.data ?? null,
+            )}
+            from={from}
+            to={to}
+            rows={period.data ?? []}
+          />
+        )}
+      </PrintDocumentDialog>
+    </Card>
+  );
+}
+
 function StaffSummaryCard({
   orgId,
   staff,
@@ -265,6 +362,12 @@ function StaffSummaryCard({
   onToggle: () => void;
   onEdit: (staff: StaffMemberRow) => void;
 }) {
+  const { currentOrganization } = useAuth();
+  const settings = useOrganizationSettings(orgId);
+  // The staff statement is fetched only while its dialog is open; the
+  // projection itself is payroll.read-gated server-side (0080).
+  const [statementOpen, setStatementOpen] = useState(false);
+  const statement = useHostStatement(orgId, statementOpen ? staff.id : null);
   // Event rows are intentionally event-scoped. Staff advances are a global
   // ledger and global payouts may have event_id=NULL, so aggregate those ledgers
   // exactly once here instead of summing them once per event.
@@ -305,14 +408,25 @@ function StaffSummaryCard({
               </Badge>
             </div>
           </button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onEdit(staff)}
-            aria-label={`تعديل بيانات ${staff.name}`}
-          >
-            تعديل
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setStatementOpen(true)}
+              aria-label={`طباعة كشف حساب ${staff.name}`}
+            >
+              <ScrollText className="h-4 w-4" />
+              كشف حساب
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(staff)}
+              aria-label={`تعديل بيانات ${staff.name}`}
+            >
+              تعديل
+            </Button>
+          </div>
         </div>
 
         {open && (
@@ -338,6 +452,28 @@ function StaffSummaryCard({
             <HostDetail orgId={orgId} staff={staff} rows={rows} />
           </div>
         )}
+
+        <PrintDocumentDialog
+          open={statementOpen}
+          onOpenChange={setStatementOpen}
+          title="كشف حساب مضيف"
+          description="الأرقام من سجلات الأجور الرسمية نفسها — الاستحقاق والسلف والصرف والمتبقي."
+        >
+          {statement.isLoading && (
+            <div className="flex justify-center py-10">
+              <Spinner className="h-7 w-7" />
+            </div>
+          )}
+          {!statement.isLoading && (
+            <HostStatement
+              identity={buildDocumentIdentity(
+                currentOrganization,
+                settings.data ?? null,
+              )}
+              rows={statement.data ?? []}
+            />
+          )}
+        </PrintDocumentDialog>
       </CardBody>
     </Card>
   );
@@ -376,7 +512,7 @@ export function StaffPage() {
     return (
       <div className="space-y-4">
         <PageHeader title="المضيفون والأجور" description="سجل أجور المضيفين والسلف والصرف." />
-        <EmptyState title="الأجور غير متاحة لدورك" description="تظهر أجور المضيفين لمن يملك صلاحية قراءتها (المالك والمدير والمحاسب افتراضياً)." />
+        <EmptyState title="الأجور غير متاحة لدورك" description="تظهر أجور المضيفين لمن يملك صلاحية قراءة الأجور، وهي تُمنح لكل عضو من شاشة «المستخدمون والصلاحيات»." />
       </div>
     );
   }
@@ -400,6 +536,7 @@ export function StaffPage() {
           ) : undefined
         }
       />
+      <PayrollPeriodCard orgId={orgId} />
       {staff.isLoading || archive.isLoading ? (
         <p>جارٍ التحميل…</p>
       ) : (staff.data ?? []).length === 0 ? (
