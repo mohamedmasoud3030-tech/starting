@@ -4091,6 +4091,41 @@ export type Database = {
         Args: { p_event_id: string; p_org_id: string }
         Returns: undefined
       }
+      _post_reversal: {
+        Args: {
+          p_event_at?: string
+          p_event_id?: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_original_entry_id: string
+          p_reason: string
+          p_source_id: string
+          p_void_source_type: Database["public"]["Enums"]["journal_source_type"]
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          entry_date: string
+          entry_number: string
+          event_at: string | null
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          is_reversal: boolean
+          memo: string | null
+          organization_id: string
+          request_fingerprint: string
+          reversal_of: string | null
+          source_id: string
+          source_type: Database["public"]["Enums"]["journal_source_type"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "journal_entries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _resolve_expense_treasury: {
         Args: { p_org_id: string; p_treasury_id: string }
         Returns: {
@@ -4101,6 +4136,13 @@ export type Database = {
       _resolve_treasury_chart: {
         Args: { p_org_id: string; p_treasury_id: string }
         Returns: string
+      }
+      _staff_payroll_position: {
+        Args: { p_org_id: string; p_staff_member_id: string }
+        Returns: {
+          payable: number
+          receivable: number
+        }[]
       }
       _view_catalog_items_operational: {
         Args: never
@@ -7108,6 +7150,7 @@ export type Database = {
           p_reason: string
           p_reference: string
           p_staff_member_id: string
+          p_treasury_account_id?: string
         }
         Returns: {
           amount: number
@@ -7150,6 +7193,7 @@ export type Database = {
           p_reason: string
           p_reference: string
           p_staff_member_id: string
+          p_treasury_account_id?: string
         }
         Returns: {
           amount: number
@@ -7185,6 +7229,7 @@ export type Database = {
           p_org_id: string
           p_reason: string
           p_staff_member_id: string
+          p_treasury_account_id?: string
         }
         Returns: {
           advance_date: string
