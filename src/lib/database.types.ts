@@ -3108,6 +3108,278 @@ export type Database = {
           },
         ]
       }
+      supplier_invoice_lines: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          invoice_id: string
+          line_kind: Database["public"]["Enums"]["procurement_line_kind"]
+          order_id: string
+          order_line_id: string
+          organization_id: string
+          quantity: number
+          total_cost: number
+          unit: string
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          invoice_id: string
+          line_kind: Database["public"]["Enums"]["procurement_line_kind"]
+          order_id: string
+          order_line_id: string
+          organization_id: string
+          quantity: number
+          total_cost: number
+          unit: string
+          unit_cost: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          invoice_id?: string
+          line_kind?: Database["public"]["Enums"]["procurement_line_kind"]
+          order_id?: string
+          order_line_id?: string
+          organization_id?: string
+          quantity?: number
+          total_cost?: number
+          unit?: string
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_invoice_lines_invoice_fk"
+            columns: ["organization_id", "invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_invoices"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "supplier_invoice_lines_order_line_fk"
+            columns: ["organization_id", "order_id", "order_line_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_order_lines"
+            referencedColumns: ["organization_id", "order_id", "id"]
+          },
+        ]
+      }
+      supplier_invoices: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string | null
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          invoice_date: string
+          invoice_number: string
+          notes: string | null
+          order_id: string
+          organization_id: string
+          override_reason: string | null
+          owner_override: boolean
+          recorded_by: string
+          request_fingerprint: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          supplier_id: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date?: string | null
+          event_id?: string | null
+          id?: string
+          idempotency_key: string
+          invoice_date: string
+          invoice_number: string
+          notes?: string | null
+          order_id: string
+          organization_id: string
+          override_reason?: string | null
+          owner_override?: boolean
+          recorded_by: string
+          request_fingerprint: string
+          status?: Database["public"]["Enums"]["customer_payment_status"]
+          supplier_id: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string | null
+          event_id?: string | null
+          id?: string
+          idempotency_key?: string
+          invoice_date?: string
+          invoice_number?: string
+          notes?: string | null
+          order_id?: string
+          organization_id?: string
+          override_reason?: string | null
+          owner_override?: boolean
+          recorded_by?: string
+          request_fingerprint?: string
+          status?: Database["public"]["Enums"]["customer_payment_status"]
+          supplier_id?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_invoices_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "supplier_invoices_order_fk"
+            columns: ["organization_id", "order_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_orders"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "supplier_invoices_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_invoices_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      supplier_payment_allocations: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          invoice_id: string
+          organization_id: string
+          payment_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          invoice_id: string
+          organization_id: string
+          payment_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          organization_id?: string
+          payment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_payment_allocations_invoice_fk"
+            columns: ["organization_id", "invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_invoices"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "supplier_payment_allocations_payment_fk"
+            columns: ["organization_id", "payment_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_payments"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      supplier_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          payment_date: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          reason: string | null
+          recorded_by: string
+          reference: string | null
+          request_fingerprint: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          supplier_id: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          organization_id: string
+          payment_date: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          reason?: string | null
+          recorded_by: string
+          reference?: string | null
+          request_fingerprint: string
+          status?: Database["public"]["Enums"]["customer_payment_status"]
+          supplier_id: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          organization_id?: string
+          payment_date?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          reason?: string | null
+          recorded_by?: string
+          reference?: string | null
+          request_fingerprint?: string
+          status?: Database["public"]["Enums"]["customer_payment_status"]
+          supplier_id?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_payments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payments_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           category: Database["public"]["Enums"]["supplier_category"]
@@ -4143,6 +4415,14 @@ export type Database = {
           payable: number
           receivable: number
         }[]
+      }
+      _supplier_ap_position: {
+        Args: { p_org_id: string; p_supplier_id: string }
+        Returns: number
+      }
+      _supplier_invoice_ap: {
+        Args: { p_invoice_id: string; p_org_id: string }
+        Returns: number
       }
       _view_catalog_items_operational: {
         Args: never
@@ -7305,6 +7585,88 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      record_supplier_invoice: {
+        Args: {
+          p_due_date: string
+          p_event_id: string
+          p_idempotency_key?: string
+          p_invoice_date: string
+          p_invoice_number: string
+          p_lines: Json
+          p_notes?: string
+          p_order_id: string
+          p_org_id: string
+          p_override_reason?: string
+          p_owner_override?: boolean
+          p_supplier_id: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          due_date: string | null
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          invoice_date: string
+          invoice_number: string
+          notes: string | null
+          order_id: string
+          organization_id: string
+          override_reason: string | null
+          owner_override: boolean
+          recorded_by: string
+          request_fingerprint: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          supplier_id: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supplier_invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_supplier_payment: {
+        Args: {
+          p_allocations?: Json
+          p_amount: number
+          p_idempotency_key?: string
+          p_org_id: string
+          p_payment_date: string
+          p_payment_method: Database["public"]["Enums"]["payment_method"]
+          p_reason: string
+          p_reference: string
+          p_supplier_id: string
+          p_treasury_account_id?: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          payment_date: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          reason: string | null
+          recorded_by: string
+          reference: string | null
+          request_fingerprint: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          supplier_id: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supplier_payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       reject_quotation: {
         Args: {
           p_idempotency_key?: string
@@ -8739,6 +9101,74 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "staff_attendance"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      void_supplier_invoice: {
+        Args: {
+          p_idempotency_key?: string
+          p_invoice_id: string
+          p_org_id: string
+          p_reason: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          due_date: string | null
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          invoice_date: string
+          invoice_number: string
+          notes: string | null
+          order_id: string
+          organization_id: string
+          override_reason: string | null
+          owner_override: boolean
+          recorded_by: string
+          request_fingerprint: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          supplier_id: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supplier_invoices"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      void_supplier_payment: {
+        Args: {
+          p_idempotency_key?: string
+          p_org_id: string
+          p_payment_id: string
+          p_reason: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          payment_date: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          reason: string | null
+          recorded_by: string
+          reference: string | null
+          request_fingerprint: string
+          status: Database["public"]["Enums"]["customer_payment_status"]
+          supplier_id: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supplier_payments"
           isOneToOne: true
           isSetofReturn: false
         }
