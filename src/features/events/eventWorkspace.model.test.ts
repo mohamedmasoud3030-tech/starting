@@ -9,19 +9,8 @@ import {
   pickLinkedQuote,
   resolveActiveTab,
   visibleWorkspaceTabs,
-  voiceSummaryForTab,
   WORKSPACE_TABS,
-  type VoiceSummaries,
 } from "./eventWorkspace.model";
-
-const summaries: VoiceSummaries = {
-  overview: "ملخص",
-  pricing: "تسعير",
-  payments: "مدفوعات",
-  invoices: "فواتير",
-  attendance: "حضور",
-  payroll: "أجور",
-};
 
 describe("eventWorkspace.model", () => {
   it("exposes the full Arabic tab vocabulary", () => {
@@ -136,15 +125,6 @@ describe("eventWorkspace.model", () => {
     expect(supervisorPayroll.canCost).toBe(false);
   });
 
-  it("selects the tab-specific voice summary and defaults to overview", () => {
-    expect(voiceSummaryForTab("التسعير", summaries)).toBe("تسعير");
-    expect(voiceSummaryForTab("المدفوعات", summaries)).toBe("مدفوعات");
-    expect(voiceSummaryForTab("الفواتير", summaries)).toBe("فواتير");
-    expect(voiceSummaryForTab("الحضور", summaries)).toBe("حضور");
-    expect(voiceSummaryForTab("الأجور", summaries)).toBe("أجور");
-    expect(voiceSummaryForTab("ملخص", summaries)).toBe("ملخص");
-    expect(voiceSummaryForTab("المخزن", summaries)).toBe("ملخص");
-  });
 });
 
 describe("visibleWorkspaceTabs — no dead-end tabs", () => {

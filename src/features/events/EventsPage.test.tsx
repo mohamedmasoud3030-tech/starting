@@ -20,17 +20,6 @@ vi.mock("@/lib/useStableIdempotencyKey", () => ({
   useStableIdempotencyKey: () => "key-session-1",
 }));
 
-vi.mock("@/features/ownerVoice/OwnerVoiceButton", () => ({
-  OwnerVoiceButton: () => null,
-}));
-
-vi.mock("@/features/ownerVoice/screenSummary", () => ({
-  buildEventsListVoiceSummary: () => null,
-  EVENT_STATUS_ARABIC: {},
-  DEFAULT_TIME_ZONE: "Asia/Muscat",
-  toArabicDigits: (x: string | number) => String(x),
-}));
-
 vi.mock("./events.api", () => ({
   useEventsPage: () => ({
     data: { rows: [], total: 0 },

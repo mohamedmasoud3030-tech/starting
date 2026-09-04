@@ -11,6 +11,35 @@
 
 export const OPERATIONAL_TIME_ZONE = "Asia/Muscat";
 
+/** Alias for callers that referred to the operational zone by this name. */
+export const DEFAULT_TIME_ZONE = OPERATIONAL_TIME_ZONE;
+
+/**
+ * True when two ISO instants share the same calendar day in the given zone.
+ * Standalone (no dependency on the old voice-summary module); used to bucket
+ * an event's start time as "today" in the Oman operational time zone.
+ */
+export function isSameLocalDay(
+  iso: string,
+  reference: Date,
+  timeZone: string = OPERATIONAL_TIME_ZONE,
+): boolean {
+  const partsOf = (value: string) => {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date(value));
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+    return { year: get("year"), month: get("month"), day: get("day") };
+  };
+  const a = partsOf(iso);
+  const b = partsOf(reference.toISOString());
+  return a.year === b.year && a.month === b.month && a.day === b.day;
+}
+
+
 /** Today's date (YYYY-MM-DD) in the Oman operational time zone. */
 export function todayInMuscat(now: Date = new Date()): string {
   // en-CA formats as YYYY-MM-DD.

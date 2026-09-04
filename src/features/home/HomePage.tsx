@@ -24,12 +24,8 @@ import {
   readinessReasonTab,
   readinessTone,
 } from "@/features/events/operationalReadiness";
-import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
-import {
-  DEFAULT_TIME_ZONE,
-  EVENT_STATUS_ARABIC,
-  toArabicDigits,
-} from "@/features/ownerVoice/screenSummary";
+import { EVENT_STATUS_ARABIC, toArabicDigits } from "@/lib/arabic";
+import { DEFAULT_TIME_ZONE } from "@/lib/dates";
 import type { AttendanceGap } from "@/features/staff/staff.api";
 import { buildEventWhatsAppUrl, todayBlockers } from "./operationalDashboard.model";
 import { outstandingMilliText } from "./dailyOperations.api";
@@ -61,7 +57,6 @@ export function HomePage() {
     dashboardLoaded,
     readinessByEventId,
     attendanceGaps,
-    attentionSummary,
     hasLoadError,
     eventsTruncated,
     metrics,
@@ -86,7 +81,6 @@ export function HomePage() {
       <PageHeader
         title={`${name}، ${currentOrganization?.name ?? ""}`}
         description="لوحة تشغيل اليوم: المناسبات، الجاهزية والتنبيهات التي تحتاج تدخل"
-        actions={<OwnerVoiceButton summary={attentionSummary} />}
       />
 
       {isNewOrganization && <FirstStepsCard />}
