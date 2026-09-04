@@ -42,7 +42,11 @@ const STATUS_TONES: Record<QuotationStatus, "neutral" | "success" | "warning" | 
 };
 
 export function QuotesPage() {
-  const { currentOrganization, canManageCommercial } = useAuth();
+  const {
+    currentOrganization,
+    canManageCommercial,
+    canIssueQuotation,
+  } = useAuth();
   const orgId = currentOrganization?.id ?? null;
   const quotes = useQuotations(orgId);
   const discard = useCancelQuotationDraft(orgId);
@@ -61,7 +65,8 @@ export function QuotesPage() {
     return matchesStatus && (!term || haystack.includes(term));
   });
 
-  if (!canManageCommercial) {
+  // Entry: managing (drafts) or issuing (accept/convert) both have work here.
+  if (!canManageCommercial && !canIssueQuotation) {
     return (
       <p className="rounded-xl bg-amber-50 p-4 font-bold text-amber-800">
         عروض الأسعار متاحة للمالك والمدير فقط.
@@ -86,10 +91,13 @@ export function QuotesPage() {
         title="عروض الأسعار"
         description="ابدأ من هنا: أنشئ عرضاً، أصدره للعميل، اعتمده بعد الموافقة، ثم حوّله إلى مناسبة"
         actions={
-          <Button size="lg" onClick={() => void navigate({ to: "/quotes/new" })}>
-            <Plus className="h-5 w-5" />
-            عرض سعر جديد
-          </Button>
+          // create_quotation_draft → quotation.manage
+          canManageCommercial ? (
+            <Button size="lg" onClick={() => void navigate({ to: "/quotes/new" })}>
+              <Plus className="h-5 w-5" />
+              عرض سعر جديد
+            </Button>
+          ) : undefined
         }
       />
 
@@ -121,9 +129,11 @@ export function QuotesPage() {
           title="لا توجد عروض أسعار"
           description="ابدأ عرض سعر جديد من زر «عرض سعر جديد»."
           action={
-            <Button onClick={() => void navigate({ to: "/quotes/new" })}>
-              + عرض سعر جديد
-            </Button>
+            canManageCommercial ? (
+              <Button onClick={() => void navigate({ to: "/quotes/new" })}>
+                + عرض سعر جديد
+              </Button>
+            ) : undefined
           }
         />
       ) : visibleQuotes.length === 0 ? (
@@ -173,7 +183,8 @@ export function QuotesPage() {
                   )}
                 </Card>
               </Link>
-              {q.status === "DRAFT" && (
+              {/* cancel_quotation_draft → quotation.manage */}
+              {q.status === "DRAFT" && canManageCommercial && (
                 <div className="mt-1 flex justify-end gap-2">
                   <Button
                     variant="ghost"

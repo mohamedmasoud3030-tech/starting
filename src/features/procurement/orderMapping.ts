@@ -1,4 +1,3 @@
-import type { AppRole } from "@/lib/dbTypes";
 import { parseQuantityMilli } from "@/lib/money";
 import type {
   Capability,
@@ -38,9 +37,14 @@ export function toProcurementLineKind(
  *  - ACCOUNTANT never receives,
  *  - WAREHOUSE receives physical CONSUMABLE lines only.
  */
+/**
+ * Line-level receivability, mirroring the 0079 server gates: receiving
+ * requires warehouse.dispatch, and a receiver WITHOUT procurement.manage is a
+ * physical-goods handler — only CONSUMABLE lines are receivable for them.
+ */
 export function deriveLineReceiveCapability(
   status: ProcurementOrderStatus,
-  role: AppRole | null,
+  access: { canReceive: boolean; canProcure: boolean },
   lineKind: string | null | undefined,
   remainingQuantityMilli: number,
 ): Capability {
@@ -48,10 +52,10 @@ export function deriveLineReceiveCapability(
   if (status !== "CONFIRMED" && status !== "PARTIALLY_RECEIVED") {
     return { allowed: false, reason: "ITEM_NOT_RECEIVABLE" };
   }
-  if (role === "ACCOUNTANT") {
+  if (!access.canReceive) {
     return { allowed: false, reason: "PERMISSION_DENIED" };
   }
-  if (role === "WAREHOUSE" && lineKind !== "CONSUMABLE") {
+  if (!access.canProcure && lineKind !== "CONSUMABLE") {
     return { allowed: false, reason: "PERMISSION_DENIED" };
   }
   return { allowed: true };
@@ -76,7 +80,7 @@ export interface OrderLineSourceRow {
 export function mapOrderLine(
   row: OrderLineSourceRow,
   status: ProcurementOrderStatus,
-  role: AppRole | null,
+  access: { canReceive: boolean; canProcure: boolean },
   money: { unitCostMilli: number | null; lineTotalMilli: number | null },
 ): ProcurementOrderLine {
   const remainingMilli = parseQuantityMilli(row.remaining_quantity ?? 0);
@@ -91,7 +95,12 @@ export function mapOrderLine(
     remainingQuantityMilli: remainingMilli,
     unitCostMilli: money.unitCostMilli,
     lineTotalMilli: money.lineTotalMilli,
-    receive: deriveLineReceiveCapability(status, role, row.line_kind, remainingMilli),
+    receive: deriveLineReceiveCapability(
+      status,
+      access,
+      row.line_kind,
+      remainingMilli,
+    ),
   };
 }
 

@@ -124,6 +124,7 @@ function renderPanel(props: Partial<Parameters<typeof WarehousePanel>[0]> = {}) 
       eventId="ev-1"
       eventStatus="PREPARING"
       role="WAREHOUSE"
+      capabilities={null}
       canReadCost={false}
       {...props}
     />,

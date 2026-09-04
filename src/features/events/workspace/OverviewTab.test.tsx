@@ -47,7 +47,8 @@ function renderOverview(
     <OverviewTab
       event={event(status)}
       customerName="مريم"
-      canCommercial={true}
+      canManage={true}
+      canCost={true}
       canFinance={true}
       run={run}
       report={readyReport}
@@ -132,12 +133,22 @@ describe("OverviewTab — lifecycle controls", () => {
     expect(screen.getByRole("button", { name: "المصروف والربح" })).toBeInTheDocument();
   });
 
-  it("hides cancellation from non-commercial roles", () => {
-    renderOverview("PREPARING", { canCommercial: false, canFinance: false });
+  it("hides cancellation and transitions from a role without event.manage", () => {
+    renderOverview("PREPARING", { canManage: false });
     expect(
       screen.queryByRole("button", { name: "إلغاء المناسبة" }),
     ).not.toBeInTheDocument();
-    // The next operational step stays available for operational roles.
+    expect(
+      screen.queryByRole("button", { name: "تأكيد الإرسال" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the financial shortcuts from a role without cost visibility", () => {
+    renderOverview("PREPARING", { canCost: false });
+    expect(
+      screen.queryByRole("button", { name: "تسجيل دفعة" }),
+    ).not.toBeInTheDocument();
+    // The operational step (event.manage) stays available.
     expect(screen.getByRole("button", { name: "تأكيد الإرسال" })).toBeInTheDocument();
   });
 });

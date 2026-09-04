@@ -26,7 +26,8 @@ import { ReadinessReportPanel } from "./ReadinessReportPanel";
 export function OverviewTab({
   event,
   customerName,
-  canCommercial,
+  canManage,
+  canCost,
   canFinance,
   run,
   report,
@@ -37,7 +38,11 @@ export function OverviewTab({
 }: {
   event: EventRow;
   customerName: string | null;
-  canCommercial: boolean;
+  /** event.manage — status transitions and cancellation. */
+  canManage: boolean;
+  /** cost.visibility — the financial shortcut targets. */
+  canCost: boolean;
+  /** finance.manage — financial closure. */
   canFinance: boolean;
   run: (name: string, args: Record<string, unknown>, includeEvent?: boolean) => Promise<void>;
   report: ReadinessReport;
@@ -66,7 +71,7 @@ export function OverviewTab({
   const canCancel =
     ["DRAFT", "QUOTED", "CONFIRMED", "PREPARING", "DISPATCHED", "IN_PROGRESS", "RETURNING"].includes(
       event.status,
-    ) && canCommercial;
+    ) && canManage;
 
   function transition(overrideReasonText?: string) {
     if (!currentStep) return;
@@ -171,12 +176,12 @@ export function OverviewTab({
       <Card>
         <h2 className="font-black">الإجراءات التشغيلية</h2>
         <div className="mt-3 flex flex-wrap gap-2">
-          {currentStep && (
+          {currentStep && canManage && (
             <Button onClick={() => (needsOverride ? setOverrideOpen(true) : transition())}>
               {currentStep[2]}
             </Button>
           )}
-          {canFinance && (
+          {canCost && (
             <>
               <Button variant="secondary" onClick={() => onOpenTab("المدفوعات")}>
                 تسجيل دفعة

@@ -328,12 +328,47 @@ export const CONSUMABLE_OPERATION_ROLES: AppRole[] = [
 /** Roles for sensitive corrections (adjustment) and final reconciliation. */
 export const CONSUMABLE_MANAGE_ROLES: AppRole[] = ["OWNER", "MANAGER"];
 
-export function canOperateConsumables(role: AppRole | null): boolean {
-  return role !== null && CONSUMABLE_OPERATION_ROLES.includes(role);
+/**
+ * Capability check with the role preset as the loading fallback (same
+ * contract as `eventPermissions`): while the server capability report is
+ * still loading (`capabilities === null`) the role arrays — identical to
+ * the server's `role_default_capability` for the matching caps — apply.
+ */
+function capabilityAllowed(
+  capability: string,
+  fallbackRoles: AppRole[],
+  role: AppRole | null,
+  capabilities: Set<string> | null,
+): boolean {
+  return capabilities !== null
+    ? capabilities.has(capability)
+    : role !== null && fallbackRoles.includes(role);
 }
 
-export function canManageConsumables(role: AppRole | null): boolean {
-  return role !== null && CONSUMABLE_MANAGE_ROLES.includes(role);
+/** consumable.manage — issue / return / consume / waste / receive. */
+export function canOperateConsumables(
+  role: AppRole | null,
+  capabilities: Set<string> | null = null,
+): boolean {
+  return capabilityAllowed(
+    "consumable.manage",
+    CONSUMABLE_OPERATION_ROLES,
+    role,
+    capabilities,
+  );
+}
+
+/** stock.adjust — sensitive corrections and final reconciliation. */
+export function canManageConsumables(
+  role: AppRole | null,
+  capabilities: Set<string> | null = null,
+): boolean {
+  return capabilityAllowed(
+    "stock.adjust",
+    CONSUMABLE_MANAGE_ROLES,
+    role,
+    capabilities,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -356,11 +391,12 @@ export type IssueBlock =
     };
 
 export function issueBlock(input: {
-  role: AppRole | null;
+  /** consumable.manage — precomputed by the caller via `canOperateConsumables`. */
+  canOperate: boolean;
   eventStatus: string;
   isReconciled: boolean;
 }): IssueBlock {
-  if (!canOperateConsumables(input.role)) {
+  if (!input.canOperate) {
     return { blocked: true, reason: "NOT_AUTHORIZED" };
   }
   if (input.isReconciled) {
@@ -381,10 +417,11 @@ export type CustodyBlock =
 
 /** Applies to return / consume / event-waste — anything that reduces custody. */
 export function custodyBlock(input: {
-  role: AppRole | null;
+  /** consumable.manage — precomputed by the caller via `canOperateConsumables`. */
+  canOperate: boolean;
   line: EventConsumableLine;
 }): CustodyBlock {
-  if (!canOperateConsumables(input.role)) {
+  if (!input.canOperate) {
     return { blocked: true, reason: "NOT_AUTHORIZED" };
   }
   if (input.line.isReconciled) {
@@ -409,10 +446,11 @@ export type ReconcileBlock =
     };
 
 export function reconcileConsumablesBlock(input: {
-  role: AppRole | null;
+  /** stock.adjust — precomputed by the caller via `canManageConsumables`. */
+  canManage: boolean;
   summary: ConsumableSummary;
 }): ReconcileBlock {
-  if (!canManageConsumables(input.role)) {
+  if (!input.canManage) {
     return { blocked: true, reason: "NOT_AUTHORIZED" };
   }
   if (input.summary.isReconciled) {

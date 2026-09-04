@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { useAuth } from "@/app/authContext";
+import { canManageCommercialFor } from "@/app/authRoles";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -13,8 +14,14 @@ import { PackageDialog } from "./PackageDialog";
 import { type PackageWithLines, usePackages } from "./packages.api";
 
 export function PackagesPage() {
-  const { currentOrganization, canManageCommercial } = useAuth();
+  const { currentOrganization, currentRole, capabilities } = useAuth();
   const orgId = currentOrganization?.id ?? null;
+  // 0079: save_package is gated server-side by catalog.manage; the role
+  // preset (identical default) is only the loading fallback.
+  const canManageCommercial =
+    capabilities !== null
+      ? capabilities.has("catalog.manage")
+      : canManageCommercialFor(currentRole);
 
   const packagesQuery = usePackages(orgId);
   const itemsQuery = useCatalogItems(orgId);

@@ -13,6 +13,7 @@ const authMock = vi.hoisted(() =>
     currentOrganization: { id: "org", name: "Org A" },
     currentRole: "OWNER" as string,
     canManageCommercial: true,
+    canIssueQuotation: true,
     canReadCost: true,
   })),
 );
@@ -113,6 +114,7 @@ beforeEach(() => {
     currentOrganization: { id: "org", name: "Org A" },
     currentRole: "OWNER",
     canManageCommercial: true,
+    canIssueQuotation: true,
     canReadCost: true,
   });
 });
@@ -190,6 +192,7 @@ describe("QuotationReview", () => {
       currentOrganization: { id: "org", name: "Org A" },
       currentRole: "SUPERVISOR",
       canManageCommercial: false,
+      canIssueQuotation: false,
       canReadCost: false,
     });
     renderReview();
@@ -199,6 +202,26 @@ describe("QuotationReview", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "تأكيد الحجز / تحويل إلى مناسبة" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lets an issue-only member accept but not revise (quotation.issue vs quotation.manage)", async () => {
+    authMock.mockReturnValue({
+      currentOrganization: { id: "org", name: "Org A" },
+      currentRole: "MANAGER",
+      canManageCommercial: false,
+      canIssueQuotation: true,
+      canReadCost: true,
+    });
+    renderReview();
+    await screen.findByText("QT-2026-00001 · مراجعة 1");
+    // accept is quotation.issue → available
+    expect(
+      screen.getByRole("button", { name: "اعتماد العرض" }),
+    ).toBeInTheDocument();
+    // revise is quotation.manage → hidden
+    expect(
+      screen.queryByRole("button", { name: /نسخة معدلة/ }),
     ).not.toBeInTheDocument();
   });
 });

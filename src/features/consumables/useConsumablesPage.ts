@@ -17,7 +17,11 @@ import {
  * Controller for the central consumables stock screen: queries, receive/
  * waste/adjust mutations with idempotency keys, and shared error state.
  */
-export function useConsumablesPage(orgId: string | null, role: AppRole | null) {
+export function useConsumablesPage(
+  orgId: string | null,
+  role: AppRole | null,
+  capabilities: Set<string> | null = null,
+) {
   const stock = useConsumableStock(orgId);
   const receive = useReceiveStock(orgId);
   const waste = useWasteStock(orgId);
@@ -25,8 +29,8 @@ export function useConsumablesPage(orgId: string | null, role: AppRole | null) {
 
   const [error, setError] = useState("");
 
-  const canOperate = canOperateConsumables(role);
-  const canManage = canManageConsumables(role);
+  const canOperate = canOperateConsumables(role, capabilities);
+  const canManage = canManageConsumables(role, capabilities);
   const busy = receive.isPending || waste.isPending || adjust.isPending;
 
   async function runReceive(line: StockLine, quantityMilli: number, reference: string) {

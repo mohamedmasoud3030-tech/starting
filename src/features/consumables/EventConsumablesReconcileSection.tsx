@@ -2,9 +2,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmPanel } from "@/components/ui/ConfirmPanel";
 import { Input } from "@/components/ui/Input";
-import type { AppRole } from "@/lib/dbTypes";
 import {
-  canManageConsumables,
   reconcileConsumablesBlock,
   reconcileConsumablesBlockMessage,
   type ConsumableSummary,
@@ -12,7 +10,7 @@ import {
 
 /** Final event consumables reconciliation: irreversible, confirmed. */
 export function EventConsumablesReconcileSection({
-  role,
+  canManage,
   summary,
   busy,
   confirming,
@@ -22,7 +20,8 @@ export function EventConsumablesReconcileSection({
   onNotesChange,
   onConfirm,
 }: {
-  role: AppRole | null;
+  /** stock.adjust — precomputed by the panel. */
+  canManage: boolean;
   summary: ConsumableSummary;
   busy: boolean;
   confirming: boolean;
@@ -32,8 +31,8 @@ export function EventConsumablesReconcileSection({
   onNotesChange: (value: string) => void;
   onConfirm: () => void;
 }) {
-  if (!canManageConsumables(role)) return null;
-  const recBlock = reconcileConsumablesBlock({ role, summary });
+  if (!canManage) return null;
+  const recBlock = reconcileConsumablesBlock({ canManage, summary });
 
   return (
     <Card>

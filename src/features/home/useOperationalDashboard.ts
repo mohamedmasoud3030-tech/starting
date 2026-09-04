@@ -31,7 +31,7 @@ import {
  * screen can render "—" instead of inventing a zero.
  */
 export function useOperationalDashboard() {
-  const { profile, currentOrganization, currentRole } = useAuth();
+  const { profile, currentOrganization, currentRole, capabilities } = useAuth();
   const orgId = currentOrganization?.id ?? null;
 
   const catalog = useCatalogItems(orgId);
@@ -124,7 +124,11 @@ export function useOperationalDashboard() {
   const gapsLoaded = gaps.isSuccess;
   const attendanceGapCount = settledCount(gapsLoaded, gaps.data?.length);
 
-  const canReadFinance = !!currentRole && COST_READER_ROLES.includes(currentRole);
+  // 0079: cost.visibility (role preset = loading fallback only).
+  const canReadFinance =
+    capabilities !== null
+      ? capabilities.has("cost.visibility")
+      : !!currentRole && COST_READER_ROLES.includes(currentRole);
 
   // Spoken facts only when the facts exist; null hides the voice button
   // while any source is still loading (see attentionSummaryWhenLoaded).

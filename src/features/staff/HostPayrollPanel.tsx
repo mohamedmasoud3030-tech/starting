@@ -1,4 +1,11 @@
 import { useRef, useState, type FormEvent } from "react";
+import { FileText } from "lucide-react";
+import { useAuth } from "@/app/authContext";
+import { buildDocumentIdentity } from "@/components/documents/documentIdentity";
+import { useOrganizationSettings } from "@/features/settings/settings.api";
+import { useHostStatement } from "@/features/documents/documents.api";
+import { PrintDocumentDialog } from "@/features/documents/PrintDocumentDialog";
+import { HostStatement } from "@/features/documents/HostStatement";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -31,10 +38,14 @@ export function HostPayrollPanel({
   eventId: string;
   canMutate: boolean;
 }) {
+  const { currentOrganization } = useAuth();
+  const settings = useOrganizationSettings(orgId);
   const payroll = useEventPayroll(orgId, eventId);
   const recordAdvance = useRecordAdvance(orgId);
   const recordPayout = useRecordPayoutMulti(orgId);
 
+  const [statementFor, setStatementFor] = useState<string | null>(null);
+  const statement = useHostStatement(orgId, statementFor);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
   const [mode, setMode] = useState<"ADVANCE" | "PAYOUT">("PAYOUT");
@@ -144,9 +155,19 @@ export function HostPayrollPanel({
                 <CardBody>
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-lg font-black">{r.staffName}</p>
-                    <p className="text-sm text-slate-500">
-                      {r.attendanceCount} وردية · {r.eventNumber ?? "—"}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm text-slate-500">
+                        {r.attendanceCount} وردية · {r.eventNumber ?? "—"}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setStatementFor(r.staffMemberId)}
+                      >
+                        <FileText className="h-4 w-4" />
+                        كشف الحساب
+                      </Button>
+                    </div>
                   </div>
                   <div className="mt-3 grid grid-cols-3 gap-3">
                     <div>
@@ -239,6 +260,30 @@ export function HostPayrollPanel({
           </div>
         </form>
       </Dialog>
+
+      <PrintDocumentDialog
+        open={statementFor !== null}
+        onOpenChange={(open) => {
+          if (!open) setStatementFor(null);
+        }}
+        title="كشف حساب مضيف"
+        description="سجل المضيف عبر المناسبات من النموذج الرسمي للأجور — السلف تُعرض مرة واحدة على مستوى المضيف."
+      >
+        {statement.isLoading && (
+          <div className="flex justify-center py-10">
+            <LoadingState label="جارٍ تحميل الكشف…" />
+          </div>
+        )}
+        {!statement.isLoading && (
+          <HostStatement
+            identity={buildDocumentIdentity(
+              currentOrganization,
+              settings.data ?? null,
+            )}
+            rows={statement.data ?? []}
+          />
+        )}
+      </PrintDocumentDialog>
     </section>
   );
 }

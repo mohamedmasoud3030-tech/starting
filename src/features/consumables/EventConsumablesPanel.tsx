@@ -22,6 +22,8 @@ import { QuantityStat } from "@/components/ui/QuantityStat";
 import {
   CONSUMABLE_STATUS_LABELS,
   CONSUMABLE_STATUS_TONES,
+  canManageConsumables,
+  canOperateConsumables,
   consumableErrorMessage,
   formatQuantity,
   issueBlock,
@@ -37,6 +39,8 @@ interface EventConsumablesPanelProps {
   eventId: string;
   eventStatus: string;
   role: AppRole | null;
+  /** Server capability report (null while loading) — 0079. */
+  capabilities: Set<string> | null;
 }
 
 export function EventConsumablesPanel({
@@ -44,9 +48,12 @@ export function EventConsumablesPanel({
   eventId,
   eventStatus,
   role,
+  capabilities,
 }: EventConsumablesPanelProps) {
   const panel = useEventConsumablesPanel({ orgId, eventId });
   const { eventConsumables } = panel;
+  const canOperate = canOperateConsumables(role, capabilities);
+  const canManage = canManageConsumables(role, capabilities);
 
   if (eventConsumables.isLoading) {
     return <LoadingState label="جارٍ تحميل مواد المناسبة…" />;
@@ -60,7 +67,7 @@ export function EventConsumablesPanel({
 
   const { lines, defects, summary } = eventConsumables.data;
   const iBlock = issueBlock({
-    role,
+    canOperate,
     eventStatus,
     isReconciled: summary.isReconciled,
   });
@@ -130,7 +137,7 @@ export function EventConsumablesPanel({
             <CustodyLineCard
               key={line.stockItemId}
               line={line}
-              role={role}
+              canOperate={canOperate}
               busy={panel.busy}
               onMove={(kind, l, q, n) => void panel.runCustody(kind, l, q, n)}
             />
@@ -139,7 +146,7 @@ export function EventConsumablesPanel({
       )}
 
       <EventConsumablesReconcileSection
-        role={role}
+        canManage={canManage}
         summary={summary}
         busy={panel.busy}
         confirming={panel.confirmingReconcile}

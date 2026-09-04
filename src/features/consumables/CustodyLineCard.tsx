@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { AppRole } from "@/lib/dbTypes";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -26,12 +25,13 @@ const MODE_TITLES: Record<Exclude<CustodyMode, "none">, string> = {
 /** One event consumable line with return / consume / waste flows. */
 export function CustodyLineCard({
   line,
-  role,
+  canOperate,
   busy,
   onMove,
 }: {
   line: EventConsumableLine;
-  role: AppRole | null;
+  /** consumable.manage — precomputed by the panel. */
+  canOperate: boolean;
   busy: boolean;
   onMove: (
     kind: Exclude<CustodyMode, "none">,
@@ -45,7 +45,7 @@ export function CustodyLineCard({
   const [noteText, setNoteText] = useState("");
   const [localError, setLocalError] = useState("");
 
-  const block = custodyBlock({ role, line });
+  const block = custodyBlock({ canOperate, line });
 
   function reset(next: CustodyMode) {
     setMode(next);

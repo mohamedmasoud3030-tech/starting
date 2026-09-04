@@ -1,14 +1,23 @@
+import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { Phone, MessageCircle } from "lucide-react";
+import { FileText, Phone, MessageCircle } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Spinner } from "@/components/ui/Spinner";
 import { CUSTOMER_TYPE_LABELS } from "@/lib/domain";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import { omanTelUrl, omanWhatsAppUrl } from "@/lib/phone";
 import { useCustomer360 } from "@/features/intelligence/intelligence.api";
+import { useOrganizationSettings } from "@/features/settings/settings.api";
+import { buildDocumentIdentity } from "@/components/documents/documentIdentity";
+import { useCustomerStatement } from "@/features/documents/documents.api";
+import { PrintDocumentDialog } from "@/features/documents/PrintDocumentDialog";
+import { CustomerStatement } from "@/features/documents/CustomerStatement";
 
 /**
  * Customer 360 (E4): a single customer's profile, commercial history and
@@ -19,6 +28,10 @@ export function CustomerDetail() {
   const { currentOrganization, canReadCost } = useAuth();
   const orgId = currentOrganization?.id ?? null;
   const c360 = useCustomer360(orgId);
+  const settings = useOrganizationSettings(orgId);
+
+  const [statementOpen, setStatementOpen] = useState(false);
+  const statement = useCustomerStatement(orgId, statementOpen ? customerId : null);
 
   const row = (c360.data ?? []).find((c) => c.customer_id === customerId);
 
@@ -127,7 +140,13 @@ export function CustomerDetail() {
 
       {canReadCost && (
         <Card className="p-5">
-          <h2 className="font-black">العلاقة المالية</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="font-black">العلاقة المالية</h2>
+            <Button variant="outline" size="sm" onClick={() => setStatementOpen(true)}>
+              <FileText className="h-4 w-4" />
+              كشف الحساب
+            </Button>
+          </div>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <FinanceStat label="إجمالي القيمة" value={formatOMR(fromDbAmount(row.total_commercial_value))} />
             <FinanceStat label="المحصل" value={formatOMR(fromDbAmount(row.total_collected))} />
@@ -136,6 +155,34 @@ export function CustomerDetail() {
           </div>
         </Card>
       )}
+
+      <PrintDocumentDialog
+        open={statementOpen}
+        onOpenChange={setStatementOpen}
+        title="كشف حساب عميل"
+        description="الحركات والرصيد من النموذج الرسمي — المتبقي المستحق من customer_360."
+      >
+        {statement.isLoading && (
+          <div className="flex justify-center py-10">
+            <Spinner className="h-7 w-7" />
+          </div>
+        )}
+        {!statement.isLoading && (
+          <CustomerStatement
+            identity={buildDocumentIdentity(currentOrganization, settings.data ?? null)}
+            customerName={row.name}
+            asOf={new Date().toISOString()}
+            rows={statement.data ?? []}
+            outstanding={row.outstanding}
+          />
+        )}
+        {!statement.isLoading && (statement.data ?? []).length === 0 && (
+          <EmptyState
+            title="لا توجد حركات"
+            description="لا توجد مدفوعات أو فواتير مسجّلة لهذا العميل بعد."
+          />
+        )}
+      </PrintDocumentDialog>
     </div>
   );
 }

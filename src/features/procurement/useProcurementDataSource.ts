@@ -18,13 +18,17 @@ import { useProcurementCacheSync } from "./useProcurementCacheSync";
  * Returns null while no organization is active.
  */
 export function useProcurementDataSource(): ProcurementDataSource | null {
-  const { currentOrganization, currentRole } = useAuth();
+  const { currentOrganization, currentRole, capabilities } = useAuth();
   const orgId = currentOrganization?.id ?? null;
   const sync = useProcurementCacheSync();
 
   return useMemo(() => {
     if (!orgId) return null;
-    const inner = createSupabaseProcurementDataSource(orgId, currentRole);
+    const inner = createSupabaseProcurementDataSource(
+      orgId,
+      currentRole,
+      capabilities,
+    );
 
     const withLifecycleSync =
       (command: (orderId: string, key: string) => ReturnType<typeof inner.approveOrder>) =>
@@ -64,5 +68,5 @@ export function useProcurementDataSource(): ProcurementDataSource | null {
     } satisfies ProcurementDataSource;
     // sync is stable per (queryClient, orgId); recreate with the identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orgId, currentRole]);
+  }, [orgId, currentRole, capabilities]);
 }
