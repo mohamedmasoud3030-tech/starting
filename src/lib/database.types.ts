@@ -1548,6 +1548,91 @@ export type Database = {
           },
         ]
       }
+      org_invitations: {
+        Row: {
+          claimed_at: string | null
+          claimed_by: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          status?: string
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_by?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          organization_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_member_permissions: {
+        Row: {
+          allowed: boolean
+          capability: string
+          created_at: string
+          organization_id: string
+          set_by: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowed: boolean
+          capability: string
+          created_at?: string
+          organization_id: string
+          set_by: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowed?: boolean
+          capability?: string
+          created_at?: string
+          organization_id?: string
+          set_by?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_member_permissions_organization_id_user_id_fkey"
+            columns: ["organization_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "organization_memberships"
+            referencedColumns: ["organization_id", "user_id"]
+          },
+        ]
+      }
       organization_memberships: {
         Row: {
           created_at: string
@@ -4502,6 +4587,7 @@ export type Database = {
       }
       can_manage_commercial: { Args: { p_org_id: string }; Returns: boolean }
       can_read_cost: { Args: { p_org_id: string }; Returns: boolean }
+      can_read_payroll: { Args: { p_org_id: string }; Returns: boolean }
       can_view_financial_evidence: {
         Args: { p_org_id: string }
         Returns: boolean
@@ -4661,6 +4747,29 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      claim_org_invitation: {
+        Args: { p_code: string }
+        Returns: {
+          created_at: string
+          default_currency: string
+          display_name: string | null
+          id: string
+          is_active: boolean
+          name: string
+          timezone: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "organizations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      clear_member_permission: {
+        Args: { p_capability: string; p_org_id: string; p_user_id: string }
+        Returns: undefined
       }
       clock_staff_in: {
         Args: {
@@ -5018,6 +5127,31 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_org_invitation: {
+        Args: {
+          p_email: string
+          p_org_id: string
+          p_role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: {
+          claimed_at: string | null
+          claimed_by: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "org_invitations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_organization: {
         Args: { p_display_name?: string; p_name: string }
         Returns: string
@@ -5214,6 +5348,41 @@ export type Database = {
           whatsapp: string
         }[]
       }
+      customer_payment_receipt: {
+        Args: { p_org_id: string; p_payment_id: string }
+        Returns: {
+          amount: number
+          customer_name: string
+          event_number: string
+          event_title: string
+          notes: string
+          org_name: string
+          org_phone: string
+          paid_at: string
+          payment_id: string
+          payment_method: string
+          receipt_number: string
+          recorded_by_name: string
+          reference: string
+          status: string
+          void_reason: string
+          voided_at: string
+        }[]
+      }
+      customer_statement: {
+        Args: { p_customer_id: string; p_org_id: string }
+        Returns: {
+          amount: number
+          event_id: string
+          event_number: string
+          event_title: string
+          notes: string
+          occurred_at: string
+          payment_method: string
+          reference: string
+          row_kind: string
+        }[]
+      }
       delete_quotation_line: {
         Args: { p_line_id: string; p_org_id: string; p_quotation_id: string }
         Returns: undefined
@@ -5314,6 +5483,21 @@ export type Database = {
           event_id: string
           staff_missing: number
           status: string
+        }[]
+      }
+      event_warehouse_sheet_lines: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: {
+          damaged_qty: number
+          dispatched_qty: number
+          item_name: string
+          line_kind: string
+          lost_qty: number
+          outstanding_qty: number
+          prepared_qty: number
+          required_qty: number
+          returned_good_qty: number
+          unit: string
         }[]
       }
       event_warehouse_summary: {
@@ -5476,6 +5660,29 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_permission: {
+        Args: { p_capability: string; p_org_id: string }
+        Returns: boolean
+      }
+      host_statement: {
+        Args: { p_org_id: string; p_staff_member_id: string }
+        Returns: {
+          advances_total: number
+          attendance_count: number
+          due_total: number
+          earned_total: number
+          event_id: string
+          event_number: string
+          event_title: string
+          host_name: string
+          host_phone: string
+          late_total: number
+          paid_total: number
+          payouts_total: number
+          staff_member_id: string
+          start_at: string
+        }[]
+      }
       install_attachments_storage_policies: { Args: never; Returns: undefined }
       integrity_findings: {
         Args: { p_org_id: string }
@@ -5490,6 +5697,7 @@ export type Database = {
           why_it_matters: string
         }[]
       }
+      is_known_capability: { Args: { p_capability: string }; Returns: boolean }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       issue_consumable_to_event: {
         Args: {
@@ -5671,6 +5879,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      known_capabilities: { Args: never; Returns: string[] }
       link_evidence: {
         Args: {
           p_entity_id: string
@@ -5752,6 +5961,15 @@ export type Database = {
           top_packages: Json
         }[]
       }
+      member_capability_list: {
+        Args: { p_org_id: string; p_user_id: string }
+        Returns: {
+          allowed: boolean
+          capability: string
+          source: string
+        }[]
+      }
+      my_capabilities: { Args: { p_org_id: string }; Returns: Json }
       next_document_number: {
         Args: { p_kind: string; p_org: string; p_prefix?: string }
         Returns: string
@@ -6603,6 +6821,34 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      revoke_org_invitation: {
+        Args: { p_invitation_id: string; p_org_id: string }
+        Returns: {
+          claimed_at: string | null
+          claimed_by: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          organization_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "org_invitations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      role_default_capability: {
+        Args: {
+          p_capability: string
+          p_role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
       save_consumable_stock_item: {
         Args: {
           p_catalog_item_id: string
@@ -6914,6 +7160,29 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "procurement_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_member_permission: {
+        Args: {
+          p_allowed: boolean
+          p_capability: string
+          p_org_id: string
+          p_user_id: string
+        }
+        Returns: {
+          allowed: boolean
+          capability: string
+          created_at: string
+          organization_id: string
+          set_by: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "org_member_permissions"
           isOneToOne: true
           isSetofReturn: false
         }
