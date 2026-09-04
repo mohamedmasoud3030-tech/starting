@@ -21,6 +21,7 @@ import { AuthProvider } from "./AuthContext";
 import { useAuth } from "./authContext";
 
 const USER_ID = "user-1";
+const capabilityRpcState = vi.hoisted(() => ({ fail: false }));
 
 const memberships = [
   {
@@ -89,6 +90,12 @@ vi.mock("@/lib/supabase", () => ({
     // WAREHOUSE preset in org-b.
     rpc: (name: string, args: Record<string, unknown>) => {
       if (name === "my_capabilities") {
+        if (capabilityRpcState.fail) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "CAPABILITY_REPORT_UNAVAILABLE" },
+          });
+        }
         const report =
           args.p_org_id === "org-b"
             ? {
@@ -135,12 +142,35 @@ let queryClient: QueryClient;
 
 beforeEach(() => {
   localStorage.clear();
+  capabilityRpcState.fail = false;
   queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
 });
 
 describe("organization switching (integration)", () => {
+  it("fails closed when the authoritative capability report errors", async () => {
+    capabilityRpcState.fail = true;
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <Probe />
+        </AuthProvider>
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("org").textContent).toBe("org-a"),
+    );
+    expect(screen.getByTestId("role").textContent).toBe("OWNER");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("commercial").textContent).toBe("false");
+      expect(screen.getByTestId("cost").textContent).toBe("false");
+    });
+  });
+
   it("recomputes role + capabilities and clears every cached tenant row", async () => {
     render(
       <QueryClientProvider client={queryClient}>
