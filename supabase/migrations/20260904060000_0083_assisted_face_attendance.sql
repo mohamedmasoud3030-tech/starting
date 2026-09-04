@@ -76,7 +76,11 @@ create index staff_face_enrollments_active_idx
 alter table public.staff_face_enrollments enable row level security;
 -- NO policies and NO table grants: enrollment metadata is reachable ONLY
 -- through the RPCs below (SECURITY DEFINER, org-gated). The device does not
--- need read access to the token — it stores descriptors locally.
+-- need read access to the token — it stores descriptors locally. The explicit
+-- revokes below defeat Supabase's default-privilege grants for anon and
+-- authenticated (the same posture public_demo_removal enforces repo-wide).
+revoke all on table public.staff_face_enrollments from anon;
+revoke all on table public.staff_face_enrollments from authenticated;
 
 -- ---------------------------------------------------------------------------
 -- face_match_attempts — transient, single-use server-validated match records.
@@ -110,6 +114,8 @@ create index face_match_attempts_lookup_idx
 
 alter table public.face_match_attempts enable row level security;
 -- Same rule: no direct access at all; commands only.
+revoke all on table public.face_match_attempts from anon;
+revoke all on table public.face_match_attempts from authenticated;
 
 -- Retention: attempts are audit-transient. Expire (never delete silently)
 -- anything older than the single-use window so abandoned dialogs age out.
