@@ -6,12 +6,16 @@ import { Input } from "@/components/ui/Input";
 import { Field } from "@/components/ui/Field";
 import { JobPath } from "@/components/ui/JobPath";
 import { formatOMR, fromDbAmount } from "@/lib/money";
-import type { EventRow, StatusHistoryRow } from "../events.api";
+import type { EventReadiness, EventRow, StatusHistoryRow } from "../events.api";
 import type { WorkspaceTab } from "../eventWorkspace.model";
 import { jobPathForEventStatus } from "../eventWorkspace.model";
-import type { ReadinessReport } from "../readinessReport";
+import {
+  readinessExplain,
+  readinessLabel,
+  readinessTone,
+} from "../operationalReadiness";
+import { Badge } from "@/components/ui/Badge";
 import { EventTimeline } from "./EventTimeline";
-import { ReadinessReportPanel } from "./ReadinessReportPanel";
 
 /**
  * Overview tab: the event's single source of truth — details, linked accepted
@@ -30,7 +34,7 @@ export function OverviewTab({
   canCost,
   canFinance,
   run,
-  report,
+  readiness,
   history,
   acceptedQuote,
   financiallyClosed,
@@ -45,7 +49,8 @@ export function OverviewTab({
   /** finance.manage — financial closure. */
   canFinance: boolean;
   run: (name: string, args: Record<string, unknown>, includeEvent?: boolean) => Promise<void>;
-  report: ReadinessReport;
+  /** Canonical server readiness (0082) — rendered, never re-derived here. */
+  readiness: EventReadiness | null;
   history: StatusHistoryRow[];
   acceptedQuote: { id?: string; quotation_number: string | null; revision: number; total_selling: string } | null;
   financiallyClosed: boolean;
@@ -65,8 +70,10 @@ export function OverviewTab({
   ];
 
   const currentStep = nextStep.find(([from]) => from === event.status);
+  // The SAME status the server gate uses (0066/0079 transition_event): an
+  // unknown readiness still demands an explicit override — fail closed.
   const needsOverride =
-    currentStep?.[1] === "DISPATCHED" && report.overall === "INCOMPLETE";
+    currentStep?.[1] === "DISPATCHED" && readiness?.status !== "READY";
 
   const canCancel =
     ["DRAFT", "QUOTED", "CONFIRMED", "PREPARING", "DISPATCHED", "IN_PROGRESS", "RETURNING"].includes(
@@ -116,7 +123,15 @@ export function OverviewTab({
         </p>
       )}
 
-      <ReadinessReportPanel report={report} />
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-black">الجاهزية التشغيلية</h2>
+          <Badge tone={readinessTone(readiness?.status)}>{readinessLabel(readiness?.status)}</Badge>
+        </div>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          {readiness ? readinessExplain(readiness) : "تعذر التحقق من الجاهزية الآن — افتح التبويبات التفصيلية وراجع الفريق والمعدات."}
+        </p>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

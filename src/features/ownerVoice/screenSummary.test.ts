@@ -121,7 +121,8 @@ describe("buildHomeVoiceSummary", () => {
           id: "c",
           venue_name: "قاعة الريان",
           readiness: {
-            status: "STAFF_MISSING",
+            status: "NOT_READY",
+            reasons: ["STAFF_SHORTAGE"],
             staff_missing: 2,
             equipment_shortage: 0,
           },
@@ -149,7 +150,8 @@ describe("buildHomeVoiceSummary", () => {
       events: [
         event({
           readiness: {
-            status: "EQUIPMENT_SHORTAGE",
+            status: "NOT_READY",
+            reasons: ["EQUIPMENT_SHORTAGE"],
             staff_missing: 0,
             equipment_shortage: 3,
           },
@@ -205,7 +207,8 @@ describe("buildHomeVoiceSummary", () => {
           id: "c",
           venue_name: "قاعة المرسى",
           readiness: {
-            status: "STAFF_MISSING",
+            status: "NOT_READY",
+            reasons: ["STAFF_SHORTAGE"],
             staff_missing: 4,
             equipment_shortage: 0,
           },
@@ -310,7 +313,8 @@ describe("buildEventVoiceSummary", () => {
       buildEventVoiceSummary({
         event: baseEvent,
         readiness: {
-          status: "STAFF_MISSING",
+          status: "NOT_READY",
+          reasons: ["STAFF_SHORTAGE"],
           staff_missing: 2,
           equipment_shortage: 0,
         },
@@ -327,7 +331,8 @@ describe("buildEventVoiceSummary", () => {
       buildEventVoiceSummary({
         event: baseEvent,
         readiness: {
-          status: "EQUIPMENT_SHORTAGE",
+          status: "NOT_READY",
+          reasons: ["EQUIPMENT_SHORTAGE"],
           staff_missing: 0,
           equipment_shortage: 3,
         },
@@ -344,7 +349,8 @@ describe("buildEventVoiceSummary", () => {
       buildEventVoiceSummary({
         event: baseEvent,
         readiness: {
-          status: "MULTIPLE_ISSUES",
+          status: "NOT_READY",
+          reasons: ["STAFF_SHORTAGE", "EQUIPMENT_SHORTAGE"],
           staff_missing: 1,
           equipment_shortage: 2,
         },
@@ -361,7 +367,8 @@ describe("buildEventVoiceSummary", () => {
       buildEventVoiceSummary({
         event: { ...baseEvent, status: "CANCELLED" },
         readiness: {
-          status: "STAFF_MISSING",
+          status: "NOT_READY",
+          reasons: ["STAFF_SHORTAGE"],
           staff_missing: 5,
           equipment_shortage: 0,
         },

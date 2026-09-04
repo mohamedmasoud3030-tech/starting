@@ -9,15 +9,14 @@ import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
-import { MoneyInput } from "@/components/MoneyInput";
-import { formatOMR, parseOptionalOMR, type MilliOMR } from "@/lib/money";
+import { formatOMR } from "@/lib/money";
 import { isoToMuscatWallClock, muscatWallClockToIso, todayInMuscat } from "@/lib/dates";
-import type { CompensationMethod } from "@/lib/dbTypes";
 import {
   attendanceError,
-  computeEarnedMilli,
   isOpenPunch,
+  isOpenStatusRow,
   useEventAttendance,
+  useEventAttendanceStatus,
   useRecordAttendance,
   useVoidAttendance,
   type AttendanceLiveStatus,
@@ -45,8 +44,6 @@ interface StaffLike {
   id: string;
   name: string;
   staffType: string;
-  defaultCompensationMethod?: string | null;
-  defaultRate?: string | null;
 }
 
 function toLocalInput(iso: string | undefined): string {
@@ -59,20 +56,37 @@ function fmt(iso: string | null): string {
   return new Date(iso).toLocaleString("ar-OM", { timeZone: "Asia/Muscat" });
 }
 
+/**
+ * Attendance workspace surface.
+ *
+ * Split by visibility, mirroring the database boundary:
+ *   * payroll/cost readers see the wage-bearing ledger (amounts come from the
+ *     read model — never re-computed here);
+ *   * a plain `attendance.record` holder sees the wage-free status ledger
+ *     (who is inside, evidence flags, void affordance). The former manual
+ *     form's wage inputs were removed: the canonical command derives
+ *     method/rate from the assignment → staff-default chain server-side,
+ *     which is also what makes supervisor-recorded rows carry REAL wages
+ *     instead of the 0.000 they were forced to type blind.
+ */
 export function AttendancePanel({
   orgId,
   eventId,
   canMutate,
+  canReadPayroll,
   assignments,
   staffList,
 }: {
   orgId: string | null;
   eventId: string;
   canMutate: boolean;
+  /** payroll.read / cost visibility — whether wage figures may be listed at all. */
+  canReadPayroll: boolean;
   assignments: AssignmentLike[];
   staffList: StaffLike[];
 }) {
   const attendance = useEventAttendance(orgId, eventId);
+  const statusRows = useEventAttendanceStatus(orgId, eventId);
   const recordAttendance = useRecordAttendance(orgId, eventId);
   const voidAttendance = useVoidAttendance(orgId, eventId);
 
@@ -88,18 +102,11 @@ export function AttendancePanel({
   const [checkOut, setCheckOut] = useState("");
   const [breakMinutes, setBreakMinutes] = useState(0);
   const [status, setStatus] = useState<AttendanceLiveStatus>("PRESENT");
-  const [wageMethod, setWageMethod] = useState<CompensationMethod>("PER_EVENT");
-  const [wageRateMilli, setWageRateMilli] = useState<MilliOMR>(0);
   const [notes, setNotes] = useState("");
 
   const selectedAssignment = assignments.find((a) => a.staffMemberId === staffMemberId);
 
   function applyStaffDefaults(id: string) {
-    const staff = staffList.find((row) => row.id === id);
-    if (!staff) return;
-    const method = (staff.defaultCompensationMethod as CompensationMethod) ?? "PER_EVENT";
-    setWageMethod(method);
-    setWageRateMilli(parseOptionalOMR(staff.defaultRate ?? "0.000"));
     const assignment = assignments.find((row) => row.staffMemberId === id);
     if (assignment) {
       setCheckIn(toLocalInput(assignment.scheduledStart));
@@ -107,21 +114,12 @@ export function AttendancePanel({
     }
   }
 
-  const earnedPreviewMilli = computeEarnedMilli(
-    wageMethod,
-    wageRateMilli,
-    status === "ABSENT" ? null : checkIn ? (muscatWallClockToIso(checkIn) ?? new Date(checkIn).toISOString()) : null,
-    status === "ABSENT" ? null : checkOut ? (muscatWallClockToIso(checkOut) ?? new Date(checkOut).toISOString()) : null,
-    breakMinutes,
-    status,
-  );
-
   const list = attendance.data ?? [];
   const totalEarned = useMemo(
     () =>
       (attendance.data ?? [])
         .filter((a) => a.recordStatus === "RECORDED")
-        .reduce((n, a) => n + a.earnedMilli, 0 as MilliOMR),
+        .reduce((n, a) => n + a.earnedMilli, 0),
     [attendance.data],
   );
 
@@ -143,22 +141,22 @@ export function AttendancePanel({
         return;
       }
     }
-    if (wageRateMilli <= 0 && status !== "ABSENT") {
-      setError("يرجى إدخال الأجر");
-      return;
-    }
     try {
       await recordAttendance.mutateAsync({
         staffMemberId: staff.id,
         assignmentId: selectedAssignment?.id ?? null,
         attendanceDate: date,
         shift,
-        checkIn: status === "ABSENT" ? null : (muscatWallClockToIso(checkIn) ?? new Date(checkIn).toISOString()),
-        checkOut: status === "ABSENT" ? null : (muscatWallClockToIso(checkOut) ?? new Date(checkOut).toISOString()),
+        checkIn:
+          status === "ABSENT"
+            ? null
+            : (muscatWallClockToIso(checkIn) ?? new Date(checkIn).toISOString()),
+        checkOut:
+          status === "ABSENT"
+            ? null
+            : (muscatWallClockToIso(checkOut) ?? new Date(checkOut).toISOString()),
         breakMinutes,
         status,
-        wageMethod,
-        wageRateMilli,
         notes,
       });
       setOpen(false);
@@ -190,6 +188,8 @@ export function AttendancePanel({
     );
   }
 
+  const statusList = statusRows.data ?? [];
+
   return (
     <section aria-labelledby="attendance-heading" className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -200,9 +200,11 @@ export function AttendancePanel({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <p className="font-bold text-slate-700" dir="ltr">
-            المستحق: {formatOMR(totalEarned)}
-          </p>
+          {canReadPayroll && (
+            <p className="font-bold text-slate-700" dir="ltr">
+              المستحق: {formatOMR(totalEarned)}
+            </p>
+          )}
           <Button variant="outline" onClick={() => setOpen(true)} disabled={recordAttendance.isPending}>
             تسجيل يدوي
           </Button>
@@ -216,72 +218,140 @@ export function AttendancePanel({
         staffList={staffList}
       />
 
-      {error && (
-        <InlineError message={error} />
-      )}
+      {error && <InlineError message={error} />}
 
-      {attendance.isLoading ? (
-        <p>جارٍ تحميل الحضور…</p>
-      ) : list.length === 0 ? (
-        <EmptyState title="لا يوجد حضور مسجّل" description="ابدأ بتسجيل حضور المضيفين لهذه المناسبة." />
-      ) : (
-        <ul className="space-y-2">
-          {list.map((a) => (
-            <li key={a.id}>
-              <Card className={a.recordStatus === "VOIDED" ? "opacity-70" : ""}>
-                <CardBody className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-lg font-black">{a.staffName}</p>
-                      <Badge tone={ATTENDANCE_STATUS_TONE[a.status]}>
-                        {ATTENDANCE_STATUS_LABELS[a.status]}
-                      </Badge>
-                      <Badge tone="brand">{SHIFT_LABELS[a.shift]}</Badge>
-                      {isOpenPunch(a) && <Badge tone="success">داخل الآن</Badge>}
+      {canReadPayroll ? (
+        attendance.isLoading ? (
+          <p>جارٍ تحميل الحضور…</p>
+        ) : list.length === 0 ? (
+          <EmptyState
+            title="لا يوجد حضور مسجّل"
+            description="ابدأ بتسجيل حضور المضيفين لهذه المناسبة."
+          />
+        ) : (
+          <ul className="space-y-2">
+            {list.map((a) => (
+              <li key={a.id}>
+                <Card className={a.recordStatus === "VOIDED" ? "opacity-70" : ""}>
+                  <CardBody className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-lg font-black">{a.staffName}</p>
+                        <Badge tone={ATTENDANCE_STATUS_TONE[a.status]}>
+                          {ATTENDANCE_STATUS_LABELS[a.status]}
+                        </Badge>
+                        <Badge tone="brand">{SHIFT_LABELS[a.shift]}</Badge>
+                        {isOpenPunch(a) && <Badge tone="success">داخل الآن</Badge>}
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {a.attendanceDate} · {fmt(a.checkIn)} — {fmt(a.checkOut)}
+                        {a.breakMinutes > 0 ? ` · راحة ${a.breakMinutes} د` : ""}
+                        {` · ${a.hoursWorked.toFixed(3)} ساعة`}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        الأجر: {COMPENSATION_LABELS[a.wageMethod]} · <span dir="ltr">{formatOMR(a.earnedMilli)}</span>
+                        {a.notes ? ` · ${a.notes}` : ""}
+                      </p>
+                      {a.recordStatus === "VOIDED" && a.voidReason && (
+                        <p className="mt-1 text-sm font-semibold text-red-600">
+                          سبب الإلغاء: {a.voidReason}
+                        </p>
+                      )}
                     </div>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {a.attendanceDate} · {fmt(a.checkIn)} — {fmt(a.checkOut)}
-                      {a.breakMinutes > 0 ? ` · راحة ${a.breakMinutes} د` : ""}
-                      {` · ${a.hoursWorked.toFixed(3)} ساعة`}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      الأجر: {COMPENSATION_LABELS[a.wageMethod]}
-                      {` · `}
-                      <span dir="ltr">{formatOMR(a.earnedMilli)}</span>
-                      {a.notes ? ` · ${a.notes}` : ""}
-                    </p>
-                    {a.recordStatus === "VOIDED" && a.voidReason && (
-                      <p className="mt-1 text-sm font-semibold text-red-600">سبب الإلغاء: {a.voidReason}</p>
+                    {a.recordStatus === "RECORDED" && (
+                      <Button
+                        variant="outline"
+                        disabled={voidAttendance.isPending}
+                        onClick={() => setVoiding(a.id)}
+                      >
+                        إلغاء
+                      </Button>
                     )}
-                  </div>
-                  {a.recordStatus === "RECORDED" && (
-                    <Button variant="outline" disabled={voidAttendance.isPending} onClick={() => setVoiding(a.id)}>
-                      إلغاء
-                    </Button>
-                  )}
-                  {voiding === a.id && (
-                    <VoidReasonPanel
-                      title="تأكيد إلغاء سجل الحضور"
-                      description="يبقى السجل محفوظاً كحقيقة مالية، ويُعلَّم ملغى بسبب موثق."
-                      confirmLabel="تأكيد الإلغاء"
-                      reasonLabel="سبب إلغاء الحضور"
-                      busy={voidAttendance.isPending}
-                      onConfirm={(reason) => void submitVoid(a.id, reason)}
-                      onCancel={() => setVoiding(null)}
-                    />
-                  )}
-                </CardBody>
-              </Card>
-            </li>
-          ))}
-        </ul>
+                    {voiding === a.id && (
+                      <VoidReasonPanel
+                        title="تأكيد إلغاء سجل الحضور"
+                        description="يبقى السجل محفوظاً كحقيقة مالية، ويُعلَّم ملغى بسبب موثق."
+                        confirmLabel="تأكيد الإلغاء"
+                        reasonLabel="سبب إلغاء الحضور"
+                        busy={voidAttendance.isPending}
+                        onConfirm={(reason) => void submitVoid(a.id, reason)}
+                        onCancel={() => setVoiding(null)}
+                      />
+                    )}
+                  </CardBody>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )
+      ) : (
+        // Non-payroll recorder: wage-free operational rows with the same
+        // void affordance — visibility of MONEY is not required to operate
+        // the clock, and the server decides who may mutate either way.
+        statusRows.isLoading ? (
+          <p>جارٍ تحميل الحضور…</p>
+        ) : statusList.length === 0 ? (
+          <EmptyState
+            title="لا يوجد حضور مسجّل"
+            description="ابدأ بتسجيل حضور المضيفين لهذه المناسبة."
+          />
+        ) : (
+          <ul className="space-y-2">
+            {statusList.map((a) => (
+              <li key={a.attendance_id}>
+                <Card className={a.status === "VOIDED" ? "opacity-70" : ""}>
+                  <CardBody className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-lg font-black">{a.staff_name}</p>
+                        <Badge tone={ATTENDANCE_STATUS_TONE[a.status]}>
+                          {ATTENDANCE_STATUS_LABELS[a.status]}
+                        </Badge>
+                        <Badge tone="brand">{SHIFT_LABELS[a.shift]}</Badge>
+                        {isOpenStatusRow(a) && <Badge tone="success">داخل الآن</Badge>}
+                        {a.check_in_method === "FACE_ASSISTED" && (
+                          <Badge tone="neutral">تطابق وجه مؤكَّد</Badge>
+                        )}
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500">
+                        {a.attendance_date} · {fmt(a.check_in)} — {fmt(a.check_out)}
+                        {a.has_checkin_evidence ? " · إثبات دخول محفوظ" : ""}
+                        {a.has_checkout_evidence ? " · إثبات خروج محفوظ" : ""}
+                      </p>
+                    </div>
+                    {a.status !== "VOIDED" && (
+                      <Button
+                        variant="outline"
+                        disabled={voidAttendance.isPending}
+                        onClick={() => setVoiding(a.attendance_id)}
+                      >
+                        إلغاء
+                      </Button>
+                    )}
+                    {voiding === a.attendance_id && (
+                      <VoidReasonPanel
+                        title="تأكيد إلغاء سجل الحضور"
+                        description="يبقى السجل محفوظاً كحقيقة مالية، ويُعلَّم ملغى بسبب موثق."
+                        confirmLabel="تأكيد الإلغاء"
+                        reasonLabel="سبب إلغاء الحضور"
+                        busy={voidAttendance.isPending}
+                        onConfirm={(reason) => void submitVoid(a.attendance_id, reason)}
+                        onCancel={() => setVoiding(null)}
+                      />
+                    )}
+                  </CardBody>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )
       )}
 
       <Dialog
         open={open}
         onOpenChange={setOpen}
         title="تسجيل حضور مضيف"
-        description="سجّل وقت الدخول والخروج والأجر؛ يُحسب المستحق تلقائياً."
+        description="سجّل وقت الدخول والخروج؛ طريقة الأجر وسعره تشتقهما الخادم من الإسناد الرسمي، والمستحق يُحسب في قاعدة البيانات."
       >
         <form className="space-y-3" onSubmit={submit}>
           <Field label="المضيف" htmlFor="att-staff" required>
@@ -306,18 +376,32 @@ export function AttendancePanel({
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="الوردة" htmlFor="att-shift" required>
-              <Select id="att-shift" value={shift} onChange={(e) => setShift(e.target.value as StaffShift)}>
+              <Select
+                id="att-shift"
+                value={shift}
+                onChange={(e) => setShift(e.target.value as StaffShift)}
+              >
                 <option value="MORNING">صباحي</option>
                 <option value="EVENING">مسائي</option>
               </Select>
             </Field>
             <Field label="التاريخ" htmlFor="att-date" required>
-              <Input id="att-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+              <Input
+                id="att-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
             </Field>
           </div>
 
           <Field label="الحالة" htmlFor="att-status" required>
-            <Select id="att-status" value={status} onChange={(e) => setStatus(e.target.value as AttendanceLiveStatus)}>
+            <Select
+              id="att-status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as AttendanceLiveStatus)}
+            >
               <option value="PRESENT">حاضر</option>
               <option value="LATE">متأخر</option>
               <option value="PARTIAL">جزئي</option>
@@ -328,40 +412,33 @@ export function AttendancePanel({
           {status !== "ABSENT" && (
             <div className="grid grid-cols-2 gap-3">
               <Field label="وقت الدخول" htmlFor="att-in" required>
-                <Input id="att-in" type="datetime-local" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} required />
+                <Input
+                  id="att-in"
+                  type="datetime-local"
+                  value={checkIn}
+                  onChange={(e) => setCheckIn(e.target.value)}
+                  required
+                />
               </Field>
               <Field label="وقت الخروج" htmlFor="att-out" required>
-                <Input id="att-out" type="datetime-local" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} required />
+                <Input
+                  id="att-out"
+                  type="datetime-local"
+                  value={checkOut}
+                  onChange={(e) => setCheckOut(e.target.value)}
+                  required
+                />
               </Field>
               <Field label="دقائق الراحة" htmlFor="att-break">
-                <Input id="att-break" type="number" min="0" value={breakMinutes} onChange={(e) => setBreakMinutes(Number(e.target.value) || 0)} />
+                <Input
+                  id="att-break"
+                  type="number"
+                  min="0"
+                  value={breakMinutes}
+                  onChange={(e) => setBreakMinutes(Number(e.target.value) || 0)}
+                />
               </Field>
             </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="طريقة الأجر" htmlFor="att-wage" required>
-              <Select id="att-wage" value={wageMethod} onChange={(e) => setWageMethod(e.target.value as CompensationMethod)}>
-                <option value="PER_HOUR">بالساعة</option>
-                <option value="PER_DAY">باليومية</option>
-                <option value="PER_EVENT">بالمناسبة</option>
-                <option value="MANUAL">يدوي</option>
-              </Select>
-            </Field>
-            <MoneyInput
-              id="att-rate"
-              label={wageMethod === "PER_HOUR" ? "أجر الساعة (ر.ع.)" : "المبلغ (ر.ع.)"}
-              value={wageRateMilli}
-              onChange={(m) => setWageRateMilli(m ?? 0)}
-              required
-              disabled={status === "ABSENT"}
-            />
-          </div>
-
-          {status !== "ABSENT" && (
-            <p className="rounded-xl bg-brand-50 p-3 font-bold text-brand-800" dir="ltr">
-              المستحق المقدّر: {formatOMR(earnedPreviewMilli)}
-            </p>
           )}
 
           <Field label="ملاحظات" htmlFor="att-notes">
@@ -371,7 +448,9 @@ export function AttendancePanel({
           {error && <p role="alert" className="font-bold text-red-700">{error}</p>}
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>إلغاء</Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              إلغاء
+            </Button>
             <Button type="submit" disabled={recordAttendance.isPending}>
               {recordAttendance.isPending ? "جارٍ الحفظ…" : "حفظ الحضور"}
             </Button>

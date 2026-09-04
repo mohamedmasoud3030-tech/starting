@@ -10,6 +10,29 @@ import {
 
 const now = new Date("2026-08-15T10:00:00.000Z");
 
+/** Canonical server readiness payloads (0082 vocabulary). */
+const READY: import("@/features/events/operationalReadiness").OperationalReadiness = {
+  status: "READY",
+  reasons: [],
+  staff_required: 0,
+  staff_assigned: 0,
+  staff_missing: 0,
+  equipment_shortage: 0,
+  consumables_shortage: 0,
+  procurement_pending: 0,
+};
+
+const SHORT_STAFF: import("@/features/events/operationalReadiness").OperationalReadiness = {
+  status: "NOT_READY",
+  reasons: ["STAFF_SHORTAGE"],
+  staff_required: 20,
+  staff_assigned: 18,
+  staff_missing: 2,
+  equipment_shortage: 0,
+  consumables_shortage: 0,
+  procurement_pending: 0,
+};
+
 function event(overrides: Partial<{
   id: string;
   event_number: string;
@@ -44,8 +67,8 @@ describe("buildOperationalDashboard", () => {
         event({ id: "event-4", start_at: "2026-08-16T15:00:00.000Z" }),
       ],
       readinessByEventId: {
-        "event-1": { status: "STAFF_MISSING", staff_missing: 2, equipment_shortage: 0 },
-        "event-2": { status: "READY", staff_missing: 0, equipment_shortage: 0 },
+        "event-1": SHORT_STAFF,
+        "event-2": READY,
       },
       stockLines: [
         { stockItemId: "stock-1", itemName: "ماء", isTrackingActive: true, isLowStock: true },
@@ -53,12 +76,18 @@ describe("buildOperationalDashboard", () => {
       ],
     });
 
-    expect(result.todayEvents.map((item) => item.id)).toEqual(["event-2", "event-1"]);
+    // Deterministic Today order: blockers first (NOT_READY), then start time —
+    // the LATER event with a staff shortage still leads the day's agenda.
+    expect(result.todayEvents.map((item) => item.id)).toEqual(["event-1", "event-2"]);
     expect(result.readyCount).toBe(1);
     expect(result.eventAttentionCount).toBe(1);
     expect(result.lowStockCount).toBe(1);
     expect(result.alerts).toHaveLength(2);
     expect(result.alerts[0]).toMatchObject({ kind: "EVENT", eventId: "event-1" });
+    // Alert detail is built from the canonical reason + its counts (18/20).
+    expect(
+      "detail" in (result.alerts[0] ?? {}) ? (result.alerts[0] as { detail: string }).detail : "",
+    ).toContain("المطلوب 20 / المسند 18 — ينقص 2");
     expect(result.alerts[1]).toMatchObject({ kind: "STOCK", title: "مخزون منخفض — ماء" });
   });
 

@@ -1293,6 +1293,70 @@ export type Database = {
           },
         ]
       }
+      face_match_attempts: {
+        Row: {
+          action: string
+          attempted_by: string
+          confidence_label: string | null
+          consumed_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          organization_id: string
+          provider_code: string
+          staff_member_id: string
+          status: Database["public"]["Enums"]["face_match_status"]
+        }
+        Insert: {
+          action: string
+          attempted_by: string
+          confidence_label?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          organization_id: string
+          provider_code: string
+          staff_member_id: string
+          status?: Database["public"]["Enums"]["face_match_status"]
+        }
+        Update: {
+          action?: string
+          attempted_by?: string
+          confidence_label?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          organization_id?: string
+          provider_code?: string
+          staff_member_id?: string
+          status?: Database["public"]["Enums"]["face_match_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "face_match_attempts_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "face_match_attempts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "face_match_attempts_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       host_payout_allocations: {
         Row: {
           amount: number
@@ -2560,13 +2624,17 @@ export type Database = {
           attendance_date: string
           break_minutes: number
           check_in: string | null
+          check_in_method: Database["public"]["Enums"]["attendance_method"]
           check_out: string | null
+          check_out_method: Database["public"]["Enums"]["attendance_method"]
+          confirmed_by: string | null
           created_at: string
           earned_amount: number
           event_id: string
           hours_worked: number
           id: string
           idempotency_key: string
+          match_attempt_id: string | null
           notes: string | null
           organization_id: string
           recorded_by: string
@@ -2585,13 +2653,17 @@ export type Database = {
           attendance_date: string
           break_minutes?: number
           check_in?: string | null
+          check_in_method?: Database["public"]["Enums"]["attendance_method"]
           check_out?: string | null
+          check_out_method?: Database["public"]["Enums"]["attendance_method"]
+          confirmed_by?: string | null
           created_at?: string
           earned_amount?: number
           event_id: string
           hours_worked?: number
           id?: string
           idempotency_key: string
+          match_attempt_id?: string | null
           notes?: string | null
           organization_id: string
           recorded_by: string
@@ -2610,13 +2682,17 @@ export type Database = {
           attendance_date?: string
           break_minutes?: number
           check_in?: string | null
+          check_in_method?: Database["public"]["Enums"]["attendance_method"]
           check_out?: string | null
+          check_out_method?: Database["public"]["Enums"]["attendance_method"]
+          confirmed_by?: string | null
           created_at?: string
           earned_amount?: number
           event_id?: string
           hours_worked?: number
           id?: string
           idempotency_key?: string
+          match_attempt_id?: string | null
           notes?: string | null
           organization_id?: string
           recorded_by?: string
@@ -2649,6 +2725,69 @@ export type Database = {
             foreignKeyName: "staff_attendance_org_staff_fk"
             columns: ["organization_id", "staff_member_id"]
             isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      staff_face_enrollments: {
+        Row: {
+          capture_count: number
+          created_at: string
+          enrolled_by: string
+          id: string
+          model_version: string
+          organization_id: string
+          provider_code: string
+          revoke_reason: string | null
+          revoked_at: string | null
+          staff_member_id: string
+          status: Database["public"]["Enums"]["face_enrollment_status"]
+          template_ref: string
+          updated_at: string
+        }
+        Insert: {
+          capture_count: number
+          created_at?: string
+          enrolled_by: string
+          id?: string
+          model_version: string
+          organization_id: string
+          provider_code: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          staff_member_id: string
+          status?: Database["public"]["Enums"]["face_enrollment_status"]
+          template_ref: string
+          updated_at?: string
+        }
+        Update: {
+          capture_count?: number
+          created_at?: string
+          enrolled_by?: string
+          id?: string
+          model_version?: string
+          organization_id?: string
+          provider_code?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          staff_member_id?: string
+          status?: Database["public"]["Enums"]["face_enrollment_status"]
+          template_ref?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_face_enrollments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_face_enrollments_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: true
             referencedRelation: "staff_members"
             referencedColumns: ["organization_id", "id"]
           },
@@ -4774,12 +4913,14 @@ export type Database = {
       clock_staff_in: {
         Args: {
           p_assignment_id: string
+          p_attendance_method?: Database["public"]["Enums"]["attendance_method"]
           p_event_id: string
           p_evidence_file_name: string
           p_evidence_mime_type: string
           p_evidence_path: string
           p_evidence_size_bytes: number
           p_idempotency_key: string
+          p_match_attempt_id?: string
           p_notes: string
           p_org_id: string
           p_shift: Database["public"]["Enums"]["staff_shift"]
@@ -4790,13 +4931,17 @@ export type Database = {
           attendance_date: string
           break_minutes: number
           check_in: string | null
+          check_in_method: Database["public"]["Enums"]["attendance_method"]
           check_out: string | null
+          check_out_method: Database["public"]["Enums"]["attendance_method"]
+          confirmed_by: string | null
           created_at: string
           earned_amount: number
           event_id: string
           hours_worked: number
           id: string
           idempotency_key: string
+          match_attempt_id: string | null
           notes: string | null
           organization_id: string
           recorded_by: string
@@ -4819,12 +4964,14 @@ export type Database = {
       }
       clock_staff_out: {
         Args: {
+          p_attendance_method?: Database["public"]["Enums"]["attendance_method"]
           p_event_id: string
           p_evidence_file_name: string
           p_evidence_mime_type: string
           p_evidence_path: string
           p_evidence_size_bytes: number
           p_idempotency_key: string
+          p_match_attempt_id?: string
           p_notes: string
           p_org_id: string
           p_staff_member_id: string
@@ -4834,13 +4981,17 @@ export type Database = {
           attendance_date: string
           break_minutes: number
           check_in: string | null
+          check_in_method: Database["public"]["Enums"]["attendance_method"]
           check_out: string | null
+          check_out_method: Database["public"]["Enums"]["attendance_method"]
+          confirmed_by: string | null
           created_at: string
           earned_amount: number
           event_id: string
           hours_worked: number
           id: string
           idempotency_key: string
+          match_attempt_id: string | null
           notes: string | null
           organization_id: string
           recorded_by: string
@@ -4996,6 +5147,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      consume_face_match_attempt: {
+        Args: {
+          p_action: string
+          p_attempt_id: string
+          p_event_id: string
+          p_org_id: string
+          p_staff_member_id: string
+        }
+        Returns: string
       }
       convert_quotation_to_event: {
         Args: {
@@ -5431,6 +5592,17 @@ export type Database = {
         Args: { p_kind: string; p_org_id: string }
         Returns: string
       }
+      enroll_staff_face: {
+        Args: {
+          p_capture_count: number
+          p_model_version: string
+          p_org_id: string
+          p_provider_code: string
+          p_staff_member_id: string
+          p_template_ref: string
+        }
+        Returns: Json
+      }
       equipment_availability: {
         Args: {
           p_capacity_id: string
@@ -5445,6 +5617,41 @@ export type Database = {
           shortage: number
           total: number
         }[]
+      }
+      event_attendance_candidates: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: {
+          assignment_id: string
+          assignment_role: string
+          enrollment_active: boolean
+          is_open: boolean
+          open_check_in: string
+          staff_member_id: string
+          staff_name: string
+        }[]
+      }
+      event_attendance_status: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: {
+          assignment_id: string
+          attendance_date: string
+          attendance_id: string
+          check_in: string
+          check_in_method: Database["public"]["Enums"]["attendance_method"]
+          check_out: string
+          check_out_method: Database["public"]["Enums"]["attendance_method"]
+          has_checkin_evidence: boolean
+          has_checkout_evidence: boolean
+          hours_worked: number
+          shift: Database["public"]["Enums"]["staff_shift"]
+          staff_member_id: string
+          staff_name: string
+          status: Database["public"]["Enums"]["attendance_status"]
+        }[]
+      }
+      event_command_center: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: Json
       }
       event_consumable_state: {
         Args: { p_event_id: string; p_org_id: string; p_stock_item_id: string }
@@ -5472,6 +5679,10 @@ export type Database = {
         Args: { p_event_id: string; p_org_id: string }
         Returns: boolean
       }
+      event_operational_readiness: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: Json
+      }
       event_procurement_ops_lines: {
         Args: { p_event_id: string; p_org_id: string }
         Returns: {
@@ -5493,9 +5704,14 @@ export type Database = {
       event_readiness_batch: {
         Args: { p_event_ids: string[]; p_org_id: string }
         Returns: {
+          consumables_shortage: number
           equipment_shortage: number
           event_id: string
+          procurement_pending: number
+          reasons: string[]
+          staff_assigned: number
           staff_missing: number
+          staff_required: number
           status: string
         }[]
       }
@@ -5551,6 +5767,10 @@ export type Database = {
           title: string
           venue_name: string
         }[]
+      }
+      expire_face_match_attempts: {
+        Args: { p_org_id: string }
+        Returns: number
       }
       expire_quotation: {
         Args: {
@@ -5690,6 +5910,10 @@ export type Database = {
           payouts_total: number
           staff_member_id: string
         }[]
+      }
+      get_staff_face_enrollment: {
+        Args: { p_org_id: string; p_staff_member_id: string }
+        Returns: Json
       }
       global_search: {
         Args: { p_org_id: string; p_term: string }
@@ -6400,6 +6624,17 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      record_face_match_attempt: {
+        Args: {
+          p_action: string
+          p_confidence_label: string
+          p_event_id: string
+          p_org_id: string
+          p_provider_code: string
+          p_staff_member_id: string
+        }
+        Returns: string
+      }
       record_host_payout: {
         Args: {
           p_amount: number
@@ -6526,21 +6761,23 @@ export type Database = {
           p_shift: Database["public"]["Enums"]["staff_shift"]
           p_staff_member_id: string
           p_status: Database["public"]["Enums"]["attendance_status"]
-          p_wage_method: Database["public"]["Enums"]["compensation_method"]
-          p_wage_rate: number
         }
         Returns: {
           assignment_id: string | null
           attendance_date: string
           break_minutes: number
           check_in: string | null
+          check_in_method: Database["public"]["Enums"]["attendance_method"]
           check_out: string | null
+          check_out_method: Database["public"]["Enums"]["attendance_method"]
+          confirmed_by: string | null
           created_at: string
           earned_amount: number
           event_id: string
           hours_worked: number
           id: string
           idempotency_key: string
+          match_attempt_id: string | null
           notes: string | null
           organization_id: string
           recorded_by: string
@@ -6901,6 +7138,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      revoke_staff_face: {
+        Args: { p_org_id: string; p_reason: string; p_staff_member_id: string }
+        Returns: undefined
       }
       role_default_capability: {
         Args: {
@@ -7359,6 +7600,20 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      staff_ledger_history: {
+        Args: { p_org_id: string; p_staff_member_id: string }
+        Returns: {
+          amount: number
+          effect: number
+          event_id: string
+          event_number: string
+          kind: string
+          label: string
+          occurred_at: string
+          status: string
+          void_reason: string
+        }[]
+      }
       today_attendance_gaps: {
         Args: { p_now?: string; p_org_id: string }
         Returns: {
@@ -7367,6 +7622,30 @@ export type Database = {
           event_id: string
           event_number: string
           event_title: string
+        }[]
+      }
+      today_closure_candidates: {
+        Args: { p_now?: string; p_org_id: string }
+        Returns: {
+          action: string
+          blockers: string[]
+          event_id: string
+          event_number: string
+          event_title: string
+          outstanding: string
+          start_at: string
+        }[]
+      }
+      today_collections: {
+        Args: { p_now?: string; p_org_id: string }
+        Returns: {
+          customer_name: string
+          event_id: string
+          event_number: string
+          event_title: string
+          outstanding: string
+          overdue: boolean
+          start_at: string
         }[]
       }
       transition_event_status: {
@@ -7754,13 +8033,17 @@ export type Database = {
           attendance_date: string
           break_minutes: number
           check_in: string | null
+          check_in_method: Database["public"]["Enums"]["attendance_method"]
           check_out: string | null
+          check_out_method: Database["public"]["Enums"]["attendance_method"]
+          confirmed_by: string | null
           created_at: string
           earned_amount: number
           event_id: string
           hours_worked: number
           id: string
           idempotency_key: string
+          match_attempt_id: string | null
           notes: string | null
           organization_id: string
           recorded_by: string
@@ -7870,6 +8153,7 @@ export type Database = {
         | "DELIVERY_PROOF"
         | "RETURN_PROOF"
         | "EQUIPMENT_DAMAGE"
+      attendance_method: "MANUAL" | "FACE_ASSISTED"
       attendance_status: "PRESENT" | "LATE" | "PARTIAL" | "ABSENT" | "VOIDED"
       catalog_item_status: "ACTIVE" | "INACTIVE"
       catalog_item_type:
@@ -7910,6 +8194,8 @@ export type Database = {
         | "CONSUMABLE"
         | "DAMAGE_LOSS"
         | "OTHER"
+      face_enrollment_status: "ACTIVE" | "REVOKED"
+      face_match_status: "MATCHED" | "CONSUMED" | "REJECTED" | "EXPIRED"
       host_payment_status: "RECORDED" | "VOIDED"
       installment_status: "PENDING" | "PAID" | "CANCELLED"
       invoice_installment_kind: "DEPOSIT" | "INSTALLMENT" | "FINAL"
@@ -8107,6 +8393,7 @@ export const Constants = {
         "RETURN_PROOF",
         "EQUIPMENT_DAMAGE",
       ],
+      attendance_method: ["MANUAL", "FACE_ASSISTED"],
       attendance_status: ["PRESENT", "LATE", "PARTIAL", "ABSENT", "VOIDED"],
       catalog_item_status: ["ACTIVE", "INACTIVE"],
       catalog_item_type: [
@@ -8151,6 +8438,8 @@ export const Constants = {
         "DAMAGE_LOSS",
         "OTHER",
       ],
+      face_enrollment_status: ["ACTIVE", "REVOKED"],
+      face_match_status: ["MATCHED", "CONSUMED", "REJECTED", "EXPIRED"],
       host_payment_status: ["RECORDED", "VOIDED"],
       installment_status: ["PENDING", "PAID", "CANCELLED"],
       invoice_installment_kind: ["DEPOSIT", "INSTALLMENT", "FINAL"],

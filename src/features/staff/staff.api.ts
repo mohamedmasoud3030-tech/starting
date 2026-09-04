@@ -240,33 +240,88 @@ function invalidateAttendanceReads(
   eventId: string,
 ) {
   void q.invalidateQueries({ queryKey: ["event-attendance", orgId, eventId] });
+  void q.invalidateQueries({ queryKey: ["event-attendance-status", orgId, eventId] });
   void q.invalidateQueries({ queryKey: ["event-payroll", orgId, eventId] });
+  // The command center's attendance block and operational readiness both
+  // reflect staffing/attendance state; a punch must refresh them.
+  void q.invalidateQueries({ queryKey: ["event-command-center", orgId, eventId] });
+  void q.invalidateQueries({ queryKey: ["event-readiness", orgId, eventId] });
   void q.invalidateQueries({ queryKey: ["org-payroll-archive", orgId] });
+  // Org-wide readiness projections (today dashboard / operations board) also
+  // count assignments+attendance context — refresh them by prefix too.
+  void q.invalidateQueries({ queryKey: ["event-readiness-batch", orgId] });
+  void q.invalidateQueries({ queryKey: ["operations-readiness", orgId] });
+  void q.invalidateQueries({ queryKey: ["calendar-readiness", orgId] });
   // The dashboard's "attendance gaps" alert reads today_attendance_gaps;
   // recording (or voiding) attendance opens/closes a gap, so the count
   // must be refreshed or the Home screen keeps alerting on a fixed gap.
   void q.invalidateQueries({ queryKey: ["attendance-gaps", orgId] });
 }
 
-/** Exact OMR wage preview (mirrors SQL compute_earned_amount). UI-only; the DB is authoritative. */
-export function computeEarnedMilli(
-  wageMethod: CompensationMethod,
-  wageRateMilli: MilliOMR,
-  checkIn: string | null,
-  checkOut: string | null,
-  breakMinutes: number,
-  status: AttendanceStatus,
-): MilliOMR {
-  if (status === "ABSENT") return 0;
-  if (wageMethod === "PER_HOUR") {
-    if (!checkIn || !checkOut) return 0;
-    const ms = new Date(checkOut).getTime() - new Date(checkIn).getTime();
-    const seconds = Math.round(ms / 1000);
-    const workSeconds = seconds - Math.max(0, breakMinutes) * 60;
-    const hours = Math.round((workSeconds / 3600) * 1000) / 1000;
-    return Math.round(hours * wageRateMilli);
-  }
-  return wageRateMilli;
+/**
+ * Wage calculation lives ONLY in the database (`compute_earned_amount`,
+ * 0039) — the former client-side mirror preview was removed with the
+ * canonical-calculation convergence (0082): the manual record command no
+ * longer accepts wage method/rate at all, they are derived server-side from
+ * the assignment → staff default chain, exactly like the punch clock.
+ */
+
+// ---------------------------------------------------------------------------
+// Attendance operational state (0083) — wage-free rows for attendance
+// recorders. A SUPERVISOR holds `attendance.record` but NOT cost/payroll
+// visibility, so the wage-bearing `staff_attendance_summaries` view is empty
+// for them; the clock, the command center and the void affordances must still
+// work, which is what this projection provides.
+// ---------------------------------------------------------------------------
+
+/** How an attendance action was produced (canonical vocabulary, 0083). */
+export type AttendanceMethod = "MANUAL" | "FACE_ASSISTED";
+
+export interface AttendanceStatusRow {
+  attendance_id: string;
+  staff_member_id: string;
+  staff_name: string;
+  assignment_id: string | null;
+  attendance_date: string;
+  shift: StaffShift;
+  status: AttendanceStatus;
+  check_in: string | null;
+  check_out: string | null;
+  hours_worked: number;
+  check_in_method: AttendanceMethod;
+  check_out_method: AttendanceMethod | null;
+  has_checkin_evidence: boolean;
+  has_checkout_evidence: boolean;
+}
+
+export function useEventAttendanceStatus(
+  orgId: string | null,
+  eventId: string,
+) {
+  return useQuery({
+    queryKey: ["event-attendance-status", orgId, eventId],
+    enabled: !!orgId && !!eventId,
+    queryFn: async () => {
+      const { data, error } = await db.rpc("event_attendance_status", {
+        p_org_id: orgId!,
+        p_event_id: eventId,
+      });
+      if (error) throw error;
+      return (data ?? []) as AttendanceStatusRow[];
+    },
+  });
+}
+
+/** True while a live status row is an open punch (inside, not closed). */
+export function isOpenStatusRow(
+  row: Pick<AttendanceStatusRow, "status" | "check_in" | "check_out">,
+): boolean {
+  return (
+    row.status !== "ABSENT" &&
+    row.status !== "VOIDED" &&
+    row.check_in != null &&
+    row.check_out == null
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -300,11 +355,17 @@ export interface RecordAttendanceInput {
   breakMinutes: number;
   /** Only live statuses can be recorded; voiding is a separate command. */
   status: AttendanceLiveStatus;
-  wageMethod: CompensationMethod;
-  wageRateMilli: MilliOMR;
   notes: string;
 }
 
+/**
+ * Manual correction entry (0082): wage method/rate are NOT client inputs any
+ * more — the command derives the wage snapshot server-side from the
+ * assignment → staff-default chain (the single canonical path, identical to
+ * the punch clock). This also makes manual records work for an attendance
+ * recorder without wage visibility, which previously had to send
+ * rate=0.000 because it could not READ the rate it was required to type.
+ */
 export function useRecordAttendance(orgId: string | null, eventId: string) {
   const q = useQueryClient();
   return useMutation({
@@ -320,8 +381,6 @@ export function useRecordAttendance(orgId: string | null, eventId: string) {
         p_check_out: v.checkOut,
         p_break_minutes: v.breakMinutes,
         p_status: v.status,
-        p_wage_method: v.wageMethod,
-        p_wage_rate: toDbNumeric(v.wageRateMilli),
         p_notes: v.notes || null,
         p_idempotency_key: crypto.randomUUID(),
       }),
@@ -352,6 +411,15 @@ export interface ClockStaffInInput {
   evidenceFileName: string;
   evidenceMimeType: string;
   evidenceSizeBytes: number;
+  /**
+   * Assisted-attendance metadata (0083). `FACE_ASSISTED` requires
+   * `matchAttemptId`: the server re-validates that the recorded match
+   * attempt belongs to THIS org + event + candidate, carries a MATCH
+   * outcome, and is not already consumed — a stale frame from another
+   * event/roster revision can never authorize a punch.
+   */
+  attendanceMethod?: AttendanceMethod;
+  matchAttemptId?: string | null;
 }
 
 export function useClockStaffIn(orgId: string | null, eventId: string) {
@@ -369,6 +437,8 @@ export function useClockStaffIn(orgId: string | null, eventId: string) {
         p_evidence_file_name: v.evidenceFileName,
         p_evidence_mime_type: v.evidenceMimeType,
         p_evidence_size_bytes: v.evidenceSizeBytes,
+        p_attendance_method: v.attendanceMethod ?? "MANUAL",
+        p_match_attempt_id: v.matchAttemptId ?? null,
         p_idempotency_key: crypto.randomUUID(),
       }),
     onSuccess: () => invalidateAttendanceReads(q, orgId, eventId),
@@ -385,6 +455,8 @@ export function useClockStaffOut(orgId: string | null, eventId: string) {
       evidenceFileName: string;
       evidenceMimeType: string;
       evidenceSizeBytes: number;
+      attendanceMethod?: AttendanceMethod;
+      matchAttemptId?: string | null;
     }) =>
       callRpc<Record<string, unknown>>("clock_staff_out", {
         p_org_id: orgId,
@@ -395,6 +467,8 @@ export function useClockStaffOut(orgId: string | null, eventId: string) {
         p_evidence_file_name: v.evidenceFileName,
         p_evidence_mime_type: v.evidenceMimeType,
         p_evidence_size_bytes: v.evidenceSizeBytes,
+        p_attendance_method: v.attendanceMethod ?? "MANUAL",
+        p_match_attempt_id: v.matchAttemptId ?? null,
         p_idempotency_key: crypto.randomUUID(),
       }),
     onSuccess: () => invalidateAttendanceReads(q, orgId, eventId),
@@ -616,6 +690,158 @@ export function useVoidPayout(orgId: string | null) {
 }
 
 // ---------------------------------------------------------------------------
+// Staff profile (ملف المضيف) — server-side rollup + chronological ledger.
+// ---------------------------------------------------------------------------
+
+export interface HostPayrollSummaryRow {
+  earnedMilli: MilliOMR;
+  advancesMilli: MilliOMR;
+  payoutsMilli: MilliOMR;
+  dueMilli: MilliOMR;
+  paidMilli: MilliOMR;
+  lateMilli: MilliOMR;
+  attendanceCount: number;
+}
+
+/**
+ * The canonical host-wide payroll rollup (`get_host_payroll_summary`, 0079-
+ * gated by payroll.read). The profile page shows these totals — exactly the
+ * ones the host statement and payroll period sheet print — and performs no
+ * local summing of its own.
+ */
+export function useHostPayrollSummary(
+  orgId: string | null,
+  staffMemberId: string | null,
+) {
+  return useQuery({
+    queryKey: ["host-payroll-summary", orgId, staffMemberId],
+    enabled: !!orgId && !!staffMemberId,
+    queryFn: async () => {
+      const { data, error } = await db.rpc("get_host_payroll_summary", {
+        p_org_id: orgId!,
+        p_staff_member_id: staffMemberId!,
+        p_event_id: undefined,
+      });
+      if (error) throw error;
+      const row = (data ?? [])[0] as Record<string, unknown> | undefined;
+      if (!row) return null;
+      return {
+        earnedMilli: fromDbAmount(row.earned_total as string | number | null),
+        advancesMilli: fromDbAmount(row.advances_total as string | number | null),
+        payoutsMilli: fromDbAmount(row.payouts_total as string | number | null),
+        dueMilli: fromDbAmount(row.due_total as string | number | null),
+        paidMilli: fromDbAmount(row.paid_total as string | number | null),
+        lateMilli: fromDbAmount(row.late_total as string | number | null),
+        attendanceCount: Number(row.attendance_count ?? 0),
+      } satisfies HostPayrollSummaryRow;
+    },
+  });
+}
+
+export interface StaffLedgerRow {
+  kind: "ATTENDANCE" | "ADVANCE" | "PAYOUT";
+  occurredAt: string;
+  label: string;
+  eventNumber: string | null;
+  /** signed milli-OMR effect on the host's remaining balance. */
+  effectMilli: MilliOMR;
+  /** canonical exact amount (unsigned) for display. */
+  amountMilli: MilliOMR;
+  status: "RECORDED" | "VOIDED";
+  voidReason: string | null;
+  eventId: string | null;
+}
+
+/**
+ * The host's chronological financial history (0083 `staff_ledger_history`):
+ * attendance earnings, advances, payouts and voids — one UNION over the real
+ * ledgers with signed balance effects computed IN SQL. There is deliberately
+ * no second ledger and no client-side reconciliation here; the same CTE totals
+ * behind the statement and the payroll sheet produce these rows.
+ */
+export function useStaffLedgerHistory(orgId: string | null, staffMemberId: string | null) {
+  return useQuery({
+    queryKey: ["staff-ledger-history", orgId, staffMemberId],
+    enabled: !!orgId && !!staffMemberId,
+    queryFn: async () => {
+      const { data, error } = await db.rpc("staff_ledger_history", {
+        p_org_id: orgId!,
+        p_staff_member_id: staffMemberId!,
+      });
+      if (error) throw error;
+      return ((data ?? []) as Array<Record<string, unknown>>).map((row): StaffLedgerRow => ({
+        kind: String(row.kind) as StaffLedgerRow["kind"],
+        occurredAt: String(row.occurred_at),
+        label: String(row.label ?? ""),
+        eventNumber: (row.event_number as string | null) ?? null,
+        effectMilli: fromDbAmount(row.effect as string | number | null),
+        amountMilli: fromDbAmount(row.amount as string | number | null),
+        status: String(row.status) === "VOIDED" ? "VOIDED" : "RECORDED",
+        voidReason: (row.void_reason as string | null) ?? null,
+        eventId: (row.event_id as string | null) ?? null,
+      }));
+    },
+  });
+}
+
+/** Full staff_members row for the EDIT dialog only (staff.manage; the table's
+ * RLS already restricts this read to privileged roles). */
+export function useStaffMemberForEdit(orgId: string | null, staffMemberId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["staff-member-edit", orgId, staffMemberId],
+    enabled: !!orgId && !!staffMemberId && enabled,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("staff_members")
+        .select("*")
+        .eq("organization_id", orgId!)
+        .eq("id", staffMemberId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return {
+        id: data.id,
+        name: data.name,
+        staffType: data.staff_type,
+        isActive: data.is_active,
+        defaultCompensationMethod: data.default_compensation_method,
+        defaultRateMilli: fromDbAmount(data.default_rate),
+        phone: data.phone,
+        whatsapp: data.whatsapp,
+        idNumber: data.id_number,
+        notes: data.notes,
+      } satisfies StaffMemberRow;
+    },
+  });
+}
+
+/** Non-sensitive staff identity read for the profile header (any member). */
+export function useStaffOperationalProfile(orgId: string | null, staffMemberId: string) {
+  return useQuery({
+    queryKey: ["staff-operational-profile", orgId, staffMemberId],
+    enabled: !!orgId && !!staffMemberId,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("staff_members_operational")
+        .select("*")
+        .eq("organization_id", orgId!)
+        .eq("id", staffMemberId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as {
+        id: string;
+        name: string;
+        phone: string | null;
+        whatsapp: string | null;
+        staff_type: StaffType;
+        is_active: boolean;
+        notes: string | null;
+      } | null;
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Org-wide payroll archive (one row per host per event) for the host archive page.
 // ---------------------------------------------------------------------------
 export function useOrgPayrollArchive(orgId: string | null) {
@@ -794,5 +1020,12 @@ export function attendanceError(error: unknown): string {
   if (message.includes("PAYOUT_ALLOCATION_AMOUNT_INVALID")) return "مبلغ التوزيع يجب أن يكون أكبر من صفر";
   if (message.includes("PAYOUT_ALLOCATION_EVENT_REQUIRED")) return "حدد المناسبة لكل توزيع";
   if (message.includes("PAYOUT_ALLOCATIONS_INVALID")) return "توزيع المناسبات غير صالح";
+  if (message.includes("FACE_STALE_MATCH")) return "انتهت صلاحية نتيجة التطابق — أعد المحاولة";
+  if (message.includes("FACE_MATCH_CANDIDATE_MISMATCH")) return "نتيجة التطابق لا تطابق المضيف المختار";
+  if (message.includes("FACE_MATCH_CONSUMED")) return "استُخدمت نتيجة التطابق مسبقاً";
+  if (message.includes("FACE_ATTEMPT_REQUIRED")) return "تأكد أن التطابق يخص هذه المناسبة";
+  if (message.includes("FACE_NOT_ENROLLED")) return "هذا المضيف غير مسجّل الوجه على هذا الجهاز";
+  if (message.includes("FACE_ENROLLMENT_CAPTURES_INVALID")) return "عدد صور التسجيل غير صالح";
+  if (message.includes("FACE_ENROLLMENT_ALREADY_ACTIVE")) return "يوجد تسجيل وجه نشط — ألغِه أولاً ثم أعد التسجيل";
   return message;
 }

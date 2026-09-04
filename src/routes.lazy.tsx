@@ -44,6 +44,10 @@ export const StaffPage = lazy(async () => ({
   default: (await import("@/features/staff/StaffPage")).StaffPage,
 }));
 
+export const StaffProfilePage = lazy(async () => ({
+  default: (await import("@/features/staff/StaffProfilePage")).StaffProfilePage,
+}));
+
 export const SettingsPage = lazy(async () => ({
   default: (await import("@/features/settings/SettingsPage")).SettingsPage,
 }));

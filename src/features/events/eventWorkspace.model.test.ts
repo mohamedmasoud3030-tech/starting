@@ -7,7 +7,6 @@ import {
   jobPathForEventStatus,
   jobPathForQuoteStatus,
   pickLinkedQuote,
-  readinessText,
   resolveActiveTab,
   visibleWorkspaceTabs,
   voiceSummaryForTab,
@@ -57,21 +56,6 @@ describe("eventWorkspace.model", () => {
     ]) {
       expect(EVENT_STATUS_LABELS[status]).toBeTruthy();
     }
-  });
-
-  it("renders readiness text for every state", () => {
-    expect(
-      readinessText({ status: "READY", staff_missing: 0, equipment_shortage: 0 }),
-    ).toBe("المناسبة جاهزة");
-    expect(
-      readinessText({ status: "STAFF_MISSING", staff_missing: 2, equipment_shortage: 0 }),
-    ).toBe("ناقص 2 من الفريق");
-    expect(
-      readinessText({ status: "EQUIPMENT_SHORTAGE", staff_missing: 0, equipment_shortage: 3 }),
-    ).toBe("ناقص 3 من المعدات");
-    expect(
-      readinessText({ status: "MULTIPLE_ISSUES", staff_missing: 1, equipment_shortage: 4 }),
-    ).toBe("مشكلات متعددة: فريق 1، معدات 4");
   });
 
   it("falls back to the role preset while the capability report is loading", () => {

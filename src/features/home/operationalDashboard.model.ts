@@ -2,8 +2,18 @@ import {
   buildAttentionVoiceSummary,
   DEFAULT_TIME_ZONE,
   isSameLocalDay,
-  toArabicDigits,
 } from "@/features/ownerVoice/screenSummary";
+import {
+  readinessReasonDetail,
+  type OperationalReadiness,
+  type ReadinessReasonCode,
+} from "@/features/events/operationalReadiness";
+
+/**
+ * Re-export of the CANONICAL readiness contract — the dashboard never owns a
+ * second definition of it (the former local shape was a duplicate vocabulary).
+ */
+export type { OperationalReadiness };
 
 export interface OperationalEvent {
   id: string;
@@ -14,12 +24,6 @@ export interface OperationalEvent {
   venue_name: string;
   guest_count: number;
   contact_phone?: string | null;
-}
-
-export interface OperationalReadiness {
-  status: string;
-  staff_missing: number;
-  equipment_shortage: number;
 }
 
 export interface OperationalStockLine {
@@ -100,17 +104,39 @@ export function attentionSummaryWhenLoaded(input: {
   });
 }
 
-function readinessDetail(readiness: OperationalReadiness): string {
-  switch (readiness.status) {
-    case "STAFF_MISSING":
-      return `الفريق ناقص ${toArabicDigits(readiness.staff_missing)}.`;
-    case "EQUIPMENT_SHORTAGE":
-      return `المعدات ناقصة ${toArabicDigits(readiness.equipment_shortage)}.`;
-    case "MULTIPLE_ISSUES":
-      return `الفريق ناقص ${toArabicDigits(readiness.staff_missing)} والمعدات ناقصة ${toArabicDigits(readiness.equipment_shortage)}.`;
-    default:
-      return "تحتاج مراجعة الجاهزية قبل التنفيذ.";
-  }
+/**
+ * Alert detail line from the CANONICAL reason list (no second formula): each
+ * reason is expanded with its server counts and joined in Arabic.
+ */
+export function readinessDetail(readiness: OperationalReadiness): string {
+  if (readiness.reasons.length === 0) return "تحتاج مراجعة الجاهزية قبل التنفيذ.";
+  return `${readiness.reasons.map((r) => readinessReasonDetail(r, readiness)).join(" · ")}.`;
+}
+
+/** Compact per-event blocker chips for the today cards. */
+export function todayBlockers(
+  readiness: OperationalReadiness | null | undefined,
+): ReadinessReasonCode[] {
+  if (!readiness || readiness.status !== "NOT_READY") return [];
+  return readiness.reasons;
+}
+
+/**
+ * Deterministic Today ordering: events that NEED ACTION first (NOT_READY,
+ * then unresolved, then READY), inside each group by Muscat start time. No
+ * opaque score — the sort key is fully explainable.
+ */
+export function todayOrderKey(input: {
+  start_at: string;
+  readiness: OperationalReadiness | null | undefined;
+}): string {
+  const bucket =
+    input.readiness?.status === "NOT_READY"
+      ? "0"
+      : input.readiness == null
+        ? "1"
+        : "2";
+  return `${bucket}|${input.start_at}`;
 }
 
 export function buildOperationalDashboard(input: {
@@ -129,7 +155,11 @@ export function buildOperationalDashboard(input: {
         event.status !== "CANCELLED" &&
         isSameLocalDay(event.start_at, now, timeZone),
     )
-    .sort((a, b) => a.start_at.localeCompare(b.start_at));
+    .sort((a, b) => {
+      const ka = todayOrderKey({ start_at: a.start_at, readiness: input.readinessByEventId[a.id] });
+      const kb = todayOrderKey({ start_at: b.start_at, readiness: input.readinessByEventId[b.id] });
+      return ka.localeCompare(kb) || a.start_at.localeCompare(b.start_at);
+    });
 
   const alerts: OperationalAlert[] = [];
   let readyCount = 0;
@@ -158,7 +188,7 @@ export function buildOperationalDashboard(input: {
     alerts.push({
       id: `event:${event.id}:readiness`,
       kind: "EVENT",
-      severity: readiness.status === "MULTIPLE_ISSUES" ? "danger" : "warning",
+      severity: readiness.reasons.length > 1 ? "danger" : "warning",
       title: `${event.title} — تحتاج تدخل`,
       detail: readinessDetail(readiness),
       eventId: event.id,

@@ -21,6 +21,14 @@ import {
   settledCount,
   type OperationalReadiness,
 } from "./operationalDashboard.model";
+import {
+  useClosureCandidates,
+  useTodayCollections,
+  type ClosureCandidateRow,
+  type TodayCollectionRow,
+} from "./dailyOperations.api";
+
+type ReadinessRow = OperationalReadiness & { event_id: string };
 
 /**
  * Controller for the operational dashboard.
@@ -58,8 +66,10 @@ export function useOperationalDashboard() {
     [events.data, now],
   );
 
-  // Batched readiness (defect D19): one RPC for all of today's events instead
-  // of an N+1 fan-out, so the dashboard stays fast on a site phone.
+  // Batched CANONICAL readiness (one RPC for all of today's events, no N+1,
+  // no per-widget fan-out): the SAME event_operational_readiness core the
+  // command center reads (0082), so the dashboard and the event overview can
+  // never disagree about what an event still needs.
   const todayIds = useMemo(
     () => todayEvents.map((event) => event.id),
     [todayEvents],
@@ -73,12 +83,7 @@ export function useOperationalDashboard() {
         p_event_ids: todayIds,
       });
       if (error) throw error;
-      return (data ?? []) as Array<{
-        event_id: string;
-        status: string;
-        staff_missing: number;
-        equipment_shortage: number;
-      }>;
+      return (data ?? []) as Array<ReadinessRow>;
     },
   });
 
@@ -99,8 +104,13 @@ export function useOperationalDashboard() {
             row
               ? ({
                   status: row.status,
+                  reasons: row.reasons,
+                  staff_required: row.staff_required,
+                  staff_assigned: row.staff_assigned,
                   staff_missing: row.staff_missing,
                   equipment_shortage: row.equipment_shortage,
+                  consumables_shortage: row.consumables_shortage,
+                  procurement_pending: row.procurement_pending,
                 } satisfies OperationalReadiness)
               : null,
           ] as const;
@@ -129,6 +139,33 @@ export function useOperationalDashboard() {
     capabilities !== null
       ? capabilities.has("cost.visibility")
       : !!currentRole && COST_READER_ROLES.includes(currentRole);
+  const canRecordPayment =
+    capabilities !== null
+      ? capabilities.has("payment.record")
+      : !!currentRole && ["OWNER", "MANAGER", "ACCOUNTANT"].includes(currentRole);
+  const canManageEvents =
+    capabilities !== null
+      ? capabilities.has("event.manage")
+      : !!currentRole && ["OWNER", "MANAGER", "SUPERVISOR"].includes(currentRole);
+  const canCloseFinancially =
+    capabilities !== null
+      ? capabilities.has("finance.manage")
+      : !!currentRole && ["OWNER", "MANAGER", "ACCOUNTANT"].includes(currentRole);
+
+  // Collection attention needs money visibility (cost or payment.record);
+  // closure actions need event.manage (ops close) or finance.manage (financial
+  // close). The queries are simply not issued when the mirror says the user
+  // cannot act on the result — the server enforces the same boundary.
+  const collections = useTodayCollections(
+    orgId,
+    canReadFinance || canRecordPayment,
+    now.toISOString(),
+  );
+  const closures = useClosureCandidates(
+    orgId,
+    canManageEvents || canCloseFinancially,
+    now.toISOString(),
+  );
 
   // Spoken facts only when the facts exist; null hides the voice button
   // while any source is still loading (see attentionSummaryWhenLoaded).
@@ -165,6 +202,14 @@ export function useOperationalDashboard() {
     attendanceGapCount,
     attentionSummary,
     isNewOrganization,
+    canReadFinance,
+    canRecordPayment,
+    canManageEvents,
+    canCloseFinancially,
+    collections: (collections.data ?? []) as TodayCollectionRow[],
+    collectionsLoaded: collections.isSuccess,
+    closures: (closures.data ?? []) as ClosureCandidateRow[],
+    closuresLoaded: closures.isSuccess,
     /** Any read that failed and would otherwise leave the screen quietly wrong. */
     hasLoadError: events.isError || stock.isError || gaps.isError || readinessFailed,
     /** The events list is capped by PostgREST max_rows; today's events may be hidden. */

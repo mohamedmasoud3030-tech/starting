@@ -1,56 +1,36 @@
 import { describe, expect, it } from "vitest";
-import { attendanceError, computeEarnedMilli, isOpenPunch } from "./staff.api";
-import type { CompensationMethod } from "@/lib/dbTypes";
+import * as staffApi from "./staff.api";
+import {
+  attendanceError,
+  isOpenStatusRow,
+  isOpenPunch,
+} from "./staff.api";
 
-describe("computeEarnedMilli", () => {
-  it("multiplies exact hours by the hourly rate (3dp OMR)", () => {
-    // 5.5 hours @ 2.000 OMR/hour = 11.000 OMR = 11000 milli.
-    const earned = computeEarnedMilli(
-      "PER_HOUR" as CompensationMethod,
-      2000,
-      "2026-08-15T14:00:00",
-      "2026-08-15T19:30:00",
-      0,
-      "PRESENT",
-    );
-    expect(earned).toBe(11000);
+describe("payroll calculation boundary", () => {
+  it("has NO client-side wage calculator — the server is the only path", () => {
+    // The former computeEarnedMilli duplicate was deleted: wages come ONLY
+    // from the DB canonical compute_earned_amount chain (0039) surfaced via
+    // attendance status rows and payroll projections. Any export matching a
+    // wage formula here would be a regression against AGENTS.md.
+    for (const key of Object.keys(staffApi)) {
+      expect(key).not.toMatch(/computeEarned|earnedMilli|wageFor/i);
+    }
+    expect((staffApi as Record<string, unknown>).computeEarnedMilli).toBeUndefined();
   });
+});
 
-  it("subtracts break minutes before multiplying", () => {
-    // 5 hours @ 2.000 OMR/hour = 10.000 OMR = 10000 milli (30 min break).
-    const earned = computeEarnedMilli(
-      "PER_HOUR" as CompensationMethod,
-      2000,
-      "2026-08-15T14:00:00",
-      "2026-08-15T19:30:00",
-      30,
-      "PRESENT",
-    );
-    expect(earned).toBe(10000);
-  });
-
-  it("treats PER_DAY / PER_EVENT / MANUAL as a flat earned amount", () => {
-    expect(
-      computeEarnedMilli("PER_DAY" as CompensationMethod, 50000, null, null, 0, "PRESENT"),
-    ).toBe(50000);
-    expect(
-      computeEarnedMilli("PER_EVENT" as CompensationMethod, 75000, null, null, 0, "PRESENT"),
-    ).toBe(75000);
-    expect(
-      computeEarnedMilli("MANUAL" as CompensationMethod, 12345, null, null, 0, "PRESENT"),
-    ).toBe(12345);
-  });
-
-  it("returns zero earned for ABSENT regardless of rate", () => {
-    expect(
-      computeEarnedMilli("PER_EVENT" as CompensationMethod, 75000, null, null, 0, "ABSENT"),
-    ).toBe(0);
-  });
-
-  it("returns zero when times are missing for PER_HOUR", () => {
-    expect(
-      computeEarnedMilli("PER_HOUR" as CompensationMethod, 2000, null, null, 0, "PRESENT"),
-    ).toBe(0);
+describe("isOpenStatusRow (canonical attendance status RPC rows)", () => {
+  const row = {
+    status: "PRESENT" as const,
+    check_in: "2026-09-01T05:00:00+00:00",
+    check_out: null,
+  };
+  it("is open only while a live status row has check-in without checkout", () => {
+    expect(isOpenStatusRow(row)).toBe(true);
+    expect(isOpenStatusRow({ ...row, status: "ABSENT" as const })).toBe(false);
+    expect(isOpenStatusRow({ ...row, status: "VOIDED" as never })).toBe(false);
+    expect(isOpenStatusRow({ ...row, check_in: null })).toBe(false);
+    expect(isOpenStatusRow({ ...row, check_out: "2026-09-01T14:00:00+00:00" })).toBe(false);
   });
 });
 

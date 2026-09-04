@@ -1,16 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { EventRow, EventStatus } from "../events.api";
-import type { ReadinessReport } from "../readinessReport";
+import type { EventReadiness, EventRow, EventStatus } from "../events.api";
 import { OverviewTab } from "./OverviewTab";
 
-const readyReport: ReadinessReport = {
-  items: [],
-  percent: null,
-  overall: "EMPTY",
-  staffMissing: 0,
-  equipmentShortage: 0,
+/** Canonical server readiness payloads (0082 vocabulary) — rendered, not derived. */
+const readyReadiness: EventReadiness = {
+  status: "READY",
+  reasons: [],
+  staff_required: 0,
+  staff_assigned: 0,
+  staff_missing: 0,
+  equipment_shortage: 0,
+  consumables_shortage: 0,
+  procurement_pending: 0,
+};
+
+const shortStaffReadiness: EventReadiness = {
+  ...readyReadiness,
+  status: "NOT_READY",
+  reasons: ["STAFF_SHORTAGE"],
+  staff_required: 20,
+  staff_assigned: 18,
+  staff_missing: 2,
 };
 
 function event(status: EventStatus): EventRow {
@@ -51,7 +63,7 @@ function renderOverview(
       canCost={true}
       canFinance={true}
       run={run}
-      report={readyReport}
+      readiness={readyReadiness}
       history={[]}
       acceptedQuote={null}
       financiallyClosed={false}
@@ -141,6 +153,35 @@ describe("OverviewTab — lifecycle controls", () => {
     expect(
       screen.queryByRole("button", { name: "تأكيد الإرسال" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("requires an audited override when the CANONICAL readiness says NOT_READY", async () => {
+    // The dispatch button must route through the override dialog exactly when
+    // the SERVER says the event is not ready — no frontend re-derivation.
+    renderOverview("PREPARING", { readiness: shortStaffReadiness });
+    await userEvent.click(screen.getByRole("button", { name: "تأكيد الإرسال" }));
+    // Direct transition suppressed; override UI shown instead.
+    expect(run).not.toHaveBeenCalled();
+    expect(screen.getByText("التجهيز غير مكتمل. يمكنك الإرسال مع سبب موثّق — سيُسجَّل التجاوز في سجل المناسبة.")).toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: /سبب التجاوز/ }),
+      "نكمل الفريق ميدانياً",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "تأكيد الإرسال مع التجاوز" }));
+    expect(run).toHaveBeenCalledWith("transition_event_status", {
+      p_to: "DISPATCHED",
+      p_reason: null,
+      p_override_reason: "نكمل الفريق ميدانياً",
+    });
+  });
+
+  it("treats an unresolved readiness as needing an override (fail closed)", () => {
+    renderOverview("PREPARING", { readiness: null });
+    // Unknown readiness never reads as "ready": the dispatch affordance is
+    // wrapped in the audited override warning straight away.
+    expect(screen.getByText(/التجهيز غير مكتمل/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "تأكيد الإرسال" })).toBeInTheDocument();
   });
 
   it("hides the financial shortcuts from a role without cost visibility", () => {
