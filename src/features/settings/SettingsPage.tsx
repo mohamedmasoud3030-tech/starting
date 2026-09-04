@@ -13,6 +13,7 @@ import {
   useOrganizationSettings,
   useSaveOrganizationSettings,
 } from "./settings.api";
+import { TeamPanel } from "./TeamPanel";
 
 type FormState = Record<
   Exclude<keyof OrganizationSettingsRow, "organization_id" | "created_at" | "updated_at">,
@@ -63,9 +64,11 @@ function toForm(row: OrganizationSettingsRow | null): FormState {
 }
 
 export function SettingsPage() {
-  const { currentOrganization, currentRole } = useAuth();
+  const { currentOrganization, hasCapability } = useAuth();
   const orgId = currentOrganization?.id ?? null;
-  const isOwner = currentRole === "OWNER";
+  // Editing is gated by the settings.manage capability (0079); OWNER holds
+  // it by preset. The server command enforces the same boundary.
+  const canEditSettings = hasCapability("settings.manage");
 
   const settings = useOrganizationSettings(orgId);
   const save = useSaveOrganizationSettings(orgId);
@@ -131,7 +134,7 @@ export function SettingsPage() {
         title="إعدادات المنشأة"
         description="هوية المنشأة وبيانات التواصل والمستندات — تظهر على عروض الأسعار والفواتير"
         actions={
-          isOwner ? (
+          canEditSettings ? (
             <Button type="submit" form="settings-form" disabled={save.isPending}>
               <Save className="h-5 w-5" />
               {save.isPending ? "جارٍ الحفظ…" : "حفظ الإعدادات"}
@@ -140,9 +143,9 @@ export function SettingsPage() {
         }
       />
 
-      {!isOwner && (
+      {!canEditSettings && (
         <Card className="mb-5 border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
-          هذه الإعدادات للاطلاع فقط — تعديلها متاح للمالك (OWNER) فقط.
+          هذه الإعدادات للاطلاع فقط — تعديلها متاح لمن يملك صلاحية إعدادات المنشأة.
         </Card>
       )}
 
@@ -156,6 +159,10 @@ export function SettingsPage() {
           {error}
         </Card>
       )}
+
+      <div className="mb-5">
+        <TeamPanel />
+      </div>
 
       {settings.isLoading ? (
         <p className="py-12 text-center text-slate-500">جارٍ تحميل الإعدادات…</p>
@@ -174,7 +181,7 @@ export function SettingsPage() {
                   value={form.name_en}
                   onChange={(e) => set("name_en", e.target.value)}
                   placeholder="Company name in English"
-                  disabled={!isOwner}
+                  disabled={!canEditSettings}
                 />
               </Field>
               <Field label="رابط الشعار (URL)" htmlFor="set-logo">
@@ -184,7 +191,7 @@ export function SettingsPage() {
                   value={form.logo_url}
                   onChange={(e) => set("logo_url", e.target.value)}
                   placeholder="https://…/logo.png"
-                  disabled={!isOwner}
+                  disabled={!canEditSettings}
                 />
               </Field>
             </div>
@@ -194,16 +201,16 @@ export function SettingsPage() {
             <h2 className="font-black">بيانات التواصل</h2>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <Field label="الجوال الأساسي" htmlFor="set-phone1">
-                <Input id="set-phone1" dir="ltr" value={form.phone_primary} onChange={(e) => set("phone_primary", e.target.value)} disabled={!isOwner} />
+                <Input id="set-phone1" dir="ltr" value={form.phone_primary} onChange={(e) => set("phone_primary", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="الجوال الثانوي" htmlFor="set-phone2">
-                <Input id="set-phone2" dir="ltr" value={form.phone_secondary} onChange={(e) => set("phone_secondary", e.target.value)} disabled={!isOwner} />
+                <Input id="set-phone2" dir="ltr" value={form.phone_secondary} onChange={(e) => set("phone_secondary", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="واتساب" htmlFor="set-whatsapp">
-                <Input id="set-whatsapp" dir="ltr" value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} disabled={!isOwner} />
+                <Input id="set-whatsapp" dir="ltr" value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="البريد الإلكتروني" htmlFor="set-email">
-                <Input id="set-email" dir="ltr" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} disabled={!isOwner} />
+                <Input id="set-email" dir="ltr" type="email" value={form.email} onChange={(e) => set("email", e.target.value)} disabled={!canEditSettings} />
               </Field>
             </div>
           </Card>
@@ -212,25 +219,25 @@ export function SettingsPage() {
             <h2 className="font-black">بيانات رسمية وعنوان</h2>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <Field label="السجل التجاري (س.ت)" htmlFor="set-cr">
-                <Input id="set-cr" dir="ltr" value={form.commercial_registration} onChange={(e) => set("commercial_registration", e.target.value)} disabled={!isOwner} />
+                <Input id="set-cr" dir="ltr" value={form.commercial_registration} onChange={(e) => set("commercial_registration", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="الرمز البريدي" htmlFor="set-postal">
-                <Input id="set-postal" dir="ltr" value={form.postal_code} onChange={(e) => set("postal_code", e.target.value)} disabled={!isOwner} />
+                <Input id="set-postal" dir="ltr" value={form.postal_code} onChange={(e) => set("postal_code", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="صندوق البريد (اختياري)" htmlFor="set-pobox">
-                <Input id="set-pobox" dir="ltr" value={form.po_box} onChange={(e) => set("po_box", e.target.value)} disabled={!isOwner} />
+                <Input id="set-pobox" dir="ltr" value={form.po_box} onChange={(e) => set("po_box", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="العنوان" htmlFor="set-address">
-                <Input id="set-address" value={form.address_line1} onChange={(e) => set("address_line1", e.target.value)} disabled={!isOwner} />
+                <Input id="set-address" value={form.address_line1} onChange={(e) => set("address_line1", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="المدينة" htmlFor="set-city">
-                <Input id="set-city" value={form.city} onChange={(e) => set("city", e.target.value)} disabled={!isOwner} />
+                <Input id="set-city" value={form.city} onChange={(e) => set("city", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="المنطقة" htmlFor="set-region">
-                <Input id="set-region" value={form.region} onChange={(e) => set("region", e.target.value)} disabled={!isOwner} />
+                <Input id="set-region" value={form.region} onChange={(e) => set("region", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="الدولة" htmlFor="set-country">
-                <Input id="set-country" value={form.country} onChange={(e) => set("country", e.target.value)} disabled={!isOwner} />
+                <Input id="set-country" value={form.country} onChange={(e) => set("country", e.target.value)} disabled={!canEditSettings} />
               </Field>
             </div>
           </Card>
@@ -242,13 +249,13 @@ export function SettingsPage() {
             </p>
             <div className="mt-3 grid gap-4 sm:grid-cols-3">
               <Field label="بادئة عروض الأسعار" htmlFor="set-pq">
-                <Input id="set-pq" dir="ltr" value={form.quotation_number_prefix} onChange={(e) => set("quotation_number_prefix", e.target.value)} disabled={!isOwner} />
+                <Input id="set-pq" dir="ltr" value={form.quotation_number_prefix} onChange={(e) => set("quotation_number_prefix", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="بادئة الفواتير" htmlFor="set-pi">
-                <Input id="set-pi" dir="ltr" value={form.invoice_number_prefix} onChange={(e) => set("invoice_number_prefix", e.target.value)} disabled={!isOwner} />
+                <Input id="set-pi" dir="ltr" value={form.invoice_number_prefix} onChange={(e) => set("invoice_number_prefix", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="بادئة المناسبات" htmlFor="set-pe">
-                <Input id="set-pe" dir="ltr" value={form.event_number_prefix} onChange={(e) => set("event_number_prefix", e.target.value)} disabled={!isOwner} />
+                <Input id="set-pe" dir="ltr" value={form.event_number_prefix} onChange={(e) => set("event_number_prefix", e.target.value)} disabled={!canEditSettings} />
               </Field>
             </div>
           </Card>
@@ -264,7 +271,7 @@ export function SettingsPage() {
                   id="set-vat-registered"
                   value={form.vat_registered === "true" ? "true" : "false"}
                   onChange={(e) => set("vat_registered", e.target.value)}
-                  disabled={!isOwner}
+                  disabled={!canEditSettings}
                 >
                   <option value="false">غير مسجّل</option>
                   <option value="true">مسجّل</option>
@@ -277,7 +284,7 @@ export function SettingsPage() {
                   inputMode="decimal"
                   value={form.vat_percent}
                   onChange={(e) => set("vat_percent", e.target.value)}
-                  disabled={!isOwner}
+                  disabled={!canEditSettings}
                 />
               </Field>
               <Field label="الرقم الضريبي" htmlFor="set-vat-number">
@@ -286,7 +293,7 @@ export function SettingsPage() {
                   dir="ltr"
                   value={form.vat_registration_number}
                   onChange={(e) => set("vat_registration_number", e.target.value)}
-                  disabled={!isOwner}
+                  disabled={!canEditSettings}
                 />
               </Field>
             </div>
@@ -296,16 +303,16 @@ export function SettingsPage() {
             <h2 className="font-black">المستندات والتوقيع</h2>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <Field label="الشروط العامة (تظهر أسفل المستند)" htmlFor="set-terms">
-                <Textarea id="set-terms" rows={4} value={form.document_terms} onChange={(e) => set("document_terms", e.target.value)} disabled={!isOwner} />
+                <Textarea id="set-terms" rows={4} value={form.document_terms} onChange={(e) => set("document_terms", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="تذييل المستند" htmlFor="set-footer">
-                <Textarea id="set-footer" rows={4} value={form.document_footer} onChange={(e) => set("document_footer", e.target.value)} disabled={!isOwner} />
+                <Textarea id="set-footer" rows={4} value={form.document_footer} onChange={(e) => set("document_footer", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="اسم المدير (للتوقيع)" htmlFor="set-manager">
-                <Input id="set-manager" value={form.manager_name} onChange={(e) => set("manager_name", e.target.value)} disabled={!isOwner} />
+                <Input id="set-manager" value={form.manager_name} onChange={(e) => set("manager_name", e.target.value)} disabled={!canEditSettings} />
               </Field>
               <Field label="صفة الموقّع" htmlFor="set-manager-title">
-                <Input id="set-manager-title" value={form.manager_title} onChange={(e) => set("manager_title", e.target.value)} disabled={!isOwner} />
+                <Input id="set-manager-title" value={form.manager_title} onChange={(e) => set("manager_title", e.target.value)} disabled={!canEditSettings} />
               </Field>
             </div>
           </Card>
