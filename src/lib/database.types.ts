@@ -436,6 +436,74 @@ export type Database = {
           },
         ]
       }
+      customer_payment_allocations: {
+        Row: {
+          allocated_by: string
+          created_at: string
+          event_id: string
+          gross_amount: number
+          id: string
+          invoice_id: string
+          net_amount: number
+          organization_id: string
+          payment_id: string
+          vat_amount: number
+        }
+        Insert: {
+          allocated_by: string
+          created_at?: string
+          event_id: string
+          gross_amount: number
+          id?: string
+          invoice_id: string
+          net_amount: number
+          organization_id: string
+          payment_id: string
+          vat_amount?: number
+        }
+        Update: {
+          allocated_by?: string
+          created_at?: string
+          event_id?: string
+          gross_amount?: number
+          id?: string
+          invoice_id?: string
+          net_amount?: number
+          organization_id?: string
+          payment_id?: string
+          vat_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_payment_allocations_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "customer_payment_allocations_invoice_fk"
+            columns: ["organization_id", "invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_summaries"
+            referencedColumns: ["organization_id", "invoice_id"]
+          },
+          {
+            foreignKeyName: "customer_payment_allocations_invoice_fk"
+            columns: ["organization_id", "invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "customer_payment_allocations_payment_fk"
+            columns: ["organization_id", "payment_id"]
+            isOneToOne: false
+            referencedRelation: "customer_payments"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       customer_payments: {
         Row: {
           amount: number
@@ -4001,6 +4069,7 @@ export type Database = {
       }
     }
     Functions: {
+      _chart_id: { Args: { p_code: string; p_org_id: string }; Returns: string }
       _customer_gross_vat: {
         Args: { p_event_id: string; p_gross: number; p_org_id: string }
         Returns: {
@@ -4009,6 +4078,18 @@ export type Database = {
           vat_percent: number
           vat_registered: boolean
         }[]
+      }
+      _event_account_balance: {
+        Args: { p_account_id: string; p_event_id: string; p_org_id: string }
+        Returns: number
+      }
+      _event_unallocated_deposits_gross: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: number
+      }
+      _post_close_revenue: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: undefined
       }
       _resolve_treasury_chart: {
         Args: { p_org_id: string; p_treasury_id: string }
