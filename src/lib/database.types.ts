@@ -4091,6 +4091,13 @@ export type Database = {
         Args: { p_event_id: string; p_org_id: string }
         Returns: undefined
       }
+      _resolve_expense_treasury: {
+        Args: { p_org_id: string; p_treasury_id: string }
+        Returns: {
+          chart_id: string
+          treasury_id: string
+        }[]
+      }
       _resolve_treasury_chart: {
         Args: { p_org_id: string; p_treasury_id: string }
         Returns: string
@@ -7050,6 +7057,7 @@ export type Database = {
           p_payee?: string
           p_payment_method?: Database["public"]["Enums"]["payment_method"]
           p_reference?: string
+          p_treasury_account_id?: string
         }
         Returns: {
           amount: number
@@ -8129,6 +8137,10 @@ export type Database = {
           status: string
           void_reason: string
         }[]
+      }
+      t_is_active: {
+        Args: { p_id: string; p_org_id: string }
+        Returns: boolean
       }
       today_attendance_gaps: {
         Args: { p_now?: string; p_org_id: string }
