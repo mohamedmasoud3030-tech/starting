@@ -71,3 +71,29 @@
 - إنتاجي فقط: لا بيانات إنتاج وهمية، لا أمان نائب، لا `any` منتشر.
 - الثوابت الهامة **تتطلب اختبارات** (نقود، تسعير، عزل، لقطات).
 - `npm run typecheck` و`npm run lint` و`npm test` و`npm run build` يجب أن تنجح جميعها.
+
+
+## مهارات الوكلاء (Project Skills)
+
+المصدر القياسي لمهارات هذا المشروع هو `.agents/skills/`. عند تطابق المهمة مع
+وصف Skill يجب على الوكيل تحميل `SKILL.md` الخاص بها قبل اتخاذ قرارات التنفيذ
+المادية. هذه Skills **مكيّفة للمستودع** وليست نسخاً حرفية من مكتبات خارجية.
+
+| Skill | متى تُستخدم |
+| --- | --- |
+| `source-driven-development` | عند الاعتماد على سلوك مكتبة/Framework/CLI/Standard متغير أو غير مؤكد |
+| `implementation-planning` | قبل Feature/Refactor/Architecture/Financial tranche كبير أو متعدد الطبقات |
+| `implementation` | عند تنفيذ Feature/Bug/Refactor/SQL/UI فعلياً، مع الاختبارات والتنظيف والبوابات |
+| `code-review` | للمراجعة المستقلة قبل الدمج أو بعد التنفيذ؛ المراجعة منفصلة عن الإصلاح |
+| `security-threat-model` | عند تغير Auth/RLS/Capabilities/Tenant boundaries/Financial privilege/Secrets |
+| `postgres-rls` | عند لمس PostgreSQL/Supabase migrations/RLS/RPC/constraints/indexes/concurrency/pgTAP |
+
+قواعد صيانة المهارات:
+
+- لا تضف Skill جديدة إذا كانت نفس المسؤولية يمكن دمجها بوضوح داخل Skill موجودة.
+- اجعل `SKILL.md` مركزاً وقصيراً، واستند إلى وثائق المشروع الموجودة بدلاً من نسخها.
+- احذف أو ادمج أي Skill تصبح متداخلة أو متقادمة؛ لا تترك نسخاً متوازية متعارضة.
+- لا تفترض Stack غير موجود في `package.json`/المستودع. حالياً لا يوجد NestJS أو
+  Drizzle أو Better Auth أو Nx، لذلك لا تُستخدم إرشادات خاصة بها إلا بعد قرار معماري
+  واعتماد فعلي في المستودع.
+- أي سلوك تقني متغير أو غير مؤكد يبدأ بـ `source-driven-development`، لا بذاكرة الوكيل.
