@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EVENT_STATUS_LABELS } from "@/features/events/eventWorkspace.model";
-import { readinessTone } from "@/features/events/readiness.model";
+import { readinessTone } from "@/features/events/operationalReadiness";
 import { useEvents, type EventRow } from "@/features/events/events.api";
 import { useQuery } from "@tanstack/react-query";
 import { callRpc } from "@/lib/rpc";
@@ -157,13 +157,15 @@ function useReadinessForEvents(orgId: string | null, events: EventRow[]) {
     queryKey: ["calendar-readiness", orgId, events.map((e) => e.id).join(",")],
     enabled: !!orgId && events.length > 0,
     queryFn: async () => {
-      const rows = await callRpc<Array<{ event_id: string; status: string; staff_missing: number; equipment_shortage: number }>>(
+      // Only the canonical STATUS is consumed here (calendar chips); the full
+      // reason list stays in the dashboard/command-center projections.
+      const rows = await callRpc<Array<{ event_id: string; status: "READY" | "NOT_READY" }>>(
         "event_readiness_batch",
         { p_org_id: orgId, p_event_ids: events.map((e) => e.id) },
       );
       return Object.fromEntries(rows.map((r) => [r.event_id, r])) as Record<
         string,
-        { event_id: string; status: string; staff_missing: number; equipment_shortage: number }
+        { event_id: string; status: "READY" | "NOT_READY" }
       >;
     },
   }).data;

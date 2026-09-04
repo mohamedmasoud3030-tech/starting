@@ -58,8 +58,6 @@ describe("attendance mutations refresh the dashboard gap count", () => {
       checkOut: null,
       breakMinutes: 0,
       status: "PRESENT",
-      wageMethod: "PER_EVENT",
-      wageRateMilli: 10_000,
       notes: "",
     });
 

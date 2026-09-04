@@ -1,20 +1,20 @@
 import { useRef, useState } from "react";
-import { Camera } from "lucide-react";
+import { Camera, ScanFace } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InlineError } from "@/components/ui/ErrorState";
-import { formatOMR } from "@/lib/money";
 import { defaultMuscatShift, todayInMuscat } from "@/lib/dates";
 import { uploadEvidenceFile, evidenceError } from "@/features/attachments/attachments.api";
 import {
   attendanceError,
-  isOpenPunch,
+  isOpenStatusRow,
   useClockStaffIn,
   useClockStaffOut,
-  useEventAttendance,
+  useEventAttendanceStatus,
 } from "./staff.api";
+import { FaceAttendanceDialog } from "./face/FaceAttendanceDialog";
 import { SHIFT_LABELS, STAFF_TYPE_LABELS } from "./labels";
 
 export interface ClockAssignment {
@@ -44,10 +44,15 @@ type SelfieTarget =
   | { kind: "OUT"; staffMemberId: string };
 
 /**
- * Phone punch clock for event hosts. A selfie photo is captured as attendance
- * evidence (uploaded to the private bucket and linked atomically by the clock
- * command). This is a simple camera photo — NOT facial recognition and not a
- * biometric check; the wage stays 0.000 until clock-out.
+ * Phone punch clock for event hosts — now with the assisted face entry point.
+ *
+ * Two first-class paths converge on the SAME server command:
+ *   * بصمة الوجه: camera frame → potential match → manager confirmation;
+ *   * دخول/خروج الآن (manual): direct action for one roster row.
+ * A selfie photo is captured as attendance evidence in BOTH paths (uploaded
+ * to the private bucket, linked atomically by the clock command). This is
+ * assisted identification, never a biometric gate: wage math lives in the
+ * database and consumes CONFIRMED attendance only.
  */
 export function AttendanceClock({
   orgId,
@@ -60,12 +65,15 @@ export function AttendanceClock({
   assignments: ReadonlyArray<ClockAssignment>;
   staffList: ReadonlyArray<ClockStaff>;
 }) {
-  const attendance = useEventAttendance(orgId, eventId);
+  // Wage-free operational state: works for every attendance recorder
+  // (the money-bearing summaries stay behind payroll/cost visibility).
+  const attendance = useEventAttendanceStatus(orgId, eventId);
   const clockIn = useClockStaffIn(orgId, eventId);
   const clockOut = useClockStaffOut(orgId, eventId);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selfieTarget, setSelfieTarget] = useState<SelfieTarget | null>(null);
+  const [faceAction, setFaceAction] = useState<"CHECK_IN" | "CHECK_OUT" | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const active = assignments.filter((row) => row.status === "ACTIVE");
@@ -109,6 +117,7 @@ export function AttendanceClock({
           evidenceFileName: uploaded.fileName,
           evidenceMimeType: uploaded.mimeType,
           evidenceSizeBytes: uploaded.sizeBytes,
+          attendanceMethod: "MANUAL",
         });
       } else {
         await clockOut.mutateAsync({
@@ -117,6 +126,7 @@ export function AttendanceClock({
           evidenceFileName: uploaded.fileName,
           evidenceMimeType: uploaded.mimeType,
           evidenceSizeBytes: uploaded.sizeBytes,
+          attendanceMethod: "MANUAL",
         });
       }
     } catch (cause) {
@@ -146,11 +156,33 @@ export function AttendanceClock({
           كإثبات خاص. الأجر يُحسب بعد الخروج بدقة الريال العماني.
         </p>
         <p className="mt-1 text-sm text-slate-500">
-          الوردية الحالية: {SHIFT_LABELS[shift]} · صورة الحضور ليست تحققاً بيومترياً ولا تعرّفاً على الوجه.
+          الوردية الحالية: {SHIFT_LABELS[shift]} · التطابق على الوجه مساعدة للمدير فقط —
+          لا يُنشئ أي سجل من تلقاء نفسه.
         </p>
       </div>
 
       {error && <InlineError message={error} />}
+
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={() => setFaceAction("CHECK_IN")}>
+          <ScanFace className="h-5 w-5" />
+          بصمة دخول بالكاميرا
+        </Button>
+        <Button variant="outline" onClick={() => setFaceAction("CHECK_OUT")}>
+          <ScanFace className="h-5 w-5" />
+          بصمة خروج بالكاميرا
+        </Button>
+      </div>
+
+      <FaceAttendanceDialog
+        orgId={orgId}
+        eventId={eventId}
+        action={faceAction ?? "CHECK_IN"}
+        open={faceAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setFaceAction(null);
+        }}
+      />
 
       <input
         ref={fileInput}
@@ -171,14 +203,14 @@ export function AttendanceClock({
             const roleLabel =
               STAFF_TYPE_LABELS[assignment.assignmentRole] ?? assignment.assignmentRole;
             const open = rows.find(
-              (row) => row.staffMemberId === assignment.staffMemberId && isOpenPunch(row),
+              (row) => row.staff_member_id === assignment.staffMemberId && isOpenStatusRow(row),
             );
             const todaySlot = rows.find(
               (row) =>
-                row.staffMemberId === assignment.staffMemberId &&
-                row.attendanceDate === today &&
+                row.staff_member_id === assignment.staffMemberId &&
+                row.attendance_date === today &&
                 row.shift === shift &&
-                row.recordStatus === "RECORDED",
+                row.status !== "VOIDED",
             );
             const pending = busyId === assignment.id || busyId === assignment.staffMemberId;
 
@@ -191,12 +223,15 @@ export function AttendanceClock({
                       <p className="text-sm text-slate-500">{roleLabel}</p>
                       {open ? (
                         <p className="mt-1 text-sm font-semibold text-emerald-800">
-                          داخل منذ {fmtTime(open.checkIn)} · المستحق يظهر بعد الخروج
+                          داخل منذ {fmtTime(open.check_in)} · المستحق يظهر بعد الخروج
+                          {open.check_in_method === "FACE_ASSISTED" ? " · دخول بتطابق وجه مؤكَّد" : ""}
                         </p>
-                      ) : todaySlot?.checkOut ? (
+                      ) : todaySlot?.check_out ? (
                         <p className="mt-1 text-sm text-slate-600">
-                          خرج الساعة {fmtTime(todaySlot.checkOut)} · المستحق{" "}
-                          <span dir="ltr">{formatOMR(todaySlot.earnedMilli)}</span>
+                          خرج الساعة {fmtTime(todaySlot.check_out)}
+                          {todaySlot.check_out_method === "FACE_ASSISTED"
+                            ? " · بتطابق وجه مؤكَّد"
+                            : ""}
                         </p>
                       ) : todaySlot?.status === "ABSENT" ? (
                         <p className="mt-1 text-sm text-slate-600">مسجّل غياب لهذه الوردية</p>

@@ -12,10 +12,20 @@
 
 export const DEFAULT_TIME_ZONE = "Asia/Muscat";
 
+/**
+ * Canonical operational readiness (0082 vocabulary): READY / NOT_READY plus
+ * machine-readable reason codes. The optional fields exist so the SPOKEN
+ * register can describe every operational blocker the server reported; they
+ * are read from the SAME server row the visual badges render — never a
+ * second formula.
+ */
 export interface ReadinessLike {
   status: string;
+  reasons?: string[];
   staff_missing: number;
   equipment_shortage: number;
+  consumables_shortage?: number;
+  procurement_pending?: number;
 }
 
 export interface EventLike {
@@ -181,35 +191,71 @@ export function equipmentShortagePhrase(missing: number): string {
   return `${toArabicDigits(missing)} من المعدات`;
 }
 
-/** Workspace sentence for readiness (or null when unknown). */
+/** Workspace sentence for readiness (or "" when unknown). */
 export function readinessSentence(readiness: ReadinessLike | null): string {
   if (!readiness) return "";
-  switch (readiness.status) {
-    case "READY":
-      return "المناسبة جاهزة.";
-    case "STAFF_MISSING":
-      return `الفريق ناقص ${staffShortageFragment(readiness.staff_missing)}.`;
-    case "EQUIPMENT_SHORTAGE":
-      return `المعدات ناقصة ${toArabicDigits(readiness.equipment_shortage)}.`;
-    case "MULTIPLE_ISSUES":
-      return `الفريق ناقص ${staffShortageFragment(readiness.staff_missing)} والمعدات ناقصة ${toArabicDigits(readiness.equipment_shortage)}.`;
-    default:
-      return "";
-  }
+  if (readiness.status === "READY") return "المناسبة جاهزة.";
+  if (readiness.status !== "NOT_READY") return "";
+  const parts = readinessReasonPhrases(readiness, {
+    staff: (n) => `الفريق ناقص ${staffShortageFragment(n)}`,
+    equipment: (n) => `المعدات ناقصة ${toArabicDigits(n)}`,
+    consumables: (n) => `المواد ناقصة ${toArabicDigits(n)}`,
+    procurement: () => "التموين لم يصل بعد",
+  });
+  // Arabic conjunction style: وَ prefixes every segment after the first —
+  // identical register to the legacy MULTIPLE_ISSUES phrase.
+  return parts.length > 0 ? `${parts[0]}${parts.slice(1).map((p) => ` و${p}`).join("")}.` : "تحتاج مراجعة التجهيز.";
+}
+
+/**
+ * Reason phrases straight from the canonical reason codes. When an older
+ * server payload omits `reasons`, fall back to the numeric counts — still the
+ * server's numbers, still one formula.
+ */
+function readinessReasonPhrases(
+  readiness: ReadinessLike,
+  render: {
+    staff: (missing: number) => string;
+    equipment: (missing: number) => string;
+    consumables: (missing: number) => string;
+    procurement: (pending: number) => string;
+  },
+): string[] {
+  const reasons =
+    readiness.reasons && readiness.reasons.length > 0
+      ? readiness.reasons
+      : [
+          ...(readiness.staff_missing > 0 ? ["STAFF_SHORTAGE"] : []),
+          ...(readiness.equipment_shortage > 0 ? ["EQUIPMENT_SHORTAGE"] : []),
+          ...(readiness.consumables_shortage ? ["CONSUMABLE_SHORTAGE"] : []),
+          ...(readiness.procurement_pending ? ["PROCUREMENT_PENDING"] : []),
+        ];
+  return reasons.map((reason) => {
+    switch (reason) {
+      case "STAFF_SHORTAGE":
+        return render.staff(readiness.staff_missing);
+      case "EQUIPMENT_SHORTAGE":
+        return render.equipment(readiness.equipment_shortage);
+      case "CONSUMABLE_SHORTAGE":
+        return render.consumables(readiness.consumables_shortage ?? 0);
+      default:
+        return render.procurement(readiness.procurement_pending ?? 0);
+    }
+  });
 }
 
 /** Home per-event shortage: "ناقصها شخصان من الفريق". */
 function shortageFragment(readiness: ReadinessLike): string {
-  switch (readiness.status) {
-    case "STAFF_MISSING":
-      return `ناقصها ${staffMissingPhrase(readiness.staff_missing)}`;
-    case "EQUIPMENT_SHORTAGE":
-      return `ناقصها ${equipmentShortagePhrase(readiness.equipment_shortage)}`;
-    case "MULTIPLE_ISSUES":
-      return `ناقصها ${staffMissingPhrase(readiness.staff_missing)} و ${equipmentShortagePhrase(readiness.equipment_shortage)}`;
-    default:
-      return "";
-  }
+  if (readiness.status === "READY") return "";
+  const phrases = readinessReasonPhrases(readiness, {
+    staff: (n) => `ناقصها ${staffMissingPhrase(n)}`,
+    equipment: (n) => `ناقصها ${equipmentShortagePhrase(n)}`,
+    consumables: (n) => `ناقصها ${toArabicDigits(n)} من المواد`,
+    procurement: () => "لم يصل تموينها",
+  });
+  return phrases.length > 0
+    ? `${phrases[0]}${phrases.slice(1).map((p) => ` و${p}`).join("")}`
+    : "تحتاج مراجعة";
 }
 
 // ------------------------------------------------------------ time (Muscat)

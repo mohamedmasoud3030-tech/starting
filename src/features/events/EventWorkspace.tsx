@@ -24,6 +24,8 @@ import { WarehouseSheet } from "@/features/documents/WarehouseSheet";
 import { TeamSheet } from "@/features/documents/TeamSheet";
 import { WorkOrderDocument } from "@/features/documents/WorkOrderDocument";
 import { EditEventDialog } from "./workspace/EditEventDialog";
+import { EventCommandCenter } from "./workspace/EventCommandCenter";
+import { useEventCommandCenter } from "./commandCenter.api";
 import { AttendancePanel } from "@/features/staff/AttendancePanel";
 import { HostPayrollPanel } from "@/features/staff/HostPayrollPanel";
 import { WarehousePanel } from "@/features/warehouse/WarehousePanel";
@@ -40,13 +42,13 @@ import { PricingTab } from "./workspace/PricingTab";
 import { TeamTab } from "./workspace/TeamTab";
 import { WorkspaceTabs } from "./workspace/WorkspaceTabs";
 import { pickLinkedQuote } from "./eventWorkspace.model";
-import { buildReadinessReport } from "./readinessReport";
 import { useEventWorkspace } from "./useEventWorkspace";
 
 export function EventWorkspace() {
   const ws = useEventWorkspace();
   const { currentOrganization } = useAuth();
   const settings = useOrganizationSettings(ws.orgId);
+  const commandCenter = useEventCommandCenter(ws.orgId, ws.eventId);
   // Hook-first: edit dialog state lives above the early returns (rules of
   // hooks) even though the dialog only renders for editable events.
   const [editOpen, setEditOpen] = useState(false);
@@ -82,21 +84,11 @@ export function EventWorkspace() {
 
   const ev = ws.event.data!;
   const d = ws.data.data!;
+  const center = commandCenter.data ?? null;
   const customerName =
     ws.customers.data?.rows.find((c) => c.id === ev.customer_id)?.name ?? null;
   const canEdit =
     ws.canAttendance && ["DRAFT", "QUOTED"].includes(ev.status);
-
-  // Pure derivation over already-loaded workspace data (cheap, no hook).
-  const readinessReport = buildReadinessReport({
-    lines: d.lines,
-    assignments: d.assignments,
-    capacities: d.capacities,
-    reservations: d.reservations,
-    hasPayableAcceptedQuotation:
-      (ws.finance.data?.acceptedRevenueMilli ?? 0) > 0,
-    amountPaidMilli: ws.finance.data?.amountPaidMilli ?? 0,
-  });
 
   const linkedQuote = pickLinkedQuote(d.quotes, ev.accepted_quotation_id);
 
@@ -108,6 +100,21 @@ export function EventWorkspace() {
         canEdit={canEdit}
         onEdit={() => setEditOpen(true)}
       />
+
+      {/*
+        Command center above the detailed tabs (Scope C): one server
+        projection answers "what does this event still need?" — the tabs
+        below keep every expert detail exactly where it was.
+      */}
+      {ws.tab === "ملخص" && center && (
+        <EventCommandCenter
+          center={center}
+          canReadMoney={ws.canCost}
+          eventStatus={ev.status}
+          onOpenTab={ws.setTab}
+        />
+      )}
+
       <WorkspaceTabs tab={ws.tab} tabs={ws.visibleTabs} onChange={ws.setTab} />
       {ws.error && <InlineError message={ws.error} />}
 
@@ -135,7 +142,7 @@ export function EventWorkspace() {
             canCost={ws.canCost}
             canFinance={ws.canFinance}
             run={ws.run}
-            report={readinessReport}
+            readiness={d.readiness}
             history={d.history}
             acceptedQuote={linkedQuote}
             financiallyClosed={false}
@@ -269,6 +276,7 @@ export function EventWorkspace() {
           orgId={ws.orgId}
           eventId={ws.eventId}
           canMutate={ws.canAttendance}
+          canReadPayroll={ws.canPayroll}
           assignments={d.assignments.map((a) => ({
             id: a.id,
             staffMemberId: a.staff_member_id,
@@ -281,8 +289,6 @@ export function EventWorkspace() {
             id: s.id,
             name: s.name,
             staffType: s.staff_type,
-            defaultCompensationMethod: s.default_compensation_method,
-            defaultRate: s.default_rate,
           }))}
         />
       )}

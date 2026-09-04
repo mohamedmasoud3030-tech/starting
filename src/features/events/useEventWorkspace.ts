@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useParams } from "@tanstack/react-router";
+import { useParams, useSearch } from "@tanstack/react-router";
 import { useAuth } from "@/app/authContext";
 import { canAssignStaffFor } from "@/app/authRoles";
 import { fromDbAmount, toOMRString } from "@/lib/money";
@@ -26,6 +26,7 @@ import {
 } from "./events.api";
 import {
   eventPermissions,
+  isWorkspaceTab,
   resolveActiveTab,
   visibleWorkspaceTabs,
   voiceSummaryForTab,
@@ -40,6 +41,9 @@ import {
  */
 export function useEventWorkspace() {
   const { eventId } = useParams({ from: "/app/events/$eventId" });
+  // Deep-linked tab (command center / Today dashboard navigation targets) —
+  // validated against the canonical tab vocabulary below.
+  const search = useSearch({ from: "/app/events/$eventId" });
   const { currentOrganization, currentRole, capabilities } = useAuth();
   const orgId = currentOrganization?.id ?? null;
 
@@ -89,7 +93,9 @@ export function useEventWorkspace() {
   const customers = useCustomers(orgId);
   const command = useEventCommand(orgId, eventId);
 
-  const [requestedTab, setTab] = useState<WorkspaceTab>("ملخص");
+  const [requestedTab, setTab] = useState<WorkspaceTab>(() =>
+    isWorkspaceTab(search.tab) ? search.tab : "ملخص",
+  );
   /**
    * Tabs are filtered by role, so the active tab is resolved against what the
    * role can actually reach. This keeps the workspace consistent if the role

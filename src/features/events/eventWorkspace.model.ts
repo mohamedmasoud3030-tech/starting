@@ -24,6 +24,11 @@ export const WORKSPACE_TABS = [
 
 export type WorkspaceTab = (typeof WORKSPACE_TABS)[number];
 
+/** Validate a URL-provided tab against the canonical vocabulary. */
+export function isWorkspaceTab(value: unknown): value is WorkspaceTab {
+  return typeof value === "string" && (WORKSPACE_TABS as readonly string[]).includes(value);
+}
+
 /**
  * Capability required to get anything out of a tab.
  *
@@ -82,19 +87,6 @@ export const EVENT_STATUS_LABELS: Record<string, string> = {
   CLOSED: "مغلقة",
   CANCELLED: "ملغاة",
 };
-
-export function readinessText(readiness: {
-  status: string;
-  staff_missing: number;
-  equipment_shortage: number;
-}): string {
-  if (readiness.status === "READY") return "المناسبة جاهزة";
-  if (readiness.status === "STAFF_MISSING")
-    return `ناقص ${readiness.staff_missing} من الفريق`;
-  if (readiness.status === "EQUIPMENT_SHORTAGE")
-    return `ناقص ${readiness.equipment_shortage} من المعدات`;
-  return `مشكلات متعددة: فريق ${readiness.staff_missing}، معدات ${readiness.equipment_shortage}`;
-}
 
 export interface EventPermissions {
   /** cost.visibility — cost figures, rates, financial statements. */

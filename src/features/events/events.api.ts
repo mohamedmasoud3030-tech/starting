@@ -95,10 +95,21 @@ export interface Assignment {
   rate?: string | number | null;
 }
 
+/**
+ * Canonical single-event operational readiness (0082 `event_readiness`, which
+ * now READS THE SAME `event_operational_readiness` core as the batch model —
+ * one formula, one vocabulary). Status is operational-only: money never
+ * changes it.
+ */
 export interface EventReadiness {
-  status: string;
+  status: "READY" | "NOT_READY";
+  reasons: import("./operationalReadiness").ReadinessReasonCode[];
+  staff_required: number;
+  staff_assigned: number;
   staff_missing: number;
   equipment_shortage: number;
+  consumables_shortage: number;
+  procurement_pending: number;
 }
 
 export interface Capacity {

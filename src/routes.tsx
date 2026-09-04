@@ -29,6 +29,7 @@ import {
   SearchPage,
   SettingsPage,
   StaffPage,
+  StaffProfilePage,
 } from "@/routes.lazy";
 
 const rootRoute = createRootRoute({
@@ -107,6 +108,15 @@ const eventWorkspaceRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/events/$eventId",
   component: EventWorkspace,
+  /**
+   * `?tab=` lets the command center and the Today dashboard deep-link a
+   * specific operational area (e.g. a staff shortage → الفريق). The tab is
+   * validated against the canonical tab list in the workspace — an invalid
+   * value falls back to the overview, never to a blank pane.
+   */
+  validateSearch: (search: Record<string, unknown>): { tab?: string } => ({
+    tab: typeof search.tab === "string" ? search.tab : undefined,
+  }),
 });
 
 const quotesRoute = createRoute({
@@ -143,6 +153,13 @@ const staffRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/staff",
   component: StaffPage,
+});
+
+/** ملف المضيف — the staff profile page (identity, enrollment, finances). */
+const staffProfileRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/staff/$staffId",
+  component: StaffProfilePage,
 });
 
 const settingsRoute = createRoute({
@@ -206,6 +223,7 @@ const routeTree = rootRoute.addChildren([
     customersRoute,
     customerDetailRoute,
     staffRoute,
+    staffProfileRoute,
     settingsRoute,
     calendarRoute,
     operationsRoute,

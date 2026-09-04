@@ -1,6 +1,6 @@
 -- pgTAP integration coverage for S1-S3 commands and invariants.
 begin;
-select plan(42);
+select plan(43);
 
 insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at,raw_app_meta_data,raw_user_meta_data,is_super_admin) values
 ('00000000-0000-0000-0000-000000000000','10000000-0000-0000-0000-000000000001','authenticated','authenticated','s123-owner-a@test.local','x',now(),now(),now(),'{"provider":"email","providers":["email"]}','{}',false),
@@ -60,7 +60,8 @@ select is((select rate from public.event_staff_assignments where idempotency_key
 select lives_ok($$select public.reserve_event_equipment('10000000-0000-0000-0000-0000000000a1',(select id from public.events where idempotency_key='11000000-0000-0000-0000-000000000001'),'10000000-0000-0000-0000-0000000000a2',5,'15000000-0000-0000-0000-000000000001')$$,'exact equipment capacity succeeds');
 select throws_ok($$select public.reserve_event_equipment('10000000-0000-0000-0000-0000000000a1',(select id from public.events where idempotency_key='11000000-0000-0000-0000-000000000001'),'10000000-0000-0000-0000-0000000000a2',1,'15000000-0000-0000-0000-000000000002')$$,'P0001',null,'capacity plus one rejected');
 select lives_ok($$select public.reserve_event_equipment('10000000-0000-0000-0000-0000000000a1',(select id from public.events where idempotency_key='11000000-0000-0000-0000-000000000005'),'10000000-0000-0000-0000-0000000000a2',5,'15000000-0000-0000-0000-000000000003')$$,'non-overlap reuses equipment capacity');
-select is((public.event_readiness('10000000-0000-0000-0000-0000000000a1',(select id from public.events where idempotency_key='11000000-0000-0000-0000-000000000001'))->>'status'),'STAFF_MISSING','readiness detects missing staff');
+select is((public.event_readiness('10000000-0000-0000-0000-0000000000a1',(select id from public.events where idempotency_key='11000000-0000-0000-0000-000000000001'))->>'status'),'NOT_READY','canonical readiness flags the missing staff (0082 vocabulary)');
+select is((select (public.event_readiness('10000000-0000-0000-0000-0000000000a1',(select id from public.events where idempotency_key='11000000-0000-0000-0000-000000000001'))->'reasons') @> '["STAFF_SHORTAGE"]'::jsonb),true,'readiness carries the machine-readable reason code');
 select lives_ok($$select public.cancel_event('10000000-0000-0000-0000-0000000000a1',(select id from public.events where idempotency_key='11000000-0000-0000-0000-000000000001'),'customer cancelled','16000000-0000-0000-0000-000000000001')$$,'cancellation succeeds');
 select is((select status::text from public.event_equipment_reservations where idempotency_key='15000000-0000-0000-0000-000000000001'),'CANCELLED','cancellation releases equipment');
 select is((select status::text from public.event_staff_assignments where idempotency_key='14000000-0000-0000-0000-000000000001'),'CANCELLED','cancellation releases staff');

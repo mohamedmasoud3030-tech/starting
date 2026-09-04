@@ -94,7 +94,7 @@ async function seed(db) {
 function record(date, key) {
   return `select public.record_staff_attendance(
     '${ORG}','${EVENT}','${STAFF}','${ASSIGNMENT}','${date}','MORNING',
-    '${date} 10:00+04','${date} 15:00+04',0,'PRESENT','PER_HOUR',2.000,
+    '${date} 10:00+04','${date} 15:00+04',0,'PRESENT',
     'race proof','${key}')`;
 }
 function voidAttendance(id, reason, key) {

@@ -6,9 +6,9 @@ import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { callRpc } from "@/lib/rpc";
 import { useEvents, type EventRow } from "@/features/events/events.api";
-import { readinessTone } from "@/features/events/readiness.model";
+import { readinessTone } from "@/features/events/operationalReadiness";
 
-type ReadinessRow = { event_id: string; status: string; staff_missing: number; equipment_shortage: number };
+type ReadinessRow = { event_id: string } & import("@/features/events/operationalReadiness").OperationalReadiness;
 
 /**
  * Daily operations board: what is today, what is tomorrow, what is not ready,
