@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { ClipboardCheck, ClipboardX } from "lucide-react";
+import {
+  Briefcase,
+  ClipboardCheck,
+  ClipboardX,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
@@ -8,9 +13,16 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { useAuth } from "@/app/authContext";
 import { buildDocumentIdentity } from "@/components/documents/documentIdentity";
 import { useOrganizationSettings } from "@/features/settings/settings.api";
-import { useWarehouseSheetLines } from "@/features/documents/documents.api";
+import {
+  useEventProcurementOpsLines,
+  useEventTeamSheet,
+  useEventWorkOrderHeader,
+  useWarehouseSheetLines,
+} from "@/features/documents/documents.api";
 import { PrintDocumentDialog } from "@/features/documents/PrintDocumentDialog";
 import { WarehouseSheet } from "@/features/documents/WarehouseSheet";
+import { TeamSheet } from "@/features/documents/TeamSheet";
+import { WorkOrderDocument } from "@/features/documents/WorkOrderDocument";
 import { EditEventDialog } from "./workspace/EditEventDialog";
 import { AttendancePanel } from "@/features/staff/AttendancePanel";
 import { HostPayrollPanel } from "@/features/staff/HostPayrollPanel";
@@ -38,10 +50,27 @@ export function EventWorkspace() {
   // Hook-first: edit dialog state lives above the early returns (rules of
   // hooks) even though the dialog only renders for editable events.
   const [editOpen, setEditOpen] = useState(false);
-  const [sheetMode, setSheetMode] = useState<"PREP" | "RETURN" | null>(null);
+  // One print entry point per document mode; every projection is fetched
+  // lazily (only while its document is open) and org-keyed like the rest of
+  // the document family.
+  const [docMode, setDocMode] = useState<WorkspaceDocMode | null>(null);
   const sheetLines = useWarehouseSheetLines(
     ws.orgId,
-    sheetMode ? ws.eventId : null,
+    docMode === "PREP" || docMode === "RETURN" || docMode === "WORK_ORDER"
+      ? ws.eventId
+      : null,
+  );
+  const teamSheet = useEventTeamSheet(
+    ws.orgId,
+    docMode === "TEAM" || docMode === "WORK_ORDER" ? ws.eventId : null,
+  );
+  const workOrder = useEventWorkOrderHeader(
+    ws.orgId,
+    docMode === "WORK_ORDER" ? ws.eventId : null,
+  );
+  const procurementOps = useEventProcurementOpsLines(
+    ws.orgId,
+    docMode === "WORK_ORDER" ? ws.eventId : null,
   );
 
   if (ws.isLoading) {
@@ -92,19 +121,27 @@ export function EventWorkspace() {
       )}
 
       {ws.tab === "ملخص" && (
-        <OverviewTab
-          event={ev}
-          customerName={customerName}
-          canManage={ws.canManage}
-          canCost={ws.canCost}
-          canFinance={ws.canFinance}
-          run={ws.run}
-          report={readinessReport}
-          history={d.history}
-          acceptedQuote={linkedQuote}
-          financiallyClosed={false}
-          onOpenTab={ws.setTab}
-        />
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setDocMode("WORK_ORDER")}>
+              <Briefcase className="h-4 w-4" />
+              طباعة أمر تشغيل المناسبة
+            </Button>
+          </div>
+          <OverviewTab
+            event={ev}
+            customerName={customerName}
+            canManage={ws.canManage}
+            canCost={ws.canCost}
+            canFinance={ws.canFinance}
+            run={ws.run}
+            report={readinessReport}
+            history={d.history}
+            acceptedQuote={linkedQuote}
+            financiallyClosed={false}
+            onOpenTab={ws.setTab}
+          />
+        </div>
       )}
 
       {ws.tab === "التسعير" && (
@@ -119,16 +156,24 @@ export function EventWorkspace() {
       )}
 
       {ws.tab === "الفريق" && (
-        <TeamTab
-          staff={d.staff}
-          assignments={d.assignments}
-          run={ws.run}
-          canAssign={ws.canAssignStaff}
-          canCost={ws.canCost}
-          onOpenAttendance={
-            ws.canAttendance ? () => ws.setTab("الحضور") : undefined
-          }
-        />
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setDocMode("TEAM")}>
+              <Users className="h-4 w-4" />
+              طباعة كشف فريق المناسبة
+            </Button>
+          </div>
+          <TeamTab
+            staff={d.staff}
+            assignments={d.assignments}
+            run={ws.run}
+            canAssign={ws.canAssignStaff}
+            canCost={ws.canCost}
+            onOpenAttendance={
+              ws.canAttendance ? () => ws.setTab("الحضور") : undefined
+            }
+          />
+        </div>
       )}
 
       {ws.tab === "المعدات" && (
@@ -144,11 +189,11 @@ export function EventWorkspace() {
       {ws.tab === "المخزن" && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setSheetMode("PREP")}>
+            <Button variant="outline" size="sm" onClick={() => setDocMode("PREP")}>
               <ClipboardCheck className="h-4 w-4" />
               أمر تجهيز المخزن
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setSheetMode("RETURN")}>
+            <Button variant="outline" size="sm" onClick={() => setDocMode("RETURN")}>
               <ClipboardX className="h-4 w-4" />
               كشف استرجاع المخزن
             </Button>
@@ -257,39 +302,131 @@ export function EventWorkspace() {
         />
       )}
 
-      <PrintDocumentDialog
-        open={sheetMode !== null}
-        onOpenChange={(open) => {
-          if (!open) setSheetMode(null);
-        }}
-        title={sheetMode === "RETURN" ? "كشف استرجاع المخزن" : "أمر تجهيز المخزن"}
-        description="كميات رسمية من بيانات المناسبة — بلا أي بيانات مالية، للتعبئة والتوقيع على الورق."
-      >
-        {sheetLines.isLoading && (
-          <div className="flex justify-center py-10">
-            <Spinner className="h-7 w-7" />
-          </div>
-        )}
-        {!sheetLines.isLoading && sheetMode && (
-          <WarehouseSheet
-            identity={buildDocumentIdentity(
-              currentOrganization,
-              settings.data ?? null,
-            )}
-            mode={sheetMode}
-            eventNumber={ev.event_number}
-            eventTitle={ev.title}
-            printedAt={new Date().toISOString()}
-            rows={sheetLines.data ?? []}
-          />
-        )}
-        {!sheetLines.isLoading && (sheetLines.data ?? []).length === 0 && (
-          <EmptyState
-            title="لا توجد بنود"
-            description="لا توجد بنود تشغيلية لهذه المناسبة بعد."
-          />
-        )}
-      </PrintDocumentDialog>
+      {docMode && (
+        <PrintDocumentDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setDocMode(null);
+          }}
+          title={DOC_DIALOG_META[docMode].title}
+          description={DOC_DIALOG_META[docMode].description}
+        >
+          {(docMode === "PREP" || docMode === "RETURN") && (
+            <>
+              {sheetLines.isLoading && (
+                <div className="flex justify-center py-10">
+                  <Spinner className="h-7 w-7" />
+                </div>
+              )}
+              {!sheetLines.isLoading && (
+                <WarehouseSheet
+                  identity={buildDocumentIdentity(
+                    currentOrganization,
+                    settings.data ?? null,
+                  )}
+                  mode={docMode}
+                  eventNumber={ev.event_number}
+                  eventTitle={ev.title}
+                  printedAt={new Date().toISOString()}
+                  rows={sheetLines.data ?? []}
+                />
+              )}
+              {!sheetLines.isLoading && (sheetLines.data ?? []).length === 0 && (
+                <EmptyState
+                  title="لا توجد بنود"
+                  description="لا توجد بنود تشغيلية لهذه المناسبة بعد."
+                />
+              )}
+            </>
+          )}
+
+          {docMode === "TEAM" && (
+            <>
+              {teamSheet.isLoading && (
+                <div className="flex justify-center py-10">
+                  <Spinner className="h-7 w-7" />
+                </div>
+              )}
+              {!teamSheet.isLoading && (
+                <TeamSheet
+                  identity={buildDocumentIdentity(
+                    currentOrganization,
+                    settings.data ?? null,
+                  )}
+                  eventNumber={ev.event_number}
+                  eventTitle={ev.title}
+                  printedAt={new Date().toISOString()}
+                  rows={teamSheet.data ?? []}
+                />
+              )}
+              {!teamSheet.isLoading && (teamSheet.data ?? []).length === 0 && (
+                <EmptyState
+                  title="لا يوجد فريق"
+                  description="لم يُسند فريق لهذه المناسبة بعد."
+                />
+              )}
+            </>
+          )}
+
+          {docMode === "WORK_ORDER" && (
+            <>
+              {(workOrder.isLoading || teamSheet.isLoading || sheetLines.isLoading || procurementOps.isLoading) && (
+                <div className="flex justify-center py-10">
+                  <Spinner className="h-7 w-7" />
+                </div>
+              )}
+              {!workOrder.isLoading && workOrder.data && (
+                <WorkOrderDocument
+                  identity={buildDocumentIdentity(
+                    currentOrganization,
+                    settings.data ?? null,
+                  )}
+                  header={workOrder.data}
+                  teamRows={teamSheet.data ?? []}
+                  warehouseRows={sheetLines.data ?? []}
+                  procurementRows={procurementOps.data ?? []}
+                  printedAt={new Date().toISOString()}
+                />
+              )}
+              {!workOrder.isLoading && !workOrder.data && (
+                <EmptyState
+                  title="تعذر تجهيز أمر التشغيل"
+                  description="لم يُعثر على بيانات هذه المناسبة للطباعة."
+                />
+              )}
+            </>
+          )}
+        </PrintDocumentDialog>
+      )}
     </div>
   );
 }
+
+/**
+ * The event-workspace document modes: one dialog, one print pattern, and one
+ * server-authoritative projection per document (0080/0081).
+ */
+type WorkspaceDocMode = "PREP" | "RETURN" | "TEAM" | "WORK_ORDER";
+
+const DOC_DIALOG_META: Record<WorkspaceDocMode, { title: string; description: string }> = {
+  PREP: {
+    title: "أمر تجهيز المخزن",
+    description:
+      "كميات رسمية من بيانات المناسبة — بلا أي بيانات مالية، للتعبئة والتوقيع على الورق.",
+  },
+  RETURN: {
+    title: "كشف استرجاع المخزن",
+    description:
+      "كميات الإرسال والاسترجاع الرسمية — أعمدة التلف والفقد للتدوين على الورق.",
+  },
+  TEAM: {
+    title: "كشف فريق المناسبة",
+    description:
+      "كشف تشغيلي للفريق المسند — بلا أي بيانات أجور أو معدلات.",
+  },
+  WORK_ORDER: {
+    title: "أمر تشغيل المناسبة",
+    description:
+      "ملخص تشغيلي للتنفيذ المكتبي والميداني — لا يتضمن تكاليف أو هوامش أو أجور.",
+  },
+};
