@@ -16,7 +16,7 @@
 --        eligibility by canonical lifecycle state — not calendar age.
 -- ============================================================================
 begin;
-select plan(48);
+select plan(50);
 
 -- ---------------------------------------------------------------------------
 -- Fixture. Owner, supervisor (attendance+ops, NO cost), warehouse (no
@@ -207,15 +207,22 @@ select throws_ok($$select public.record_face_match_attempt('99300000-0000-0000-0
   '23503','CANDIDATE_MISMATCH','assigned-but-unenrolled host is refused too');
 
 -- ---------------------------------------------------------------------------
--- 25–30. The confirmed, assisted check-in. The attempt is MINTED through the
--- real RPC (fresh, single-use) — the client flow end to end.
+-- 25–31. The confirmed, assisted check-in. A REAL attempt is minted through
+-- the RPC (full success path), then the punch consumes a fresh fixed-id row —
+-- minting and consumption both proven without client-side id capture.
 -- ---------------------------------------------------------------------------
-create temp table cc_att as
-  select public.record_face_match_attempt('99300000-0000-0000-0000-0000000000a1','99300000-0000-0000-0000-0000000000e1','CHECK_IN','99300000-0000-0000-0000-00000000f001'::uuid,'TEST_PROVIDER','0.97') as id;
-
+select lives_ok($$select public.record_face_match_attempt('99300000-0000-0000-0000-0000000000a1','99300000-0000-0000-0000-0000000000e1','CHECK_IN','99300000-0000-0000-0000-00000000f001'::uuid,'TEST_PROVIDER','0.97')$$,
+  'RPC mints an attempt for a valid, enrolled, assigned host');
+set local role postgres;
+select is((select count(*)::int from public.face_match_attempts f
+   where f.staff_member_id='99300000-0000-0000-0000-00000000f001'::uuid and f.event_id='99300000-0000-0000-0000-0000000000e1' and f.status='MATCHED'),
+  1,'the minted attempt persisted as exactly one fresh MATCHED row');
+insert into public.face_match_attempts(id,organization_id,event_id,staff_member_id,action,provider_code,confidence_label,status,attempted_by) values
+('99300000-0000-0000-0000-00000000a001','99300000-0000-0000-0000-0000000000a1','99300000-0000-0000-0000-0000000000e1','99300000-0000-0000-0000-00000000f001','CHECK_IN','TEST_PROVIDER','0.97','MATCHED','99300000-0000-0000-0000-0000000000a2');
+set local role authenticated;
 select lives_ok($$select public.clock_staff_in('99300000-0000-0000-0000-0000000000a1','99300000-0000-0000-0000-0000000000e1','99300000-0000-0000-0000-00000000f001'::uuid,null::uuid,null::public.staff_shift,null,
   '99300000-0000-0000-0000-0000000000a1/ATTENDANCE_CHECKIN/staff_attendance/face-in.jpg','face-in.jpg','image/jpeg',4321,gen_random_uuid(),
-  'FACE_ASSISTED',(select id from cc_att))$$,
+  'FACE_ASSISTED','99300000-0000-0000-0000-00000000a001'::uuid)$$,
   'face-assisted clock-in succeeds through the confirming office user');
 set local role postgres;
 select is((select a.check_in_method::text from public.staff_attendance a
@@ -225,15 +232,15 @@ select is((select a.confirmed_by is not null from public.staff_attendance a
    where a.staff_member_id='99300000-0000-0000-0000-00000000f001'::uuid and a.event_id='99300000-0000-0000-0000-0000000000e1'),
   true,'the confirming office user is recorded');
 select is((select count(*)::int from public.face_match_attempts f
-   where f.id=(select id from cc_att) and f.status='CONSUMED'),
+   where f.id='99300000-0000-0000-0000-00000000a001'::uuid and f.status='CONSUMED'),
   1,'the match attempt was consumed exactly once');
 set local role authenticated;
 select throws_ok($$select public.clock_staff_in('99300000-0000-0000-0000-0000000000a1','99300000-0000-0000-0000-0000000000e1','99300000-0000-0000-0000-00000000f001'::uuid,null::uuid,null::public.staff_shift,null,
   '99300000-0000-0000-0000-0000000000a1/ATTENDANCE_CHECKIN/staff_attendance/face-in2.jpg','face-in2.jpg','image/jpeg',4321,gen_random_uuid(),
-  'FACE_ASSISTED',(select id from cc_att))$$,
+  'FACE_ASSISTED','99300000-0000-0000-0000-00000000a001'::uuid)$$,
   '23505','FACE_MATCH_ALREADY_CONSUMED','single-use: a consumed match can never create a second row');
 set local role postgres;
-select is((select f.confidence_label from public.face_match_attempts f where f.id=(select id from cc_att)),
+select is((select f.confidence_label from public.face_match_attempts f where f.id='99300000-0000-0000-0000-00000000a001'::uuid),
   '0.97','the provider label is relayed verbatim — never recomputed');
 set local role authenticated;
 
