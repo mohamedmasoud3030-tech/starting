@@ -93,13 +93,38 @@ insert into public.host_payout_allocations (id, organization_id, payout_id, even
 insert into public.suppliers (id, organization_id, name, status, created_by, updated_by) values
   ('99000000-0000-0000-0000-0000000000f1', '99000000-0000-0000-0000-0000000000a1', 'Fresh Supplies', 'ACTIVE', '99000000-0000-0000-0000-000000000001', '99000000-0000-0000-0000-000000000001');
 
-insert into public.procurement_orders (id, organization_id, supplier_id, event_id, order_number, order_date, expected_delivery_at, notes, status, agreed_total_cost, supplier_name_snapshot, approved_at, approved_by, sent_at, sent_by, cancelled_at, cancelled_by, cancellation_reason, created_by, updated_by) values
-  ('99000000-0000-0000-0000-0000000000f2', '99000000-0000-0000-0000-0000000000a1', '99000000-0000-0000-0000-0000000000f1', '99000000-0000-0000-0000-0000000000e1', 'PO-OP-1', '2026-09-20', '2026-09-30 16:00+04', 'Deliver to hall', 'SENT', 100.000, 'Fresh Supplies', '2026-09-21 08:00+04', '99000000-0000-0000-0000-000000000001', '2026-09-21 09:00+04', '99000000-0000-0000-0000-000000000001', null, null, null, '99000000-0000-0000-0000-000000000001', '99000000-0000-0000-0000-000000000001'),
-  ('99000000-0000-0000-0000-0000000000f3', '99000000-0000-0000-0000-0000000000a1', '99000000-0000-0000-0000-0000000000f1', '99000000-0000-0000-0000-0000000000e1', 'PO-OP-2', '2026-09-19', null,                   null,              'CANCELLED', 10.000, 'Fresh Supplies', null, null, null, null, now(), '99000000-0000-0000-0000-000000000001', 'no longer needed', '99000000-0000-0000-0000-000000000001', '99000000-0000-0000-0000-000000000001');
+-- Procurement orders are created in DRAFT and only their lines exist at that
+-- point; the lifecycle trigger (0029) requires lines while DRAFT and forbids
+-- skipping states, so the fixtures walk the legal path:
+-- DRAFT -> APPROVED -> SENT (live order) and DRAFT -> CANCELLED (excluded one).
+insert into public.procurement_orders (id, organization_id, supplier_id, event_id, order_number, order_date, expected_delivery_at, notes, status, agreed_total_cost, created_by, updated_by) values
+  ('99000000-0000-0000-0000-0000000000f2', '99000000-0000-0000-0000-0000000000a1', '99000000-0000-0000-0000-0000000000f1', '99000000-0000-0000-0000-0000000000e1', 'PO-OP-1', '2026-09-20', '2026-09-30 16:00+04', 'Deliver to hall', 'DRAFT', 100.000, '99000000-0000-0000-0000-000000000001', '99000000-0000-0000-0000-000000000001'),
+  ('99000000-0000-0000-0000-0000000000f3', '99000000-0000-0000-0000-0000000000a1', '99000000-0000-0000-0000-0000000000f1', '99000000-0000-0000-0000-0000000000e1', 'PO-OP-2', '2026-09-19', null, null, 'DRAFT', 10.000, '99000000-0000-0000-0000-000000000001', '99000000-0000-0000-0000-000000000001');
 
 insert into public.procurement_order_lines (id, organization_id, order_id, line_kind, description, unit, quantity, agreed_unit_cost, agreed_total_cost, sort_order) values
   ('99000000-0000-0000-0000-0000000000f4', '99000000-0000-0000-0000-0000000000a1', '99000000-0000-0000-0000-0000000000f2', 'CATERING_SERVICE', 'Fresh Juice', 'liter', 40.000, 2.500, 100.000, 1),
   ('99000000-0000-0000-0000-0000000000f5', '99000000-0000-0000-0000-0000000000a1', '99000000-0000-0000-0000-0000000000f3', 'OTHER', 'Ice', 'box', 10.000, 1.000, 10.000, 1);
+
+update public.procurement_orders set
+  supplier_name_snapshot = 'Fresh Supplies',
+  status = 'APPROVED',
+  approved_at = '2026-09-21 08:00+04',
+  approved_by = '99000000-0000-0000-0000-000000000001'
+where id = '99000000-0000-0000-0000-0000000000f2';
+
+update public.procurement_orders set
+  status = 'SENT',
+  sent_at = '2026-09-21 09:00+04',
+  sent_by = '99000000-0000-0000-0000-000000000001'
+where id = '99000000-0000-0000-0000-0000000000f2';
+
+update public.procurement_orders set
+  supplier_name_snapshot = 'Fresh Supplies',
+  status = 'CANCELLED',
+  cancelled_at = now(),
+  cancelled_by = '99000000-0000-0000-0000-000000000001',
+  cancellation_reason = 'no longer needed'
+where id = '99000000-0000-0000-0000-0000000000f3';
 
 -- ---------------------------------------------------------------------------
 -- 1) Event team sheet — roster, presence, wage-free, member-gated

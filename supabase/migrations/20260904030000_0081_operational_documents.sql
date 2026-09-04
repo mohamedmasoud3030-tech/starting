@@ -302,11 +302,11 @@ begin
     group by p.organization_id, p.staff_member_id
   ),
   hosts as (
-    select organization_id, staff_member_id from earned
+    select earned.organization_id, earned.staff_member_id from earned
     union
-    select organization_id, staff_member_id from adv
+    select adv.organization_id, adv.staff_member_id from adv
     union
-    select organization_id, staff_member_id from pay
+    select pay.organization_id, pay.staff_member_id from pay
   )
   select
     sm.id,
