@@ -29,10 +29,10 @@ export interface AuthContextValue {
   /**
    * The caller's EFFECTIVE capability set in the current organization,
    * computed server-side (`my_capabilities`): role preset + owner overrides.
-   * `null` while the report is still loading (UI keeps its role-derived
-   * fallback) or when the server refuses. This is the single source of
-   * truth for every capability-based UI affordance; the database remains
-   * the security boundary.
+   * `null` only while the report is still loading (UI keeps its role-derived
+   * fallback). If the report errors, the UI fails closed with an empty set.
+   * This is the single source of truth for every capability-based UI
+   * affordance; the database remains the security boundary.
    */
   capabilities: Set<string> | null;
   /** Capability-based UI gate (see `capabilities`). */
