@@ -1,5 +1,5 @@
 import type { AppRole } from "@/lib/dbTypes";
-import { COST_READER_ROLES, PAYMENT_WRITE_ROLES } from "@/lib/domain";
+import { ROLE_DEFAULT_CAPABILITIES, type Capability } from "@/lib/capabilities";
 
 /**
  * Pure domain layer for the Event workspace: tab vocabulary, status/readiness
@@ -40,10 +40,12 @@ const TAB_REQUIREMENT: Partial<Record<WorkspaceTab, keyof EventPermissions>> = {
   المدفوعات: "canCost",
   الفواتير: "canCost",
   المالية: "canCost",
-  الأجور: "canFinance",
-  // Procurement read models are hidden from non-cost roles and every S5
-  // command requires OWNER/MANAGER — for anyone else this tab can only show
-  // an empty list or a refusal.
+  // The payroll tab reads payroll data — payroll.read, independent of cost
+  // visibility (0079 boundary).
+  الأجور: "canPayroll",
+  // Procurement read models are hidden from non-cost viewers and order
+  // commands require procurement.manage — for anyone else this tab can only
+  // show an empty list or a refusal.
   المشتريات: "canCost",
 };
 
@@ -95,21 +97,63 @@ export function readinessText(readiness: {
 }
 
 export interface EventPermissions {
+  /** cost.visibility — cost figures, rates, financial statements. */
   canCost: boolean;
+  /** quotation.manage — commercial lines and quotations. */
   canCommercial: boolean;
+  /** event.manage — status transitions and cancellation. */
+  canManage: boolean;
+  /** finance.manage — financial closure. */
   canFinance: boolean;
+  /** invoice.manage — create/void the event invoice. */
+  canInvoices: boolean;
+  /** payroll.read — the payroll (الأجور) tab and read surfaces. */
+  canPayroll: boolean;
+  /** payroll.pay — record payouts and advances. */
+  canPayrollPay: boolean;
+  /** warehouse.dispatch — provisioning and warehouse operations. */
+  canDispatch: boolean;
+  /** attendance.record — attendance recording. */
   canAttendance: boolean;
+  /** procurement.manage — supplier/order commands in the procurement panel. */
+  canProcure: boolean;
+  /** payment.record — recording customer payments. */
+  canRecordPayment: boolean;
+  /** payment.void — voiding customer payments. */
+  canVoidPayment: boolean;
 }
 
-/** Role-derived capabilities INSIDE the current organization (UI affordances
- * only — the database remains authoritative via RLS/RPC checks). */
-export function eventPermissions(role: AppRole | null): EventPermissions {
+/**
+ * Event-level UI permissions (migration 0079). Each key maps to the
+ * capability its commands check server-side, so the UI affordance and the
+ * RPC gate can never diverge for a member with owner overrides.
+ *
+ * While the server capability report is still loading
+ * (`capabilities === null`) the role preset — identical to the server's
+ * `role_default_capability` for members without overrides — keeps the UI
+ * stable. Hiding is presentation only; the database is authoritative.
+ */
+export function eventPermissions(
+  role: AppRole | null,
+  capabilities: Set<string> | null,
+): EventPermissions {
+  const has = (capability: Capability): boolean =>
+    capabilities !== null
+      ? capabilities.has(capability)
+      : role !== null && ROLE_DEFAULT_CAPABILITIES[role].includes(capability);
   return {
-    canCost: !!role && COST_READER_ROLES.includes(role),
-    canCommercial: role === "OWNER" || role === "MANAGER",
-    canFinance: !!role && PAYMENT_WRITE_ROLES.includes(role),
-    canAttendance:
-      !!role && ["OWNER", "MANAGER", "SUPERVISOR"].includes(role),
+    canCost: has("cost.visibility"),
+    canCommercial: has("quotation.manage"),
+    canManage: has("event.manage"),
+    canFinance: has("finance.manage"),
+    canInvoices: has("invoice.manage"),
+    canPayroll: has("payroll.read"),
+    canPayrollPay: has("payroll.pay"),
+    canDispatch: has("warehouse.dispatch"),
+    canAttendance: has("attendance.record"),
+    canProcure: has("procurement.manage"),
+    canRecordPayment: has("payment.record"),
+    canVoidPayment: has("payment.void"),
   };
 }
 

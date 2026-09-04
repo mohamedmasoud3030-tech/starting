@@ -19,6 +19,8 @@ import { QuantityStat } from "@/components/ui/QuantityStat";
 import {
   WAREHOUSE_STATUS_LABELS,
   WAREHOUSE_STATUS_TONES,
+  canOperateWarehouse,
+  canReconcileWarehouse,
   warehouseErrorMessage,
 } from "./warehouse.model";
 import { useWarehousePanel } from "./useWarehousePanel";
@@ -31,6 +33,8 @@ interface WarehousePanelProps {
   eventId: string;
   eventStatus: string;
   role: AppRole | null;
+  /** Server capability report (0079) — null while loading. */
+  capabilities: Set<string> | null;
   canReadCost: boolean;
 }
 
@@ -39,6 +43,7 @@ export function WarehousePanel({
   eventId,
   eventStatus,
   role,
+  capabilities,
   canReadCost,
 }: WarehousePanelProps) {
   const panel = useWarehousePanel({ orgId, eventId, canReadCost });
@@ -53,6 +58,12 @@ export function WarehousePanel({
   if (!warehouse.data) return <p>تعذر تحميل حالة المخزن.</p>;
 
   const { lines, defects, summary } = warehouse.data;
+  // 0079: movements are warehouse.dispatch, reconciliation is warehouse.reconcile.
+  const canOperate = canOperateWarehouse(role, capabilities);
+  const canReconcile = canReconcileWarehouse(role, capabilities);
+  // Evidence capture is still ROLE-based server-side: the attachments storage
+  // policy (0074) allows OWNER/MANAGER/WAREHOUSE only, and 0079 left it that
+  // way — so the UI mirrors the role set, not a capability.
   const canCaptureEvidence =
     role === "OWNER" || role === "MANAGER" || role === "WAREHOUSE";
 
@@ -106,7 +117,7 @@ export function WarehousePanel({
               orgId={orgId}
               line={line}
               eventStatus={eventStatus}
-              role={role}
+              canOperate={canOperate}
               canReadCost={canReadCost}
               canCaptureEvidence={canCaptureEvidence}
               busy={panel.busy}
@@ -118,7 +129,7 @@ export function WarehousePanel({
       )}
 
       <WarehouseReconcileSection
-        role={role}
+        canReconcile={canReconcile}
         summary={summary}
         busy={panel.busy}
         confirming={panel.confirmingReconcile}

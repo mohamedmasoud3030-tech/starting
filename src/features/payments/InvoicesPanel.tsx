@@ -1,4 +1,10 @@
 import { useState, type FormEvent } from "react";
+import { FileText } from "lucide-react";
+import { useAuth } from "@/app/authContext";
+import { buildDocumentIdentity } from "@/components/documents/documentIdentity";
+import { useOrganizationSettings } from "@/features/settings/settings.api";
+import { PrintDocumentDialog } from "@/features/documents/PrintDocumentDialog";
+import { InvoiceDocument } from "@/features/documents/InvoiceDocument";
 import { InlineError } from "@/components/ui/ErrorState";
 import { VoidReasonPanel } from "@/components/ui/VoidReasonPanel";
 import { Badge } from "@/components/ui/Badge";
@@ -32,6 +38,7 @@ export function InvoicesPanel({
   orgId,
   eventId,
   eventNumber,
+  customerName,
   canReadCost,
   canMutate,
   acceptedRevenueMilli,
@@ -39,6 +46,7 @@ export function InvoicesPanel({
   orgId: string | null;
   eventId: string;
   eventNumber: string;
+  customerName: string | null;
   canReadCost: boolean;
   canMutate: boolean;
   /**
@@ -48,11 +56,14 @@ export function InvoicesPanel({
    */
   acceptedRevenueMilli: number | null;
 }) {
+  const { currentOrganization } = useAuth();
+  const settings = useOrganizationSettings(orgId);
   const invoice = useEventInvoice(orgId, eventId);
   const installments = useEventInstallments(orgId, eventId);
   const createInvoice = useCreateInvoice(orgId, eventId);
   const voidInvoice = useVoidInvoice(orgId, eventId);
 
+  const [printOpen, setPrintOpen] = useState(false);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
   const [confirmingVoid, setConfirmingVoid] = useState(false);
@@ -200,15 +211,21 @@ export function InvoicesPanel({
           <h2 className="text-xl font-black">فاتورة {inv.invoiceNumber}</h2>
           <p className="mt-1 text-slate-600">{inv.eventTitle}</p>
         </div>
-        {canMutate && (
-          <Button
-            variant="outline"
-            onClick={() => setConfirmingVoid(true)}
-            disabled={voidInvoice.isPending}
-          >
-            إلغاء الفاتورة
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => setPrintOpen(true)}>
+            <FileText className="h-4 w-4" />
+            طباعة الفاتورة
           </Button>
-        )}
+          {canMutate && (
+            <Button
+              variant="outline"
+              onClick={() => setConfirmingVoid(true)}
+              disabled={voidInvoice.isPending}
+            >
+              إلغاء الفاتورة
+            </Button>
+          )}
+        </div>
       </div>
 
       {confirmingVoid && (
@@ -274,6 +291,25 @@ export function InvoicesPanel({
           </ul>
         )}
       </div>
+
+      <PrintDocumentDialog
+        open={printOpen}
+        onOpenChange={setPrintOpen}
+        title="الفاتورة"
+        description="الفاتورة من النموذج الرسمي — القيم والضريبة مثبتة وقت الإصدار."
+      >
+        {inv && (
+          <InvoiceDocument
+            identity={buildDocumentIdentity(
+              currentOrganization,
+              settings.data ?? null,
+            )}
+            invoice={inv}
+            installments={rows}
+            customerName={customerName}
+          />
+        )}
+      </PrintDocumentDialog>
     </section>
   );
 }

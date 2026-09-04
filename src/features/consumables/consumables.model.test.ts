@@ -234,34 +234,34 @@ function line(overrides: Partial<EventConsumableLine> = {}): EventConsumableLine
 describe("issueBlock", () => {
   it("allows issuing for a preparing Event", () => {
     expect(
-      issueBlock({ role: "WAREHOUSE", eventStatus: "PREPARING", isReconciled: false }),
+      issueBlock({ canOperate: canOperateConsumables("WAREHOUSE"), eventStatus: "PREPARING", isReconciled: false }),
     ).toEqual({ blocked: false });
   });
 
   it("blocks with explicit Arabic reasons", () => {
     const notAuth = issueBlock({
-      role: "ACCOUNTANT",
+      canOperate: canOperateConsumables("ACCOUNTANT"),
       eventStatus: "PREPARING",
       isReconciled: false,
     });
     expect(issueBlockMessage(notAuth)).toBe("لا تملك صلاحية صرف المواد.");
 
     const rec = issueBlock({
-      role: "OWNER",
+      canOperate: canOperateConsumables("OWNER"),
       eventStatus: "PREPARING",
       isReconciled: true,
     });
     expect(issueBlockMessage(rec)).toContain("تمت تسوية");
 
     const draft = issueBlock({
-      role: "OWNER",
+      canOperate: canOperateConsumables("OWNER"),
       eventStatus: "DRAFT",
       isReconciled: false,
     });
     expect(issueBlockMessage(draft)).toContain("حالة المناسبة");
 
     const cancelled = issueBlock({
-      role: "OWNER",
+      canOperate: canOperateConsumables("OWNER"),
       eventStatus: "CANCELLED",
       isReconciled: false,
     });
@@ -271,25 +271,25 @@ describe("issueBlock", () => {
 
 describe("custodyBlock", () => {
   it("allows custody reduction while stock is outstanding", () => {
-    expect(custodyBlock({ role: "WAREHOUSE", line: line() })).toEqual({
+    expect(custodyBlock({ canOperate: canOperateConsumables("WAREHOUSE"), line: line() })).toEqual({
       blocked: false,
     });
   });
 
   it("blocks when nothing is outstanding, after reconciliation, or without a role", () => {
     const nothing = custodyBlock({
-      role: "WAREHOUSE",
+      canOperate: canOperateConsumables("WAREHOUSE"),
       line: line({ outstandingMilli: 0 }),
     });
     expect(custodyBlockMessage(nothing)).toBe("لا توجد كمية متبقية مع المناسبة.");
 
     const rec = custodyBlock({
-      role: "WAREHOUSE",
+      canOperate: canOperateConsumables("WAREHOUSE"),
       line: line({ isReconciled: true }),
     });
     expect(custodyBlockMessage(rec)).toContain("تمت تسوية");
 
-    const noAuth = custodyBlock({ role: "ACCOUNTANT", line: line() });
+    const noAuth = custodyBlock({ canOperate: canOperateConsumables("ACCOUNTANT"), line: line() });
     expect(noAuth.blocked).toBe(true);
   });
 });
@@ -309,13 +309,13 @@ function summary(overrides: Partial<ConsumableSummary> = {}): ConsumableSummary 
 
 describe("reconcileConsumablesBlock", () => {
   it("allows OWNER/MANAGER once nothing is outstanding", () => {
-    expect(reconcileConsumablesBlock({ role: "OWNER", summary: summary() })).toEqual(
+    expect(reconcileConsumablesBlock({ canManage: canManageConsumables("OWNER"), summary: summary() })).toEqual(
       { blocked: false },
     );
   });
 
   it("blocks WAREHOUSE from reconciliation", () => {
-    const block = reconcileConsumablesBlock({ role: "WAREHOUSE", summary: summary() });
+    const block = reconcileConsumablesBlock({ canManage: canManageConsumables("WAREHOUSE"), summary: summary() });
     expect(reconcileConsumablesBlockMessage(block)).toBe(
       "التسوية النهائية من صلاحية المالك أو المدير فقط.",
     );
@@ -323,7 +323,7 @@ describe("reconcileConsumablesBlock", () => {
 
   it("blocks while quantities remain outstanding, with the exact amount", () => {
     const block = reconcileConsumablesBlock({
-      role: "OWNER",
+      canManage: canManageConsumables("OWNER"),
       summary: summary({ outstandingMilli: 1250, status: "OUTSTANDING" }),
     });
     expect(reconcileConsumablesBlockMessage(block)).toContain("1.25");
@@ -332,13 +332,13 @@ describe("reconcileConsumablesBlock", () => {
   it("blocks re-reconciliation and empty Events", () => {
     expect(
       reconcileConsumablesBlock({
-        role: "OWNER",
+        canManage: canManageConsumables("OWNER"),
         summary: summary({ isReconciled: true, status: "RECONCILED" }),
       }).blocked,
     ).toBe(true);
     expect(
       reconcileConsumablesBlock({
-        role: "OWNER",
+        canManage: canManageConsumables("OWNER"),
         summary: summary({ issuedMilli: 0, status: "NO_CONSUMABLES" }),
       }).blocked,
     ).toBe(true);

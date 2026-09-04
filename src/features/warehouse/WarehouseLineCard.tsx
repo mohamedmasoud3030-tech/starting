@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { AppRole } from "@/lib/dbTypes";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -77,7 +76,7 @@ export function WarehouseLineCard({
   orgId,
   line,
   eventStatus,
-  role,
+  canOperate,
   canReadCost,
   canCaptureEvidence,
   onDispatch,
@@ -87,7 +86,8 @@ export function WarehouseLineCard({
   orgId: string | null;
   line: WarehouseLine;
   eventStatus: string;
-  role: AppRole | null;
+  /** warehouse.dispatch — precomputed by the panel. */
+  canOperate: boolean;
   canReadCost: boolean;
   canCaptureEvidence: boolean;
   onDispatch: (line: WarehouseLine, quantity: number, reference: string) => void;
@@ -107,8 +107,8 @@ export function WarehouseLineCard({
   const [notes, setNotes] = useState("");
   const [localError, setLocalError] = useState("");
 
-  const dBlock = dispatchBlock({ role, eventStatus, line });
-  const rBlock = returnBlock({ role, line });
+  const dBlock = dispatchBlock({ canOperate, eventStatus, line });
+  const rBlock = returnBlock({ canOperate, line });
 
   function submitDispatch() {
     const check = validateDispatchQuantity(dispatchQty, line);

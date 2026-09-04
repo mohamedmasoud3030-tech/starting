@@ -24,9 +24,9 @@ import { TrackNewItem } from "./TrackNewItem";
 import { useConsumablesPage } from "./useConsumablesPage";
 
 export function ConsumablesPage() {
-  const { currentOrganization, currentRole } = useAuth();
+  const { currentOrganization, currentRole, capabilities } = useAuth();
   const orgId = currentOrganization?.id ?? null;
-  const page = useConsumablesPage(orgId, currentRole);
+  const page = useConsumablesPage(orgId, currentRole, capabilities);
 
   if (page.stock.isLoading) {
     return <LoadingState label="جارٍ تحميل المخزون…" full />;

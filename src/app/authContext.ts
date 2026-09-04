@@ -26,12 +26,37 @@ export interface AuthContextValue {
   currentMembership: MembershipRow | null;
   /** The single role the user holds INSIDE the current organization. */
   currentRole: AppRole | null;
-  /** OWNER or MANAGER within the CURRENT organization only. */
+  /**
+   * The caller's EFFECTIVE capability set in the current organization,
+   * computed server-side (`my_capabilities`): role preset + owner overrides.
+   * `null` only while the report is still loading (UI keeps its role-derived
+   * fallback). If the report errors, the UI fails closed with an empty set.
+   * This is the single source of truth for every capability-based UI
+   * affordance; the database remains the security boundary.
+   */
+  capabilities: Set<string> | null;
+  /** Capability-based UI gate (see `capabilities`). */
+  hasCapability: (capability: string) => boolean;
+  /** OWNER or MANAGER within the CURRENT organization (capability-backed, role fallback while loading). */
   canManageCommercial: boolean;
-  /** OWNER, MANAGER, or ACCOUNTANT within the CURRENT organization only. */
+  /**
+   * quotation.issue — issue/accept/convert/reject/expire quotations. Distinct
+   * from `canManageCommercial` (quotation.manage) per the 0079 RPC gates, even
+   * though the role presets are identical today.
+   */
+  canIssueQuotation: boolean;
+  /** cost.visibility within the CURRENT organization (capability-backed, role fallback while loading). */
   canReadCost: boolean;
-  /** OWNER, MANAGER, or SUPERVISOR within the CURRENT organization only. */
+  /** payroll.read within the CURRENT organization (capability-backed, role fallback while loading). */
+  canReadPayroll: boolean;
+  /** customer.manage within the CURRENT organization (capability-backed, role fallback while loading). */
   canWriteCustomers: boolean;
+  /**
+   * Claim a single-use organization invitation (migration 0079): the
+   * invitation's email must match the signed-in user's email. On success the
+   * provider reloads memberships and the application shell appears.
+   */
+  claimInvitation: (code: string) => Promise<void>;
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;

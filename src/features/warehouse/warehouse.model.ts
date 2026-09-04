@@ -143,7 +143,12 @@ export function parseWarehouseLine(
 // this exists so the operator is never shown a button that will be rejected.
 // ---------------------------------------------------------------------------
 
-/** Roles that may perform physical warehouse movements. */
+/**
+ * Loading-only fallback presets (0079) — identical to the server's
+ * `role_default_capability` for the matching capabilities.
+ */
+
+/** Role preset for `warehouse.dispatch` — physical warehouse movements. */
 export const WAREHOUSE_OPERATION_ROLES: AppRole[] = [
   "OWNER",
   "MANAGER",
@@ -151,15 +156,44 @@ export const WAREHOUSE_OPERATION_ROLES: AppRole[] = [
   "WAREHOUSE",
 ];
 
-/** Roles that may finalize the warehouse reconciliation of an Event. */
+/** Role preset for `warehouse.reconcile` — finalizing an Event. */
 export const WAREHOUSE_RECONCILE_ROLES: AppRole[] = ["OWNER", "MANAGER"];
 
-export function canOperateWarehouse(role: AppRole | null): boolean {
-  return role !== null && WAREHOUSE_OPERATION_ROLES.includes(role);
+function capabilityAllowed(
+  capability: string,
+  fallbackRoles: AppRole[],
+  role: AppRole | null,
+  capabilities: Set<string> | null,
+): boolean {
+  return capabilities !== null
+    ? capabilities.has(capability)
+    : role !== null && fallbackRoles.includes(role);
 }
 
-export function canReconcileWarehouse(role: AppRole | null): boolean {
-  return role !== null && WAREHOUSE_RECONCILE_ROLES.includes(role);
+/** warehouse.dispatch — reserve / dispatch / return / release equipment. */
+export function canOperateWarehouse(
+  role: AppRole | null,
+  capabilities: Set<string> | null = null,
+): boolean {
+  return capabilityAllowed(
+    "warehouse.dispatch",
+    WAREHOUSE_OPERATION_ROLES,
+    role,
+    capabilities,
+  );
+}
+
+/** warehouse.reconcile — finalize the warehouse reconciliation of an Event. */
+export function canReconcileWarehouse(
+  role: AppRole | null,
+  capabilities: Set<string> | null = null,
+): boolean {
+  return capabilityAllowed(
+    "warehouse.reconcile",
+    WAREHOUSE_RECONCILE_ROLES,
+    role,
+    capabilities,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -188,11 +222,12 @@ const DISPATCHABLE_EVENT_STATUSES = [
 ];
 
 export function dispatchBlock(input: {
-  role: AppRole | null;
+  /** warehouse.dispatch — precomputed by the caller. */
+  canOperate: boolean;
   eventStatus: string;
   line: WarehouseLine;
 }): DispatchBlock {
-  if (!canOperateWarehouse(input.role)) {
+  if (!input.canOperate) {
     return { blocked: true, reason: "NOT_AUTHORIZED" };
   }
   if (input.line.isReconciled) {
@@ -215,10 +250,11 @@ export type ReturnBlock =
   | { blocked: true; reason: "NOT_AUTHORIZED" | "RECONCILED" | "NOTHING_OUTSTANDING" };
 
 export function returnBlock(input: {
-  role: AppRole | null;
+  /** warehouse.dispatch — precomputed by the caller. */
+  canOperate: boolean;
   line: WarehouseLine;
 }): ReturnBlock {
-  if (!canOperateWarehouse(input.role)) {
+  if (!input.canOperate) {
     return { blocked: true, reason: "NOT_AUTHORIZED" };
   }
   if (input.line.isReconciled) {
@@ -239,10 +275,11 @@ export type ReconcileBlock =
     };
 
 export function reconcileBlock(input: {
-  role: AppRole | null;
+  /** warehouse.reconcile — precomputed by the caller. */
+  canReconcile: boolean;
   summary: WarehouseSummary;
 }): ReconcileBlock {
-  if (!canReconcileWarehouse(input.role)) {
+  if (!input.canReconcile) {
     return { blocked: true, reason: "NOT_AUTHORIZED" };
   }
   if (input.summary.is_reconciled) {

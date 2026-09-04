@@ -9,15 +9,26 @@ import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { visibleNavGroups } from "./navConfig";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { currentOrganization, canManageCommercial, canReadCost, logout } =
-    useAuth();
+  const {
+    currentOrganization,
+    canManageCommercial,
+    canIssueQuotation,
+    canReadCost,
+    canReadPayroll,
+    logout,
+  } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   const orgName =
     currentOrganization?.display_name ??
     currentOrganization?.name ??
     "إدارة الضيافة";
-  const groups = visibleNavGroups(canManageCommercial, canReadCost);
+  const groups = visibleNavGroups(
+    canManageCommercial,
+    canIssueQuotation,
+    canReadCost,
+    canReadPayroll,
+  );
 
   return (
     <div className="min-h-dvh bg-slate-50">

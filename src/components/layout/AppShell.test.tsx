@@ -44,7 +44,9 @@ function mockAuth() {
     },
     switchOrganization,
     canManageCommercial: true,
+    canIssueQuotation: true,
     canReadCost: true,
+    canReadPayroll: true,
     logout,
   } as never);
 }

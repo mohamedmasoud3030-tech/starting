@@ -21,6 +21,7 @@ import { AuthProvider } from "./AuthContext";
 import { useAuth } from "./authContext";
 
 const USER_ID = "user-1";
+const capabilityRpcState = vi.hoisted(() => ({ fail: false }));
 
 const memberships = [
   {
@@ -85,6 +86,34 @@ vi.mock("@/lib/supabase", () => ({
       signOut: () => Promise.resolve({ error: null }),
     },
     from: (table: string) => tableStub(table),
+    // The capability report follows the membership: OWNER preset in org-a,
+    // WAREHOUSE preset in org-b.
+    rpc: (name: string, args: Record<string, unknown>) => {
+      if (name === "my_capabilities") {
+        if (capabilityRpcState.fail) {
+          return Promise.resolve({
+            data: null,
+            error: { message: "CAPABILITY_REPORT_UNAVAILABLE" },
+          });
+        }
+        const report =
+          args.p_org_id === "org-b"
+            ? {
+                "quotation.manage": false,
+                "cost.visibility": false,
+                "warehouse.dispatch": true,
+                "consumable.manage": true,
+              }
+            : {
+                "quotation.manage": true,
+                "cost.visibility": true,
+                "warehouse.dispatch": true,
+                "consumable.manage": true,
+              };
+        return Promise.resolve({ data: report, error: null });
+      }
+      return Promise.resolve({ data: null, error: null });
+    },
   },
 }));
 
@@ -113,12 +142,35 @@ let queryClient: QueryClient;
 
 beforeEach(() => {
   localStorage.clear();
+  capabilityRpcState.fail = false;
   queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
 });
 
 describe("organization switching (integration)", () => {
+  it("fails closed when the authoritative capability report errors", async () => {
+    capabilityRpcState.fail = true;
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <Probe />
+        </AuthProvider>
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId("org").textContent).toBe("org-a"),
+    );
+    expect(screen.getByTestId("role").textContent).toBe("OWNER");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("commercial").textContent).toBe("false");
+      expect(screen.getByTestId("cost").textContent).toBe("false");
+    });
+  });
+
   it("recomputes role + capabilities and clears every cached tenant row", async () => {
     render(
       <QueryClientProvider client={queryClient}>
@@ -155,13 +207,19 @@ describe("organization switching (integration)", () => {
     expect(screen.getByTestId("commercial").textContent).toBe("false");
     expect(screen.getByTestId("cost").textContent).toBe("false");
 
-    // No previous-tenant row survives the identity change.
+    // No previous-tenant row survives the identity change: the seeded rows
+    // are gone and no cached query is keyed on the previous organization
+    // (the new tenant's own queries are fine to exist).
     await waitFor(() => {
       expect(queryClient.getQueryData(["events", "org-a"])).toBeUndefined();
       expect(
         queryClient.getQueryData(["event-finance", "org-a", "event-a"]),
       ).toBeUndefined();
-      expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+      const stale = queryClient
+        .getQueryCache()
+        .getAll()
+        .filter((q) => String(q.queryHash).includes("org-a"));
+      expect(stale).toHaveLength(0);
     });
 
     // The selection is remembered for the next visit.

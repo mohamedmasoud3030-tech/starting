@@ -1,6 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { AppRole } from "@/lib/dbTypes";
-import { canManageCommercialFor, canReadCostFor } from "@/app/authRoles";
+import { canReadCostFor } from "@/app/authRoles";
 import { fromDbAmount, parseQuantityMilli, toOMRString } from "@/lib/money";
 import type {
   CreateProcurementOrderInput,
@@ -32,16 +32,24 @@ import {
   mapReceipts,
 } from "./orderMapping";
 
+/**
+ * Capability-derived order controls. Mirrors the 0079 server gates exactly:
+ * lifecycle commands (approve/send/confirm/cancel) require procurement.manage
+ * and receiving requires warehouse.dispatch. A receiver without
+ * procurement.manage handles physical (consumable) lines only — the UI may be
+ * stricter than the server, never wider.
+ */
 function deriveOrderCapabilities(
   status: ProcurementOrderStatus,
-  role: AppRole | null,
+  access: { canProcure: boolean; canReceive: boolean },
   lines: Array<{
     line_kind?: string | null;
     remaining_quantity?: number | string | null;
     remainingQuantityMilli?: number;
   }>,
 ): OrderCapabilities {
-  const canCommercial = canManageCommercialFor(role);
+  const canReceiveRole = access.canReceive;
+  const canProcure = access.canProcure;
   const isTerminal = status === "RECEIVED" || status === "CANCELLED";
   const hasRemaining = lines.some((l) => {
     const rem =
@@ -51,52 +59,48 @@ function deriveOrderCapabilities(
     return rem > 0;
   });
 
-  const canReceiveRole =
-    role === "OWNER" ||
-    role === "MANAGER" ||
-    role === "SUPERVISOR" ||
-    role === "WAREHOUSE";
   const canReceiveStatus =
     status === "CONFIRMED" || status === "PARTIALLY_RECEIVED";
-  const warehouseOnlyPhysical =
-    role === "WAREHOUSE"
-      ? lines.some(
-          (l) =>
-            l.line_kind === "CONSUMABLE" &&
-            (typeof l.remainingQuantityMilli === "number"
-              ? l.remainingQuantityMilli > 0
-              : parseQuantityMilli(l.remaining_quantity ?? 0) > 0),
-        )
-      : true;
+  // A receiver without procurement.manage handles physical lines only.
+  const physicalOnlyReceiver = !canProcure && canReceiveRole;
+  const warehouseOnlyPhysical = physicalOnlyReceiver
+    ? lines.some(
+        (l) =>
+          l.line_kind === "CONSUMABLE" &&
+          (typeof l.remainingQuantityMilli === "number"
+            ? l.remainingQuantityMilli > 0
+            : parseQuantityMilli(l.remaining_quantity ?? 0) > 0),
+      )
+    : true;
 
   return {
     approve: {
-      allowed: canCommercial && status === "DRAFT",
-      reason: !canCommercial
+      allowed: canProcure && status === "DRAFT",
+      reason: !canProcure
         ? "PERMISSION_DENIED"
         : status !== "DRAFT"
           ? "INVALID_LIFECYCLE"
           : undefined,
     },
     send: {
-      allowed: canCommercial && status === "APPROVED",
-      reason: !canCommercial
+      allowed: canProcure && status === "APPROVED",
+      reason: !canProcure
         ? "PERMISSION_DENIED"
         : status !== "APPROVED"
           ? "INVALID_LIFECYCLE"
           : undefined,
     },
     confirm: {
-      allowed: canCommercial && status === "SENT",
-      reason: !canCommercial
+      allowed: canProcure && status === "SENT",
+      reason: !canProcure
         ? "PERMISSION_DENIED"
         : status !== "SENT"
           ? "INVALID_LIFECYCLE"
           : undefined,
     },
     cancel: {
-      allowed: canCommercial && !isTerminal,
-      reason: !canCommercial
+      allowed: canProcure && !isTerminal,
+      reason: !canProcure
         ? "PERMISSION_DENIED"
         : isTerminal
           ? "ORDER_NOT_CANCELLABLE"
@@ -121,19 +125,36 @@ function deriveOrderCapabilities(
   };
 }
 
+/** Loading-only fallback: the server's `role_default_capability` preset. */
+const DISPATCH_ROLES: AppRole[] = ["OWNER", "MANAGER", "SUPERVISOR", "WAREHOUSE"];
+const PROCUREMENT_ROLES: AppRole[] = ["OWNER", "MANAGER"];
+
 export function createSupabaseProcurementDataSource(
   organizationId: string,
   role: AppRole | null,
+  capabilities: Set<string> | null = null,
 ): ProcurementDataSource {
-  const canCost = canReadCostFor(role);
-  const canCommercial = canManageCommercialFor(role);
+  // 0079: the server capability report decides; while it loads the role
+  // preset (identical for members without owner overrides) keeps the UI stable.
+  const canCost =
+    capabilities !== null
+      ? capabilities.has("cost.visibility")
+      : canReadCostFor(role);
+  const canProcure =
+    capabilities !== null
+      ? capabilities.has("procurement.manage")
+      : role !== null && PROCUREMENT_ROLES.includes(role);
+  const canReceive =
+    capabilities !== null
+      ? capabilities.has("warehouse.dispatch")
+      : role !== null && DISPATCH_ROLES.includes(role);
 
   return {
     async getAccess(): Promise<ProcurementAccess> {
       return {
         canViewCommercialAmounts: canCost,
-        canCreateSupplier: canCommercial,
-        canCreateOrder: canCommercial,
+        canCreateSupplier: canProcure,
+        canCreateOrder: canProcure,
       };
     },
 
@@ -191,12 +212,12 @@ export function createSupabaseProcurementDataSource(
           openOrderCount,
           capabilities: {
             edit: {
-              allowed: canCommercial,
-              reason: canCommercial ? undefined : "PERMISSION_DENIED",
+              allowed: canProcure,
+              reason: canProcure ? undefined : "PERMISSION_DENIED",
             },
             deactivate: {
-              allowed: canCommercial && row.status === "ACTIVE",
-              reason: !canCommercial
+              allowed: canProcure && row.status === "ACTIVE",
+              reason: !canProcure
                 ? "PERMISSION_DENIED"
                 : row.status !== "ACTIVE"
                   ? "INVALID_LIFECYCLE"
@@ -256,12 +277,12 @@ export function createSupabaseProcurementDataSource(
             lastOrderAt: null,
             capabilities: {
               edit: {
-                allowed: canCommercial,
-                reason: canCommercial ? undefined : "PERMISSION_DENIED",
+                allowed: canProcure,
+                reason: canProcure ? undefined : "PERMISSION_DENIED",
               },
               deactivate: {
-                allowed: canCommercial && data.status === "ACTIVE",
-                reason: !canCommercial
+                allowed: canProcure && data.status === "ACTIVE",
+                reason: !canProcure
                   ? "PERMISSION_DENIED"
                   : data.status !== "ACTIVE"
                     ? "INVALID_LIFECYCLE"
@@ -294,12 +315,12 @@ export function createSupabaseProcurementDataSource(
           lastOrderAt: null,
           capabilities: {
             edit: {
-              allowed: canCommercial,
-              reason: canCommercial ? undefined : "PERMISSION_DENIED",
+              allowed: canProcure,
+              reason: canProcure ? undefined : "PERMISSION_DENIED",
             },
             deactivate: {
-              allowed: canCommercial && data.status === "ACTIVE",
-              reason: !canCommercial
+              allowed: canProcure && data.status === "ACTIVE",
+              reason: !canProcure
                 ? "PERMISSION_DENIED"
                 : data.status !== "ACTIVE"
                   ? "INVALID_LIFECYCLE"
@@ -471,7 +492,7 @@ export function createSupabaseProcurementDataSource(
             status,
             negotiatedTotalMilli,
             outstandingDeliveryCount: outstandingCount,
-            capabilities: deriveOrderCapabilities(status, role, orderLines),
+            capabilities: deriveOrderCapabilities(status, { canProcure, canReceive }, orderLines),
           };
         },
       );
@@ -517,7 +538,7 @@ export function createSupabaseProcurementDataSource(
         );
 
         const orderLines: ProcurementOrderLine[] = detail.lines.map((l) =>
-          mapOrderLine(l, status, role, {
+          mapOrderLine(l, status, { canReceive, canProcure }, {
             unitCostMilli: fromDbAmount(l.agreed_unit_cost),
             lineTotalMilli: fromDbAmount(l.agreed_total_cost),
           }),
@@ -542,7 +563,7 @@ export function createSupabaseProcurementDataSource(
           status,
           negotiatedTotalMilli: fromDbAmount(order.agreed_total_cost),
           outstandingDeliveryCount: countOutstandingDeliveries(status, orderLines),
-          capabilities: deriveOrderCapabilities(status, role, orderLines),
+          capabilities: deriveOrderCapabilities(status, { canProcure, canReceive }, orderLines),
           notes: order.notes ?? null,
           lines: orderLines,
           receipts,
@@ -590,7 +611,7 @@ export function createSupabaseProcurementDataSource(
 
         const orderLines: ProcurementOrderLine[] = (linesRes.data ?? []).map(
           (l) =>
-            mapOrderLine(l, status, role, {
+            mapOrderLine(l, status, { canReceive, canProcure }, {
               unitCostMilli: null,
               lineTotalMilli: null,
             }),
@@ -615,7 +636,7 @@ export function createSupabaseProcurementDataSource(
           status,
           negotiatedTotalMilli: null,
           outstandingDeliveryCount: countOutstandingDeliveries(status, orderLines),
-          capabilities: deriveOrderCapabilities(status, role, orderLines),
+          capabilities: deriveOrderCapabilities(status, { canProcure, canReceive }, orderLines),
           notes: null,
           lines: orderLines,
           receipts,

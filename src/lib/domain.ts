@@ -58,14 +58,37 @@ export const CUSTOMER_TYPE_LABELS: Record<CustomerType, string> = {
   GOVERNMENT: "جهة حكومية",
 };
 
-/** Roles permitted to manage commercial configuration (catalog & packages). */
+/**
+ * Loading-only fallback presets (0079): each array mirrors the server's
+ * `role_default_capability` for the named capability, so the UI before the
+ * server capability report arrives matches what the database will grant
+ * members without owner overrides. They are NOT the authorization — the
+ * server capability report is.
+ */
+
+/** Role preset for `quotation.manage`. */
 export const COMMERCIAL_ROLES: AppRole[] = ["OWNER", "MANAGER"];
 
-/** Roles permitted to READ sensitive commercial cost data (cost/internal notes). */
+/** Role preset for `cost.visibility`. */
 export const COST_READER_ROLES: AppRole[] = ["OWNER", "MANAGER", "ACCOUNTANT"];
 
-/** Roles permitted to write customers (create/update/delete). */
+/** Role preset for `customer.manage`. */
 export const CUSTOMER_WRITE_ROLES: AppRole[] = ["OWNER", "MANAGER", "SUPERVISOR"];
 
-/** Roles permitted to record/void customer payments (financial mutations). */
-export const PAYMENT_WRITE_ROLES: AppRole[] = ["OWNER", "MANAGER", "ACCOUNTANT"];
+/** Role preset for `payroll.read` — the payroll read surfaces. */
+export const PAYROLL_READ_ROLES: AppRole[] = ["OWNER", "MANAGER", "ACCOUNTANT"];
+
+/** Role preset for `payroll.pay` — recording/voiding payouts and advances. */
+export const PAYROLL_PAY_ROLES: AppRole[] = ["OWNER", "MANAGER", "ACCOUNTANT"];
+
+/** Role preset for `staff.manage` — the staff roster. */
+export const STAFF_MANAGE_ROLES: AppRole[] = ["OWNER", "MANAGER"];
+
+/**
+ * Roles that may assign / release event staff. The server gate
+ * (`assign_event_staff` / `release_staff_assignment`, migration 0015) is a
+ * direct `has_org_role(OWNER, MANAGER, SUPERVISOR)` check — deliberately left
+ * role-based by 0079, so the UI mirrors the role set rather than a capability
+ * the backend does not consult here.
+ */
+export const STAFF_ASSIGN_ROLES: AppRole[] = ["OWNER", "MANAGER", "SUPERVISOR"];

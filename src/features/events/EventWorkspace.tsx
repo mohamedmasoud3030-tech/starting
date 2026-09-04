@@ -1,6 +1,16 @@
 import { useState } from "react";
+import { ClipboardCheck, ClipboardX } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Spinner } from "@/components/ui/Spinner";
 import { InlineError } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { useAuth } from "@/app/authContext";
+import { buildDocumentIdentity } from "@/components/documents/documentIdentity";
+import { useOrganizationSettings } from "@/features/settings/settings.api";
+import { useWarehouseSheetLines } from "@/features/documents/documents.api";
+import { PrintDocumentDialog } from "@/features/documents/PrintDocumentDialog";
+import { WarehouseSheet } from "@/features/documents/WarehouseSheet";
 import { EditEventDialog } from "./workspace/EditEventDialog";
 import { AttendancePanel } from "@/features/staff/AttendancePanel";
 import { HostPayrollPanel } from "@/features/staff/HostPayrollPanel";
@@ -23,9 +33,16 @@ import { useEventWorkspace } from "./useEventWorkspace";
 
 export function EventWorkspace() {
   const ws = useEventWorkspace();
+  const { currentOrganization } = useAuth();
+  const settings = useOrganizationSettings(ws.orgId);
   // Hook-first: edit dialog state lives above the early returns (rules of
   // hooks) even though the dialog only renders for editable events.
   const [editOpen, setEditOpen] = useState(false);
+  const [sheetMode, setSheetMode] = useState<"PREP" | "RETURN" | null>(null);
+  const sheetLines = useWarehouseSheetLines(
+    ws.orgId,
+    sheetMode ? ws.eventId : null,
+  );
 
   if (ws.isLoading) {
     return <LoadingState label="جارٍ تحميل المناسبة…" />;
@@ -78,7 +95,8 @@ export function EventWorkspace() {
         <OverviewTab
           event={ev}
           customerName={customerName}
-          canCommercial={ws.canCommercial}
+          canManage={ws.canManage}
+          canCost={ws.canCost}
           canFinance={ws.canFinance}
           run={ws.run}
           report={readinessReport}
@@ -105,7 +123,7 @@ export function EventWorkspace() {
           staff={d.staff}
           assignments={d.assignments}
           run={ws.run}
-          canAssign={ws.canAttendance}
+          canAssign={ws.canAssignStaff}
           canCost={ws.canCost}
           onOpenAttendance={
             ws.canAttendance ? () => ws.setTab("الحضور") : undefined
@@ -118,19 +136,32 @@ export function EventWorkspace() {
           orgId={ws.orgId}
           capacities={d.capacities}
           reservations={d.reservations}
-          canProvision={ws.canCommercial}
+          canProvision={ws.canDispatch}
           run={ws.run}
         />
       )}
 
       {ws.tab === "المخزن" && (
-        <WarehousePanel
-          orgId={ws.orgId}
-          eventId={ws.eventId}
-          eventStatus={ev.status}
-          role={ws.currentRole}
-          canReadCost={ws.canCost}
-        />
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSheetMode("PREP")}>
+              <ClipboardCheck className="h-4 w-4" />
+              أمر تجهيز المخزن
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setSheetMode("RETURN")}>
+              <ClipboardX className="h-4 w-4" />
+              كشف استرجاع المخزن
+            </Button>
+          </div>
+          <WarehousePanel
+            orgId={ws.orgId}
+            eventId={ws.eventId}
+            eventStatus={ev.status}
+            role={ws.currentRole}
+            capabilities={ws.capabilities}
+            canReadCost={ws.canCost}
+          />
+        </div>
       )}
 
       {ws.tab === "المواد" && (
@@ -139,6 +170,7 @@ export function EventWorkspace() {
           eventId={ws.eventId}
           eventStatus={ev.status}
           role={ws.currentRole}
+          capabilities={ws.capabilities}
         />
       )}
 
@@ -155,7 +187,8 @@ export function EventWorkspace() {
           orgId={ws.orgId}
           eventId={ws.eventId}
           canReadCost={ws.canCost}
-          canMutate={ws.canFinance}
+          canRecord={ws.canRecordPayment}
+          canVoid={ws.canVoidPayment}
         />
       )}
 
@@ -164,8 +197,9 @@ export function EventWorkspace() {
           orgId={ws.orgId}
           eventId={ws.eventId}
           eventNumber={ev.event_number}
+          customerName={customerName}
           canReadCost={ws.canCost}
-          canMutate={ws.canFinance}
+          canMutate={ws.canInvoices}
           acceptedRevenueMilli={
             // null while the finance read model is unresolved: unknown must
             // render as loading, never as a fabricated 0 that claims
@@ -212,16 +246,50 @@ export function EventWorkspace() {
         <HostPayrollPanel
           orgId={ws.orgId}
           eventId={ws.eventId}
-          canMutate={ws.canFinance}
+          canMutate={ws.canPayrollPay}
         />
       )}
 
       {ws.tab === "السجل" && (
         <HistoryTab
           history={d.history}
-          audit={ws.canCommercial ? (ws.audit.data ?? []) : []}
+          audit={ws.canViewAudit ? (ws.audit.data ?? []) : []}
         />
       )}
+
+      <PrintDocumentDialog
+        open={sheetMode !== null}
+        onOpenChange={(open) => {
+          if (!open) setSheetMode(null);
+        }}
+        title={sheetMode === "RETURN" ? "كشف استرجاع المخزن" : "أمر تجهيز المخزن"}
+        description="كميات رسمية من بيانات المناسبة — بلا أي بيانات مالية، للتعبئة والتوقيع على الورق."
+      >
+        {sheetLines.isLoading && (
+          <div className="flex justify-center py-10">
+            <Spinner className="h-7 w-7" />
+          </div>
+        )}
+        {!sheetLines.isLoading && sheetMode && (
+          <WarehouseSheet
+            identity={buildDocumentIdentity(
+              currentOrganization,
+              settings.data ?? null,
+            )}
+            mode={sheetMode}
+            eventNumber={ev.event_number}
+            eventTitle={ev.title}
+            printedAt={new Date().toISOString()}
+            rows={sheetLines.data ?? []}
+          />
+        )}
+        {!sheetLines.isLoading && (sheetLines.data ?? []).length === 0 && (
+          <EmptyState
+            title="لا توجد بنود"
+            description="لا توجد بنود تشغيلية لهذه المناسبة بعد."
+          />
+        )}
+      </PrintDocumentDialog>
     </div>
   );
 }

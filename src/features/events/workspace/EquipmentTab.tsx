@@ -13,8 +13,9 @@ import type { Capacity, Reservation } from "../events.api";
  * capacity provisioning form — capacity rows previously had no product path
  * to exist, which left the "اختر المعدة" list permanently empty.
  *
- * Provisioning is offered to OWNER/MANAGER only (the UI gate is conservative;
- * the database policy additionally allows WAREHOUSE).
+ * Provisioning (capacity management) follows the `warehouse.dispatch`
+ * capability — the same gate the equipment_capacity RLS policy (0079)
+ * enforces server-side.
  */
 export function EquipmentTab({
   orgId,

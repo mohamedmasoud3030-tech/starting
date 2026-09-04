@@ -150,6 +150,7 @@ function renderPanel(
       eventId="ev-1"
       eventStatus="PREPARING"
       role="WAREHOUSE"
+      capabilities={null}
       {...props}
     />,
     { wrapper },

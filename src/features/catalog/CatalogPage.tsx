@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pencil, Plus, Search } from "lucide-react";
 import { useAuth } from "@/app/authContext";
+import { canManageCommercialFor } from "@/app/authRoles";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -22,8 +23,15 @@ import {
 } from "./catalog.api";
 
 export function CatalogPage() {
-  const { currentOrganization, canManageCommercial, canReadCost } = useAuth();
+  const { currentOrganization, currentRole, capabilities, canReadCost } =
+    useAuth();
   const orgId = currentOrganization?.id ?? null;
+  // 0079: catalog item/category mutations are gated by catalog.manage (RLS
+  // catalog_items_manage*); the role preset is only the loading fallback.
+  const canManageCatalog =
+    capabilities !== null
+      ? capabilities.has("catalog.manage")
+      : canManageCommercialFor(currentRole);
 
   const categoriesQuery = useCatalogCategories(orgId);
   const itemsQuery = useCatalogItemsPage(orgId, canReadCost);
@@ -64,7 +72,7 @@ export function CatalogPage() {
         title="الكتالوج"
         description="إدارة الأصناف والخدمات والأسعار"
         actions={
-          canManageCommercial ? (
+          canManageCatalog ? (
             <Button
               onClick={() => {
                 setEditing(null);
@@ -130,7 +138,7 @@ export function CatalogPage() {
               : "جرّب كلمة بحث أخرى أو تصفية مختلفة"
           }
           action={
-            items.length === 0 && canManageCommercial ? (
+            items.length === 0 && canManageCatalog ? (
               <Button
                 onClick={() => {
                   setEditing(null);
@@ -149,7 +157,7 @@ export function CatalogPage() {
             <li key={item.id}>
               <ItemCard
                 item={item}
-                editable={canManageCommercial}
+                editable={canManageCatalog}
                 showCost={canReadCost}
                 toggling={toggleMutation.isPending}
                 onEdit={() => {

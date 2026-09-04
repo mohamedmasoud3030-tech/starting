@@ -14,7 +14,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { formatOMR, type MilliOMR } from "@/lib/money";
 import { todayInMuscat } from "@/lib/dates";
 import type { PaymentMethod } from "@/lib/dbTypes";
-import { COST_READER_ROLES, PAYMENT_WRITE_ROLES } from "@/lib/domain";
+import { PAYROLL_PAY_ROLES, STAFF_MANAGE_ROLES } from "@/lib/domain";
 import {
   attendanceError,
   useHostPayouts,
@@ -243,8 +243,11 @@ function HostDetail({
 }
 
 function useCanMutate(): boolean {
-  const { currentRole } = useAuth();
-  return !!currentRole && PAYMENT_WRITE_ROLES.includes(currentRole);
+  // 0079: payouts/advances are gated server-side by payroll.pay.
+  const { currentRole, capabilities } = useAuth();
+  return capabilities !== null
+    ? capabilities.has("payroll.pay")
+    : !!currentRole && PAYROLL_PAY_ROLES.includes(currentRole);
 }
 
 function StaffSummaryCard({
@@ -341,9 +344,18 @@ function StaffSummaryCard({
 }
 
 export function StaffPage() {
-  const { currentOrganization, currentRole, canManageCommercial } = useAuth();
+  const {
+    currentOrganization,
+    currentRole,
+    capabilities,
+    canReadPayroll,
+  } = useAuth();
   const orgId = currentOrganization?.id ?? null;
-  const canReadCost = !!currentRole && COST_READER_ROLES.includes(currentRole);
+  // 0079: the roster is gated by staff.manage (role preset = loading fallback).
+  const canManageStaff =
+    capabilities !== null
+      ? capabilities.has("staff.manage")
+      : !!currentRole && STAFF_MANAGE_ROLES.includes(currentRole);
   const staff = useOrgStaffMembers(orgId);
   const archive = useOrgPayrollArchive(orgId);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -360,11 +372,11 @@ export function StaffPage() {
     return map;
   }, [archive.data]);
 
-  if (!canReadCost) {
+  if (!canReadPayroll) {
     return (
       <div className="space-y-4">
         <PageHeader title="المضيفون والأجور" description="سجل أجور المضيفين والسلف والصرف." />
-        <EmptyState title="البيانات المالية غير متاحة لدورك" description="تظهر أجور المضيفين للمالك والمدير والمحاسب فقط." />
+        <EmptyState title="الأجور غير متاحة لدورك" description="تظهر أجور المضيفين لمن يملك صلاحية قراءتها (المالك والمدير والمحاسب افتراضياً)." />
       </div>
     );
   }
@@ -375,7 +387,7 @@ export function StaffPage() {
         title="المضيفون والأجور"
         description="هنا الأجور والسلف والصرف. تسجيل الشغل يتم من داخل المناسبة بزر دخول الآن / خروج الآن."
         actions={
-          canManageCommercial ? (
+          canManageStaff ? (
             <Button
               onClick={() => {
                 setEditing(null);

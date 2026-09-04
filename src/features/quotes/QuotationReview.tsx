@@ -43,7 +43,8 @@ function isoToLocalInput(iso: string | null | undefined): string {
 }
 
 export function QuotationReview({ quoteId }: { quoteId: string }) {
-  const { currentOrganization, canManageCommercial } = useAuth();
+  const { currentOrganization, canManageCommercial, canIssueQuotation } =
+    useAuth();
   const orgId = currentOrganization?.id ?? null;
   const navigate = useNavigate();
 
@@ -376,27 +377,40 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
         </p>
       )}
 
-      {canManageCommercial && (
+      {(q.status === "ISSUED"
+        ? canManageCommercial || canIssueQuotation
+        : q.status === "ACCEPTED"
+          ? canIssueQuotation
+          : false) && (
         <div className="flex flex-wrap justify-end gap-3">
           {q.status === "ISSUED" && (
             <>
-              <Button variant="outline" onClick={() => setReviseOpen(true)} disabled={busy !== ""}>
-                <Copy className="h-5 w-5" />
-                نسخة معدلة (Revision)
-              </Button>
-              <Button variant="outline" onClick={() => void onExpire()} disabled={busy !== ""}>
-                إنهاء الصلاحية
-              </Button>
-              <Button variant="danger" onClick={() => void onReject()} disabled={busy !== ""}>
-                <XCircle className="h-5 w-5" />
-                رفض العرض
-              </Button>
-              <Button size="lg" onClick={() => void onAccept()} disabled={busy !== ""}>
-                <FileCheck2 className="h-5 w-5" />
-                {busy === "اعتماد" ? "جارٍ الاعتماد…" : "اعتماد العرض"}
-              </Button>
+              {/* revise_quotation → quotation.manage */}
+              {canManageCommercial && (
+                <Button variant="outline" onClick={() => setReviseOpen(true)} disabled={busy !== ""}>
+                  <Copy className="h-5 w-5" />
+                  نسخة معدلة (Revision)
+                </Button>
+              )}
+              {/* accept/reject/expire → quotation.issue */}
+              {canIssueQuotation && (
+                <>
+                  <Button variant="outline" onClick={() => void onExpire()} disabled={busy !== ""}>
+                    إنهاء الصلاحية
+                  </Button>
+                  <Button variant="danger" onClick={() => void onReject()} disabled={busy !== ""}>
+                    <XCircle className="h-5 w-5" />
+                    رفض العرض
+                  </Button>
+                  <Button size="lg" onClick={() => void onAccept()} disabled={busy !== ""}>
+                    <FileCheck2 className="h-5 w-5" />
+                    {busy === "اعتماد" ? "جارٍ الاعتماد…" : "اعتماد العرض"}
+                  </Button>
+                </>
+              )}
             </>
           )}
+          {/* convert_quotation_to_event → quotation.issue */}
           {q.status === "ACCEPTED" && (
             <Button size="lg" onClick={openConvert} disabled={busy !== ""}>
               <CheckCircle2 className="h-5 w-5" />

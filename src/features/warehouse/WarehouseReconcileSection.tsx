@@ -2,9 +2,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmPanel } from "@/components/ui/ConfirmPanel";
 import { Input } from "@/components/ui/Input";
-import type { AppRole } from "@/lib/dbTypes";
 import {
-  canReconcileWarehouse,
   reconcileBlock,
   reconcileBlockMessage,
   type WarehouseSummary,
@@ -16,7 +14,7 @@ import {
  * useWarehousePanel hook via props.
  */
 export function WarehouseReconcileSection({
-  role,
+  canReconcile,
   summary,
   busy,
   confirming,
@@ -26,7 +24,8 @@ export function WarehouseReconcileSection({
   onNotesChange,
   onConfirm,
 }: {
-  role: AppRole | null;
+  /** warehouse.reconcile — precomputed by the panel. */
+  canReconcile: boolean;
   summary: WarehouseSummary;
   busy: boolean;
   confirming: boolean;
@@ -36,8 +35,8 @@ export function WarehouseReconcileSection({
   onNotesChange: (value: string) => void;
   onConfirm: () => void;
 }) {
-  if (!canReconcileWarehouse(role)) return null;
-  const recBlock = reconcileBlock({ role, summary });
+  if (!canReconcile) return null;
+  const recBlock = reconcileBlock({ canReconcile, summary });
 
   return (
     <Card>

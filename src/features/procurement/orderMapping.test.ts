@@ -27,8 +27,13 @@ describe("toProcurementLineKind", () => {
 });
 
 describe("deriveLineReceiveCapability", () => {
+  const full = { canReceive: true, canProcure: true };
+  const physicalOnly = { canReceive: true, canProcure: false };
+  const noDispatch = { canReceive: false, canProcure: true };
+  const nobody = { canReceive: false, canProcure: false };
+
   it("is silently complete when nothing remains", () => {
-    expect(deriveLineReceiveCapability("CONFIRMED", "OWNER", "CONSUMABLE", 0)).toEqual({
+    expect(deriveLineReceiveCapability("CONFIRMED", full, "CONSUMABLE", 0)).toEqual({
       allowed: false,
     });
   });
@@ -36,30 +41,33 @@ describe("deriveLineReceiveCapability", () => {
   it("refuses outside CONFIRMED / PARTIALLY_RECEIVED with a lifecycle reason", () => {
     for (const status of ["DRAFT", "APPROVED", "SENT", "RECEIVED", "CANCELLED"] as const) {
       expect(
-        deriveLineReceiveCapability(status, "OWNER", "CONSUMABLE", 1000),
+        deriveLineReceiveCapability(status, full, "CONSUMABLE", 1000),
       ).toEqual({ allowed: false, reason: "ITEM_NOT_RECEIVABLE" });
     }
   });
 
-  it("never lets ACCOUNTANT receive", () => {
+  it("denies anyone without warehouse.dispatch, even a procurement manager", () => {
     expect(
-      deriveLineReceiveCapability("CONFIRMED", "ACCOUNTANT", "CONSUMABLE", 1000),
+      deriveLineReceiveCapability("CONFIRMED", noDispatch, "CONSUMABLE", 1000),
+    ).toEqual({ allowed: false, reason: "PERMISSION_DENIED" });
+    expect(
+      deriveLineReceiveCapability("CONFIRMED", nobody, "CONSUMABLE", 1000),
     ).toEqual({ allowed: false, reason: "PERMISSION_DENIED" });
   });
 
-  it("restricts WAREHOUSE to physical CONSUMABLE lines", () => {
+  it("restricts a dispatch-only receiver to physical CONSUMABLE lines", () => {
     expect(
-      deriveLineReceiveCapability("CONFIRMED", "WAREHOUSE", "CATERING_SERVICE", 1000),
+      deriveLineReceiveCapability("CONFIRMED", physicalOnly, "CATERING_SERVICE", 1000),
     ).toEqual({ allowed: false, reason: "PERMISSION_DENIED" });
     expect(
-      deriveLineReceiveCapability("CONFIRMED", "WAREHOUSE", "CONSUMABLE", 1000),
+      deriveLineReceiveCapability("CONFIRMED", physicalOnly, "CONSUMABLE", 1000),
     ).toEqual({ allowed: true });
   });
 
-  it("allows the operational roles on receivable lines", () => {
-    for (const role of ["OWNER", "MANAGER", "SUPERVISOR"] as const) {
+  it("lets a receiver holding BOTH capabilities take any line kind", () => {
+    for (const kind of ["CONSUMABLE", "CATERING_SERVICE", "OTHER"] as const) {
       expect(
-        deriveLineReceiveCapability("PARTIALLY_RECEIVED", role, "OTHER", 500),
+        deriveLineReceiveCapability("PARTIALLY_RECEIVED", full, kind, 500),
       ).toEqual({ allowed: true });
     }
   });
@@ -78,7 +86,7 @@ describe("mapOrderLine", () => {
   };
 
   it("maps exact milli quantities without floating point corruption", () => {
-    const line = mapOrderLine(row, "CONFIRMED", "OWNER", {
+    const line = mapOrderLine(row, "CONFIRMED", { canReceive: true, canProcure: true }, {
       unitCostMilli: 1500,
       lineTotalMilli: 7500,
     });
@@ -91,7 +99,7 @@ describe("mapOrderLine", () => {
   });
 
   it("keeps money null (not zero) on the cost-free path", () => {
-    const line = mapOrderLine(row, "CONFIRMED", "WAREHOUSE", {
+    const line = mapOrderLine(row, "CONFIRMED", { canReceive: true, canProcure: false }, {
       unitCostMilli: null,
       lineTotalMilli: null,
     });

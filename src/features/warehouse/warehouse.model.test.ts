@@ -160,13 +160,13 @@ describe("authorization matrix mirrors the database", () => {
 describe("dispatchBlock", () => {
   it("allows dispatch for an authorized operator on a confirmed Event", () => {
     expect(
-      dispatchBlock({ role: "WAREHOUSE", eventStatus: "PREPARING", line: line() }),
+      dispatchBlock({ canOperate: canOperateWarehouse("WAREHOUSE"), eventStatus: "PREPARING", line: line() }),
     ).toEqual({ blocked: false });
   });
 
   it("blocks an unauthorized role with a reason", () => {
     const block = dispatchBlock({
-      role: "ACCOUNTANT",
+      canOperate: canOperateWarehouse("ACCOUNTANT"),
       eventStatus: "PREPARING",
       line: line(),
     });
@@ -176,7 +176,7 @@ describe("dispatchBlock", () => {
 
   it("blocks dispatch before the Event is confirmed", () => {
     const block = dispatchBlock({
-      role: "WAREHOUSE",
+      canOperate: canOperateWarehouse("WAREHOUSE"),
       eventStatus: "DRAFT",
       line: line(),
     });
@@ -186,7 +186,7 @@ describe("dispatchBlock", () => {
 
   it("blocks dispatch after the warehouse was reconciled", () => {
     const block = dispatchBlock({
-      role: "WAREHOUSE",
+      canOperate: canOperateWarehouse("WAREHOUSE"),
       eventStatus: "PREPARING",
       line: line({ isReconciled: true }),
     });
@@ -195,7 +195,7 @@ describe("dispatchBlock", () => {
 
   it("blocks dispatch once the whole reservation is out", () => {
     const block = dispatchBlock({
-      role: "WAREHOUSE",
+      canOperate: canOperateWarehouse("WAREHOUSE"),
       eventStatus: "PREPARING",
       line: line({ dispatched: 10, remainingToDispatch: 0, outstanding: 10 }),
     });
@@ -204,7 +204,7 @@ describe("dispatchBlock", () => {
 
   it("blocks dispatch on a released reservation", () => {
     const block = dispatchBlock({
-      role: "WAREHOUSE",
+      canOperate: canOperateWarehouse("WAREHOUSE"),
       eventStatus: "PREPARING",
       line: line({ reservationStatus: "CANCELLED" }),
     });
@@ -214,20 +214,20 @@ describe("dispatchBlock", () => {
 
 describe("returnBlock", () => {
   it("allows a return while stock is outstanding", () => {
-    expect(returnBlock({ role: "WAREHOUSE", line: line({ outstanding: 4 }) })).toEqual({
+    expect(returnBlock({ canOperate: canOperateWarehouse("WAREHOUSE"), line: line({ outstanding: 4 }) })).toEqual({
       blocked: false,
     });
   });
 
   it("blocks a return when nothing is outstanding", () => {
-    const block = returnBlock({ role: "WAREHOUSE", line: line({ outstanding: 0 }) });
+    const block = returnBlock({ canOperate: canOperateWarehouse("WAREHOUSE"), line: line({ outstanding: 0 }) });
     expect(block).toEqual({ blocked: true, reason: "NOTHING_OUTSTANDING" });
     expect(returnBlockMessage(block)).toContain("لا توجد كمية بالخارج");
   });
 
   it("blocks a return after reconciliation", () => {
     const block = returnBlock({
-      role: "WAREHOUSE",
+      canOperate: canOperateWarehouse("WAREHOUSE"),
       line: line({ outstanding: 3, isReconciled: true }),
     });
     expect(block).toEqual({ blocked: true, reason: "RECONCILED" });
@@ -238,7 +238,7 @@ describe("reconcileBlock", () => {
   it("allows reconciliation once everything is accounted for", () => {
     expect(
       reconcileBlock({
-        role: "OWNER",
+        canReconcile: canReconcileWarehouse("OWNER"),
         summary: summary({ dispatched: 10, returned_good: 10, outstanding: 0 }),
       }),
     ).toEqual({ blocked: false });
@@ -246,7 +246,7 @@ describe("reconcileBlock", () => {
 
   it("blocks reconciliation while stock is outstanding, and says how much", () => {
     const block = reconcileBlock({
-      role: "OWNER",
+      canReconcile: canReconcileWarehouse("OWNER"),
       summary: summary({ dispatched: 10, returned_good: 6, outstanding: 4 }),
     });
     expect(block).toEqual({ blocked: true, reason: "OUTSTANDING", outstanding: 4 });
@@ -254,14 +254,14 @@ describe("reconcileBlock", () => {
   });
 
   it("blocks reconciliation for a role that does not own it", () => {
-    const block = reconcileBlock({ role: "WAREHOUSE", summary: summary() });
+    const block = reconcileBlock({ canReconcile: canReconcileWarehouse("WAREHOUSE"), summary: summary() });
     expect(block).toEqual({ blocked: true, reason: "NOT_AUTHORIZED" });
     expect(reconcileBlockMessage(block)).toContain("المالك أو المدير");
   });
 
   it("blocks a second reconciliation", () => {
     const block = reconcileBlock({
-      role: "OWNER",
+      canReconcile: canReconcileWarehouse("OWNER"),
       summary: summary({ is_reconciled: true, status: "RECONCILED" }),
     });
     expect(block).toEqual({ blocked: true, reason: "ALREADY_RECONCILED" });

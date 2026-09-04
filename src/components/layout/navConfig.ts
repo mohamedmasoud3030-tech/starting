@@ -19,8 +19,12 @@ export type NavTarget =
 export type NavItem = {
   to: NavTarget;
   label: string;
+  /** Requires quotation.manage or quotation.issue (commercial workflow). */
   commercial?: boolean;
+  /** Requires cost.visibility (financial figures). */
   financial?: boolean;
+  /** Requires payroll.read (the staff/payroll surface). */
+  payroll?: boolean;
 };
 
 export type NavGroup = {
@@ -70,7 +74,8 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   },
   {
     label: "الفريق",
-    items: [{ to: "/staff", label: "المضيفون والحضور", financial: true }],
+    // The staff page is a payroll surface (server-gated by payroll.read).
+    items: [{ to: "/staff", label: "المضيفون والحضور", payroll: true }],
   },
   {
     label: "الإدارة والتحليل",
@@ -99,19 +104,23 @@ export function isActivePath(pathname: string, target: NavTarget): boolean {
 }
 
 /**
- * Filters the static navigation by the caller's role-derived capabilities.
- * Pure: the caller supplies `canManageCommercial` / `canReadCost`.
+ * Filters the static navigation by the caller's effective capabilities.
+ * Pure: the caller supplies the capability-backed booleans from `useAuth`.
+ * Hiding a nav item is presentation only — the server stays authoritative.
  */
 export function visibleNavGroups(
   canManageCommercial: boolean,
+  canIssueQuotation: boolean,
   canReadCost: boolean,
+  canReadPayroll: boolean,
 ): NavGroup[] {
   return NAV_GROUPS.map((group) => ({
     ...group,
     items: group.items.filter(
       (item) =>
-        (!item.commercial || canManageCommercial) &&
-        (!item.financial || canReadCost),
+        (!item.commercial || canManageCommercial || canIssueQuotation) &&
+        (!item.financial || canReadCost) &&
+        (!item.payroll || canReadPayroll),
     ),
   })).filter((group) => group.items.length > 0);
 }

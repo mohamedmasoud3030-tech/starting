@@ -1,11 +1,5 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
@@ -14,14 +8,18 @@ import type { AppRole, ProfileRow } from "@/lib/dbTypes";
 import {
   canManageCommercialFor,
   canReadCostFor,
+  canReadPayrollFor,
   canWriteCustomersFor,
   selectCurrentMembership,
 } from "./authRoles";
+import { useMyCapabilities } from "./capabilities.api";
 import {
   readStoredOrganizationId,
   writeStoredOrganizationId,
 } from "./organizationPreference";
 import { AuthContext, type ActiveMembership, type AuthContextValue } from "./authContext";
+
+const EMPTY_CAPABILITIES = new Set<string>();
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
@@ -249,10 +247,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [currentMembership],
   );
 
-  // Authorization derives ONLY from the role inside the CURRENT organization.
-  const canManageCommercial = canManageCommercialFor(currentRole);
-  const canReadCost = canReadCostFor(currentRole);
-  const canWriteCustomers = canWriteCustomersFor(currentRole);
+  // Delegated capabilities (0079): the server report is the single source
+  // of truth the UI mirrors (role preset + owner overrides, computed by
+  // has_permission server-side). Tenant-keyed, so the identity-switch cache
+  // reset above keeps it isolated per organization.
+  const capabilitiesQuery = useMyCapabilities(currentOrganization?.id ?? null);
+
+  /**
+   * UI affordance derivation: once the authoritative capability report is
+   * loaded it decides; while it is still arriving the role preset is a
+   * safe interim fallback (identical to the server default for members
+   * without owner overrides). Hiding/enabling in the UI is NEVER the
+   * security boundary — every mutation is enforced by RPC/RLS.
+   */
+  const effectiveCapabilities = capabilitiesQuery.isSuccess
+    ? capabilitiesQuery.data
+    : capabilitiesQuery.isError
+      ? EMPTY_CAPABILITIES
+      : null;
+
+  const hasCapability = useCallback(
+    (capability: string) => effectiveCapabilities?.has(capability) ?? false,
+    [effectiveCapabilities],
+  );
+
+  const canManageCommercial =
+    effectiveCapabilities !== null
+      ? effectiveCapabilities.has("quotation.manage")
+      : canManageCommercialFor(currentRole);
+  const canIssueQuotation =
+    effectiveCapabilities !== null
+      ? effectiveCapabilities.has("quotation.issue")
+      : canManageCommercialFor(currentRole);
+  const canReadCost =
+    effectiveCapabilities !== null
+      ? effectiveCapabilities.has("cost.visibility")
+      : canReadCostFor(currentRole);
+  const canReadPayroll =
+    effectiveCapabilities !== null
+      ? effectiveCapabilities.has("payroll.read")
+      : canReadPayrollFor(currentRole);
+  const canWriteCustomers =
+    effectiveCapabilities !== null
+      ? effectiveCapabilities.has("customer.manage")
+      : canWriteCustomersFor(currentRole);
+
+  /**
+   * Claim a single-use invitation into the current signed-in account. The
+   * server verifies the invitation exists, is PENDING, and its email matches
+   * the caller (no privileged user creation from the browser — the account
+   * already exists via normal sign-up).
+   */
+  const claimInvitation = useCallback(
+    async (code: string) => {
+      if (!user) throw new Error("يجب تسجيل الدخول أولاً");
+      const trimmed = code.trim();
+      if (!trimmed) throw new Error("أدخل رمز الدعوة");
+      const { data, error } = await supabase.rpc("claim_org_invitation", {
+        p_code: trimmed,
+      });
+      if (error) throw new Error(claimErrorMessage(error));
+      if (!data) throw new Error("تعذّر تفعيل الدعوة، حاول مجدداً");
+      await loadMemberships(user.id);
+    },
+    [user, loadMemberships],
+  );
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -263,14 +322,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentOrganization,
       currentMembership,
       currentRole,
+      capabilities: effectiveCapabilities,
+      hasCapability,
       canManageCommercial,
+      canIssueQuotation,
       canReadCost,
+      canReadPayroll,
       canWriteCustomers,
       loading,
       error,
       login,
       logout,
       createOrganization,
+      claimInvitation,
       switchOrganization,
     }),
     [
@@ -281,17 +345,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       currentOrganization,
       currentMembership,
       currentRole,
+      effectiveCapabilities,
+      hasCapability,
       canManageCommercial,
+      canIssueQuotation,
       canReadCost,
+      canReadPayroll,
       canWriteCustomers,
       loading,
       error,
       login,
       logout,
       createOrganization,
+      claimInvitation,
       switchOrganization,
     ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+/** Friendly Arabic mapping for the server's invitation claim rejections. */
+function claimErrorMessage(error: { message: string }): string {
+  switch (error.message) {
+    case "NOT_AUTHENTICATED":
+      return "يجب تسجيل الدخول أولاً";
+    case "INVITATION_NOT_FOUND":
+      return "رمز الدعوة غير صحيح أو لا يوجد";
+    case "INVITATION_NOT_PENDING":
+      return "تم استخدام هذه الدعوة أو إلغاؤها";
+    case "INVITATION_EMAIL_MISMATCH":
+      return "البريد الإلكتروني المسجّل لا يطابق بريد الدعوة";
+    case "ALREADY_ORG_MEMBER":
+      return "أنت بالفعل عضو في هذه المنشأة";
+    case "ORG_NOT_ACTIVE":
+      return "المنشأة غير نشطة";
+    default:
+      return "تعذّر تفعيل الدعوة";
+  }
 }

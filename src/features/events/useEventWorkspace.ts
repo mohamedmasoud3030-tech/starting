@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { useAuth } from "@/app/authContext";
+import { canAssignStaffFor } from "@/app/authRoles";
 import { fromDbAmount, toOMRString } from "@/lib/money";
 import { useCustomers } from "@/features/customers/customers.api";
 import { usePackages } from "@/features/packages/packages.api";
@@ -39,27 +40,48 @@ import {
  */
 export function useEventWorkspace() {
   const { eventId } = useParams({ from: "/app/events/$eventId" });
-  const { currentOrganization, currentRole } = useAuth();
+  const { currentOrganization, currentRole, capabilities } = useAuth();
   const orgId = currentOrganization?.id ?? null;
 
-  const perms = eventPermissions(currentRole);
-  const { canCost, canCommercial, canFinance, canAttendance } = perms;
+  const perms = eventPermissions(currentRole, capabilities);
+  const {
+    canCost,
+    canCommercial,
+    canManage,
+    canFinance,
+    canInvoices,
+    canPayroll,
+    canPayrollPay,
+    canDispatch,
+    canAttendance,
+    canProcure,
+    canRecordPayment,
+    canVoidPayment,
+  } = perms;
 
   const procurementDataSource = useProcurementDataSource();
   const procurementAccess = useMemo(
     () => ({
       canViewCommercialAmounts: canCost,
-      canCreateSupplier: canCommercial,
-      canCreateOrder: canCommercial,
+      // Supplier/order commands are gated server-side by procurement.manage.
+      canCreateSupplier: canProcure,
+      canCreateOrder: canProcure,
     }),
-    [canCost, canCommercial],
+    [canCost, canProcure],
   );
 
   const event = useEvent(orgId, eventId);
   const data = useWorkspaceData(orgId, eventId, canCost);
   const finance = useEventFinance(orgId, eventId);
   const attendance = useEventAttendance(orgId, eventId);
-  const audit = useEventAudit(orgId, eventId, canCommercial);
+  // The audit trail's SELECT RLS is still ROLE-based (audit_events_select_admins:
+  // OWNER/MANAGER) — 0079 deliberately left it that way — so the UI gates on the
+  // membership role, not on a capability the server does not check here.
+  const canViewAudit =
+    currentRole === "OWNER" || currentRole === "MANAGER";
+  const audit = useEventAudit(orgId, eventId, canViewAudit);
+  // Staff assign/release: server gate is role-based (O/M/SUPERVISOR), not a capability.
+  const canAssignStaff = canAssignStaffFor(currentRole);
   const payroll = useEventPayroll(orgId, eventId);
   const invoice = useEventInvoice(orgId, eventId);
   const invoiceRows = useEventInstallments(orgId, eventId);
@@ -211,11 +233,22 @@ export function useEventWorkspace() {
     orgId,
     eventId,
     currentRole,
+    capabilities,
+    canViewAudit,
+    canAssignStaff,
     perms,
     canCost,
     canCommercial,
+    canManage,
     canFinance,
+    canInvoices,
+    canPayroll,
+    canPayrollPay,
+    canDispatch,
     canAttendance,
+    canProcure,
+    canRecordPayment,
+    canVoidPayment,
     // data + workflow
     event,
     data,

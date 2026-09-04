@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Printer } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -11,6 +12,12 @@ import { Spinner } from "@/components/ui/Spinner";
 import { MoneyInput } from "@/components/MoneyInput";
 import { formatOMR, type MilliOMR } from "@/lib/money";
 import type { PaymentMethod } from "@/lib/dbTypes";
+import { useAuth } from "@/app/authContext";
+import { buildDocumentIdentity } from "@/components/documents/documentIdentity";
+import { useOrganizationSettings } from "@/features/settings/settings.api";
+import { usePaymentReceipt } from "@/features/documents/documents.api";
+import { PrintDocumentDialog } from "@/features/documents/PrintDocumentDialog";
+import { PaymentReceipt } from "@/features/documents/PaymentReceipt";
 import {
   paymentError,
   useEventFinance,
@@ -23,26 +30,34 @@ import { InlineError } from "@/components/ui/ErrorState";
 
 /**
  * S6 Event Workspace integration seam: the customer financial layer for one
- * event. Reads are cost-gated server-side (can_read_cost) so operational roles
- * see nothing here; mutations are OWNER/MANAGER/ACCOUNTANT server-authoritative
- * commands with idempotency keys. No financial truth is derived or duplicated
- * in this component — every figure comes from the authoritative read model.
+ * event. Reads are cost-gated server-side (cost.visibility) so operational
+ * roles see nothing here; recording requires payment.record and voiding
+ * payment.void, each enforced by the RPC itself with idempotency keys. The
+ * `canRecord`/`canVoid` props only mirror that contract for the UI — hiding
+ * is presentation, the database stays authoritative. No financial truth is
+ * derived or duplicated in this component.
  */
 export function EventPaymentsPanel({
   orgId,
   eventId,
   canReadCost,
-  canMutate,
+  /** payment.record — the record-payment form (0079). */
+  canRecord,
+  /** payment.void — the void action on recorded payments (0079). */
+  canVoid,
 }: {
   orgId: string | null;
   eventId: string;
   canReadCost: boolean;
-  canMutate: boolean;
+  canRecord: boolean;
+  canVoid: boolean;
 }) {
+  const { currentOrganization } = useAuth();
   const finance = useEventFinance(orgId, eventId);
   const payments = useEventPayments(orgId, eventId);
   const recordPayment = useRecordPayment(orgId, eventId);
   const voidPayment = useVoidPayment(orgId, eventId);
+  const settings = useOrganizationSettings(orgId);
 
   const [amountMilli, setAmountMilli] = useState<MilliOMR>(0);
   const [method, setMethod] = useState<PaymentMethod>("CASH");
@@ -50,6 +65,8 @@ export function EventPaymentsPanel({
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const [voiding, setVoiding] = useState<string | null>(null);
+  const [receiptFor, setReceiptFor] = useState<string | null>(null);
+  const receipt = usePaymentReceipt(orgId, receiptFor);
 
   if (!canReadCost) {
     return (
@@ -144,7 +161,7 @@ export function EventPaymentsPanel({
 
       {error && <InlineError message={error} />}
 
-      {canMutate && (
+      {canRecord && (
         <Card>
           <CardBody>
             <h3 className="mb-3 font-black">تسجيل دفعة من العميل</h3>
@@ -205,15 +222,26 @@ export function EventPaymentsPanel({
                         <p className="mt-1 text-sm font-semibold text-red-600">سبب الإلغاء: {p.voidReason}</p>
                       )}
                     </div>
-                    {p.status === "RECORDED" && canMutate && (
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button
                         variant="outline"
-                        disabled={voidPayment.isPending}
-                        onClick={() => setVoiding(p.id)}
+                        size="sm"
+                        onClick={() => setReceiptFor(p.id)}
                       >
-                        إلغاء الدفعة
+                        <Printer className="h-4 w-4" />
+                        سند القبض
                       </Button>
-                    )}
+                      {p.status === "RECORDED" && canVoid && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={voidPayment.isPending}
+                          onClick={() => setVoiding(p.id)}
+                        >
+                          إلغاء الدفعة
+                        </Button>
+                      )}
+                    </div>
                     {voiding === p.id && (
                       <VoidReasonPanel
                         title="تأكيد إلغاء الدفعة"
@@ -232,6 +260,36 @@ export function EventPaymentsPanel({
           </ul>
         )}
       </div>
+
+      <PrintDocumentDialog
+        open={receiptFor !== null}
+        onOpenChange={(open) => {
+          if (!open) setReceiptFor(null);
+        }}
+        title="سند قبض"
+        description="السند من بيانات الدفع الرسمية — الدفعات الملغاة تُطبع بشارة إلغاء ولا تُعتمد."
+      >
+        {receipt.isLoading && (
+          <div className="flex justify-center py-10">
+            <Spinner className="h-7 w-7" />
+          </div>
+        )}
+        {receipt.data && (
+          <PaymentReceipt
+            identity={buildDocumentIdentity(
+              currentOrganization,
+              settings.data ?? null,
+            )}
+            row={receipt.data}
+          />
+        )}
+        {receipt.data === null && !receipt.isLoading && (
+          <EmptyState
+            title="لا يوجد سند لهذه الدفعة"
+            description="تأكد أنك ضمن المنشأة الصحيحة."
+          />
+        )}
+      </PrintDocumentDialog>
     </section>
   );
 }
