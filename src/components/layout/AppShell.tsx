@@ -7,6 +7,7 @@ import { MobileNav } from "./MobileNav";
 import { OfflineBanner } from "./OfflineBanner";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { visibleNavGroups } from "./navConfig";
+import { AssistantLauncher } from "@/features/assistant/AssistantLauncher";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const {
@@ -86,6 +87,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <MobileNav groups={groups} pathname={pathname} orgName={orgName} />
+
+      <AssistantLauncher />
     </div>
   );
 }
