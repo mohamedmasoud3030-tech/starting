@@ -85,6 +85,28 @@ vi.mock("@/lib/supabase", () => ({
       signOut: () => Promise.resolve({ error: null }),
     },
     from: (table: string) => tableStub(table),
+    // The capability report follows the membership: OWNER preset in org-a,
+    // WAREHOUSE preset in org-b.
+    rpc: (name: string, args: Record<string, unknown>) => {
+      if (name === "my_capabilities") {
+        const report =
+          args.p_org_id === "org-b"
+            ? {
+                "quotation.manage": false,
+                "cost.visibility": false,
+                "warehouse.dispatch": true,
+                "consumable.manage": true,
+              }
+            : {
+                "quotation.manage": true,
+                "cost.visibility": true,
+                "warehouse.dispatch": true,
+                "consumable.manage": true,
+              };
+        return Promise.resolve({ data: report, error: null });
+      }
+      return Promise.resolve({ data: null, error: null });
+    },
   },
 }));
 
@@ -155,13 +177,19 @@ describe("organization switching (integration)", () => {
     expect(screen.getByTestId("commercial").textContent).toBe("false");
     expect(screen.getByTestId("cost").textContent).toBe("false");
 
-    // No previous-tenant row survives the identity change.
+    // No previous-tenant row survives the identity change: the seeded rows
+    // are gone and no cached query is keyed on the previous organization
+    // (the new tenant's own queries are fine to exist).
     await waitFor(() => {
       expect(queryClient.getQueryData(["events", "org-a"])).toBeUndefined();
       expect(
         queryClient.getQueryData(["event-finance", "org-a", "event-a"]),
       ).toBeUndefined();
-      expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+      const stale = queryClient
+        .getQueryCache()
+        .getAll()
+        .filter((q) => String(q.queryHash).includes("org-a"));
+      expect(stale).toHaveLength(0);
     });
 
     // The selection is remembered for the next visit.

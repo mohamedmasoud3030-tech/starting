@@ -12,6 +12,35 @@ vi.mock("@/app/authContext", () => ({
   useAuth: () => ({
     currentOrganization: { id: "org-1", name: "مشاريع جودة الإنطلاقة" },
     currentRole: authState.role,
+    // Mirrors the server role presets: only OWNER holds settings.manage.
+    hasCapability: (capability: string) =>
+      capability === "settings.manage" && authState.role === "OWNER",
+    capabilities: new Set<string>(
+      authState.role === "OWNER" ? ["settings.manage"] : [],
+    ),
+  }),
+}));
+
+// TeamPanel renders inside SettingsPage; keep its team queries hermetic.
+vi.mock("@/features/settings/team.api", () => ({
+  useOrgMembers: () => ({ data: [], isLoading: false }),
+  useOrgInvitations: () => ({ data: [], isLoading: false }),
+  useMemberCapabilities: () => ({ data: [] }),
+  useSetMemberPermission: () => ({
+    mutateAsync: async () => ({}),
+    isPending: false,
+  }),
+  useClearMemberPermission: () => ({
+    mutateAsync: async () => ({}),
+    isPending: false,
+  }),
+  useCreateOrgInvitation: () => ({
+    mutateAsync: async () => ({}),
+    isPending: false,
+  }),
+  useRevokeOrgInvitation: () => ({
+    mutateAsync: async () => ({}),
+    isPending: false,
   }),
 }));
 

@@ -3,12 +3,20 @@ import {
   COMMERCIAL_ROLES,
   COST_READER_ROLES,
   CUSTOMER_WRITE_ROLES,
+  STAFF_ASSIGN_ROLES,
+  PAYROLL_READ_ROLES,
 } from "@/lib/domain";
 
 /**
- * Commercial configuration permission derives ONLY from the role the user
- * holds inside the CURRENTLY ACTIVE organization (never from roles in other
- * organizations).
+ * LOADING-ONLY fallbacks for the delegated capability model (0079).
+ *
+ * The authoritative gate is the server-computed capability set
+ * (`my_capabilities` = role preset + owner overrides), which AuthContext
+ * exposes as `capabilities` / `hasCapability`. These role-preset predicates
+ * mirror the server's `role_default_capability` and are used ONLY while that
+ * report is still arriving, so the UI never blanks out on first paint. They
+ * match the server exactly for members without owner overrides. The
+ * database remains the security boundary in every case.
  */
 export function canManageCommercialFor(role: AppRole | null): boolean {
   return role !== null && COMMERCIAL_ROLES.includes(role);
@@ -18,8 +26,22 @@ export function canReadCostFor(role: AppRole | null): boolean {
   return role !== null && COST_READER_ROLES.includes(role);
 }
 
+/** Loading-only fallback for the `payroll.read` capability (0079). */
+export function canReadPayrollFor(role: AppRole | null): boolean {
+  return role !== null && PAYROLL_READ_ROLES.includes(role);
+}
+
 export function canWriteCustomersFor(role: AppRole | null): boolean {
   return role !== null && CUSTOMER_WRITE_ROLES.includes(role);
+}
+
+/**
+ * Assign / release event staff. Intentionally ROLE-based (not capability):
+ * the RPCs gate on `has_org_role(OWNER, MANAGER, SUPERVISOR)` and 0079 left
+ * it that way, so a capability would drift from the server for overridden members.
+ */
+export function canAssignStaffFor(role: AppRole | null): boolean {
+  return role !== null && STAFF_ASSIGN_ROLES.includes(role);
 }
 
 export interface MembershipLike {
