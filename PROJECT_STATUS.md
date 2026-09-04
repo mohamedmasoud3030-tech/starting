@@ -1,5 +1,10 @@
 # PROJECT_STATUS.md — Verified Status, Failures, Unknowns, Next Priorities
 
+> **Historical snapshot:** the measurements and branch state below were captured on
+> 2026-08-17. Do not use them as current repository truth. Recompute current
+> branch/PR/test/migration state from GitHub, the codebase, CI, and the latest
+> verified README before making implementation decisions.
+
 > Re-verified 2026-08-17 by re-running every gate in this workspace. Labels:
 > **Verified** = executed here · **CI-verified** = GitHub Actions evidence ·
 > **Unverified** = could not be checked from this environment (reason given) ·
