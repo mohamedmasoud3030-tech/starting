@@ -13,9 +13,10 @@ Read only what is needed, but establish these facts before planning:
 
 1. `AGENTS.md` and the relevant architecture/domain document.
 2. Current implementation, tests, public APIs/RPCs, and affected migrations.
-3. `PROJECT_STATUS.md` and `PROJECT_DEFECTS.md` when they affect scope.
-4. Current branch/open-PR state when concurrent work could overlap.
-5. `docs/research/accounting-posting-contract.md` for accounting or posting work.
+3. `README.md` for the latest repository-verified snapshot, then verify volatile facts directly.
+4. Treat dated `PROJECT_STATUS.md` / `PROJECT_DEFECTS.md` entries as historical evidence unless re-confirmed against current code and GitHub state.
+5. Current branch/open-PR state when concurrent work could overlap.
+6. `docs/research/accounting-posting-contract.md` for accounting or posting work.
 
 If a decision depends on changing external technology, apply `source-driven-development` before selecting the pattern.
 
