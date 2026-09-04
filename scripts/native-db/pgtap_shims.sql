@@ -128,12 +128,14 @@ begin
     execute sql;
   exception when others then
     err_state := sqlstate;
-    if errcode is null or err_state = errcode then
+    if (errcode is null or err_state = errcode)
+       and (errmsg is null or sqlerrm = errmsg) then
       ok := true;
       msg := 'ok - ' || description;
     else
       msg := 'not ok - ' || description
-        || ' (expected SQLSTATE ' || errcode || ', got ' || err_state || ')';
+        || ' (expected SQLSTATE ' || coalesce(errcode,'*') || ', got ' || err_state
+        || coalesce(' / expected msg: ' || errmsg || ', got: ' || sqlerrm, '') || ')';
     end if;
     insert into public._pgtap_results (ok, description) values (ok, msg);
     return msg;
