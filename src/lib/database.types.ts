@@ -225,6 +225,63 @@ export type Database = {
           },
         ]
       }
+      chart_of_accounts: {
+        Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_system: boolean
+          name: string
+          normal_balance: Database["public"]["Enums"]["normal_balance"]
+          organization_id: string
+          parent_id: string | null
+          purpose: string | null
+        }
+        Insert: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          normal_balance: Database["public"]["Enums"]["normal_balance"]
+          organization_id: string
+          parent_id?: string | null
+          purpose?: string | null
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          normal_balance?: Database["public"]["Enums"]["normal_balance"]
+          organization_id?: string
+          parent_id?: string | null
+          purpose?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chart_of_accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chart_of_accounts_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       command_idempotency: {
         Row: {
           actor_id: string
@@ -1612,6 +1669,140 @@ export type Database = {
           },
         ]
       }
+      journal_entries: {
+        Row: {
+          created_at: string
+          created_by: string
+          entry_date: string
+          entry_number: string
+          event_at: string | null
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          is_reversal: boolean
+          memo: string | null
+          organization_id: string
+          request_fingerprint: string
+          reversal_of: string | null
+          source_id: string
+          source_type: Database["public"]["Enums"]["journal_source_type"]
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          entry_date: string
+          entry_number: string
+          event_at?: string | null
+          event_id?: string | null
+          id?: string
+          idempotency_key: string
+          is_reversal?: boolean
+          memo?: string | null
+          organization_id: string
+          request_fingerprint: string
+          reversal_of?: string | null
+          source_id: string
+          source_type: Database["public"]["Enums"]["journal_source_type"]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          entry_date?: string
+          entry_number?: string
+          event_at?: string | null
+          event_id?: string | null
+          id?: string
+          idempotency_key?: string
+          is_reversal?: boolean
+          memo?: string | null
+          organization_id?: string
+          request_fingerprint?: string
+          reversal_of?: string | null
+          source_id?: string
+          source_type?: Database["public"]["Enums"]["journal_source_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entries_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "journal_entries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entries_reversal_of_fkey"
+            columns: ["reversal_of"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_entries_reversal_org_fk"
+            columns: ["organization_id", "reversal_of"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      journal_lines: {
+        Row: {
+          account_id: string
+          created_at: string
+          credit: number
+          debit: number
+          entry_date: string
+          entry_id: string
+          id: string
+          line_memo: string | null
+          organization_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          credit?: number
+          debit?: number
+          entry_date?: string
+          entry_id: string
+          id?: string
+          line_memo?: string | null
+          organization_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          credit?: number
+          debit?: number
+          entry_date?: string
+          entry_id?: string
+          id?: string
+          line_memo?: string | null
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_lines_account_org_fk"
+            columns: ["organization_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "journal_lines_entry_org_fk"
+            columns: ["organization_id", "entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       org_invitations: {
         Row: {
           claimed_at: string | null
@@ -2911,6 +3102,69 @@ export type Database = {
           },
         ]
       }
+      treasury_accounts: {
+        Row: {
+          account_tail: string | null
+          bank_name: string | null
+          chart_account_id: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          organization_id: string
+          treasury_type: Database["public"]["Enums"]["treasury_account_type"]
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          account_tail?: string | null
+          bank_name?: string | null
+          chart_account_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          organization_id: string
+          treasury_type: Database["public"]["Enums"]["treasury_account_type"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          account_tail?: string | null
+          bank_name?: string | null
+          chart_account_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          treasury_type?: Database["public"]["Enums"]["treasury_account_type"]
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treasury_accounts_chart_fk"
+            columns: ["organization_id", "chart_account_id"]
+            isOneToOne: true
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "treasury_accounts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       catalog_items_operational: {
@@ -3747,6 +4001,19 @@ export type Database = {
       }
     }
     Functions: {
+      _customer_gross_vat: {
+        Args: { p_event_id: string; p_gross: number; p_org_id: string }
+        Returns: {
+          net: number
+          vat: number
+          vat_percent: number
+          vat_registered: boolean
+        }[]
+      }
+      _resolve_treasury_chart: {
+        Args: { p_org_id: string; p_treasury_id: string }
+        Returns: string
+      }
       _view_catalog_items_operational: {
         Args: never
         Returns: {
@@ -4513,6 +4780,34 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      account_balance: {
+        Args: { p_account_id: string; p_org_id: string }
+        Returns: {
+          balance: number
+          credit_total: number
+          debit_total: number
+          normal_balance: Database["public"]["Enums"]["normal_balance"]
+          raw_balance: number
+        }[]
+      }
+      account_balance_at_time: {
+        Args: { p_account_id: string; p_as_of: string; p_org_id: string }
+        Returns: {
+          balance: number
+          credit_total: number
+          debit_total: number
+          normal_balance: Database["public"]["Enums"]["normal_balance"]
+          raw_balance: number
+        }[]
+      }
+      account_raw_balance: {
+        Args: { p_account_id: string; p_org_id: string }
+        Returns: {
+          credit_total: number
+          debit_total: number
+          raw_balance: number
+        }[]
+      }
       adjust_consumable_stock: {
         Args: {
           p_idempotency_key: string
@@ -4597,10 +4892,15 @@ export type Database = {
         Args: { p_allow_negative?: boolean; p_quantity: number }
         Returns: undefined
       }
+      assert_journal_omr: { Args: { p_amount: number }; Returns: undefined }
       assert_payment_omr: { Args: { p_amount: number }; Returns: undefined }
       assert_procurement_omr: { Args: { p_amount: number }; Returns: undefined }
       assert_procurement_quantity: {
         Args: { p_quantity: number }
+        Returns: undefined
+      }
+      assert_treasury_sufficient: {
+        Args: { p_org_id: string; p_out_amount: number; p_treasury_id: string }
         Returns: undefined
       }
       assert_wage_rate: { Args: { p_rate: number }; Returns: undefined }
@@ -5483,6 +5783,38 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_treasury_account: {
+        Args: {
+          p_account_tail?: string
+          p_bank_name?: string
+          p_idempotency_key?: string
+          p_name: string
+          p_notes?: string
+          p_org_id: string
+          p_treasury_type: Database["public"]["Enums"]["treasury_account_type"]
+        }
+        Returns: {
+          account_tail: string | null
+          bank_name: string | null
+          chart_account_id: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          organization_id: string
+          treasury_type: Database["public"]["Enums"]["treasury_account_type"]
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "treasury_accounts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       customer_360: {
         Args: { p_org_id: string }
         Returns: {
@@ -5603,6 +5935,7 @@ export type Database = {
         }
         Returns: Json
       }
+      ensure_system_chart: { Args: { p_org_id: string }; Returns: undefined }
       equipment_availability: {
         Args: {
           p_capacity_id: string
@@ -5968,6 +6301,45 @@ export type Database = {
           severity: string
           why_it_matters: string
         }[]
+      }
+      internal_post_journal: {
+        Args: {
+          p_entry_date: string
+          p_event_at?: string
+          p_event_id?: string
+          p_idempotency_key?: string
+          p_is_reversal?: boolean
+          p_lines: Json
+          p_memo?: string
+          p_org_id: string
+          p_request_fingerprint?: string
+          p_reversal_of?: string
+          p_source_id: string
+          p_source_type: Database["public"]["Enums"]["journal_source_type"]
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          entry_date: string
+          entry_number: string
+          event_at: string | null
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          is_reversal: boolean
+          memo: string | null
+          organization_id: string
+          request_fingerprint: string
+          reversal_of: string | null
+          source_id: string
+          source_type: Database["public"]["Enums"]["journal_source_type"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "journal_entries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       is_known_capability: { Args: { p_capability: string }; Returns: boolean }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
@@ -6558,6 +6930,7 @@ export type Database = {
           p_paid_at: string
           p_payment_method: Database["public"]["Enums"]["payment_method"]
           p_reference: string
+          p_treasury_account_id?: string
         }
         Returns: {
           amount: number
@@ -7041,6 +7414,37 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "event_equipment_movements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      reverse_journal_entry: {
+        Args: {
+          p_entry_id: string
+          p_idempotency_key?: string
+          p_org_id: string
+          p_reason: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          entry_date: string
+          entry_number: string
+          event_at: string | null
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          is_reversal: boolean
+          memo: string | null
+          organization_id: string
+          request_fingerprint: string
+          reversal_of: string | null
+          source_id: string
+          source_type: Database["public"]["Enums"]["journal_source_type"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "journal_entries"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -7600,6 +8004,37 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_treasury_opening_balance: {
+        Args: {
+          p_amount: number
+          p_idempotency_key?: string
+          p_org_id: string
+          p_treasury_id: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          entry_date: string
+          entry_number: string
+          event_at: string | null
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          is_reversal: boolean
+          memo: string | null
+          organization_id: string
+          request_fingerprint: string
+          reversal_of: string | null
+          source_id: string
+          source_type: Database["public"]["Enums"]["journal_source_type"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "journal_entries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       staff_ledger_history: {
         Args: { p_org_id: string; p_staff_member_id: string }
         Returns: {
@@ -7683,6 +8118,79 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      treasury_account_balance: {
+        Args: { p_org_id: string; p_treasury_id: string }
+        Returns: {
+          balance: number
+          credit_total: number
+          debit_total: number
+          is_active: boolean
+          raw_balance: number
+        }[]
+      }
+      treasury_account_balances: {
+        Args: { p_org_id: string }
+        Returns: {
+          balance: number
+          chart_account_id: string
+          credit_total: number
+          debit_total: number
+          id: string
+          is_active: boolean
+          name: string
+          raw_balance: number
+          treasury_type: Database["public"]["Enums"]["treasury_account_type"]
+        }[]
+      }
+      treasury_parent_code: {
+        Args: { p_type: Database["public"]["Enums"]["treasury_account_type"] }
+        Returns: string
+      }
+      treasury_statement: {
+        Args: { p_org_id: string; p_treasury_id: string }
+        Returns: {
+          balance: number
+          credit: number
+          debit: number
+          entry_date: string
+          entry_number: string
+          memo: string
+          source_type: Database["public"]["Enums"]["journal_source_type"]
+        }[]
+      }
+      treasury_transfer: {
+        Args: {
+          p_amount: number
+          p_from_treasury_id: string
+          p_idempotency_key?: string
+          p_note?: string
+          p_org_id: string
+          p_to_treasury_id: string
+        }
+        Returns: {
+          created_at: string
+          created_by: string
+          entry_date: string
+          entry_number: string
+          event_at: string | null
+          event_id: string | null
+          id: string
+          idempotency_key: string
+          is_reversal: boolean
+          memo: string | null
+          organization_id: string
+          request_fingerprint: string
+          reversal_of: string | null
+          source_id: string
+          source_type: Database["public"]["Enums"]["journal_source_type"]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "journal_entries"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -7851,6 +8359,39 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "suppliers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      update_treasury_account: {
+        Args: {
+          p_account_tail?: string
+          p_bank_name?: string
+          p_idempotency_key?: string
+          p_is_active?: boolean
+          p_name?: string
+          p_notes?: string
+          p_org_id: string
+          p_treasury_id: string
+        }
+        Returns: {
+          account_tail: string | null
+          bank_name: string | null
+          chart_account_id: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          organization_id: string
+          treasury_type: Database["public"]["Enums"]["treasury_account_type"]
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "treasury_accounts"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -8141,6 +8682,7 @@ export type Database = {
       }
     }
     Enums: {
+      account_type: "ASSET" | "LIABILITY" | "EQUITY" | "REVENUE" | "EXPENSE"
       app_role: "OWNER" | "MANAGER" | "SUPERVISOR" | "WAREHOUSE" | "ACCOUNTANT"
       assignment_status: "ACTIVE" | "RELEASED" | "CANCELLED"
       attachment_evidence_type:
@@ -8200,7 +8742,37 @@ export type Database = {
       installment_status: "PENDING" | "PAID" | "CANCELLED"
       invoice_installment_kind: "DEPOSIT" | "INSTALLMENT" | "FINAL"
       invoice_status: "ISSUED" | "CANCELLED"
+      journal_source_type:
+        | "OPENING_BALANCE"
+        | "CUSTOMER_PAYMENT"
+        | "CUSTOMER_PAYMENT_VOID"
+        | "CUSTOMER_DEPOSIT_APPLIED"
+        | "CUSTOMER_DEPOSIT_RELEASED"
+        | "INVOICE"
+        | "INVOICE_VOID"
+        | "REVENUE_RECOGNITION"
+        | "UNBILLED_RECOGNITION"
+        | "CONTRACT_ASSET_RECLASSIFICATION"
+        | "REVENUE_REVERSAL"
+        | "EVENT_EXPENSE"
+        | "EVENT_EXPENSE_VOID"
+        | "HOST_EARNING"
+        | "HOST_EARNING_VOID"
+        | "HOST_PAYOUT"
+        | "HOST_PAYOUT_VOID"
+        | "STAFF_ADVANCE"
+        | "STAFF_ADVANCE_VOID"
+        | "STAFF_ADVANCE_SETTLEMENT"
+        | "STAFF_RECEIVABLE_RECOGNITION"
+        | "SUPPLIER_INVOICE"
+        | "SUPPLIER_INVOICE_VOID"
+        | "SUPPLIER_PAYMENT"
+        | "SUPPLIER_PAYMENT_VOID"
+        | "TREASURY_TRANSFER"
+        | "JOURNAL_REVERSAL"
+        | "ADJUSTMENT"
       membership_status: "ACTIVE" | "INACTIVE" | "INVITED"
+      normal_balance: "DEBIT" | "CREDIT"
       package_status: "ACTIVE" | "INACTIVE"
       payment_method:
         | "CASH"
@@ -8251,6 +8823,7 @@ export type Database = {
         | "EQUIPMENT_RENTAL"
         | "GENERAL"
       supplier_status: "ACTIVE" | "INACTIVE"
+      treasury_account_type: "CASH" | "BANK" | "OTHER"
       warehouse_movement_kind: "DISPATCH" | "RETURN"
       warehouse_valuation_basis: "CATALOG_COST_SNAPSHOT"
     }
@@ -8380,6 +8953,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_type: ["ASSET", "LIABILITY", "EQUITY", "REVENUE", "EXPENSE"],
       app_role: ["OWNER", "MANAGER", "SUPERVISOR", "WAREHOUSE", "ACCOUNTANT"],
       assignment_status: ["ACTIVE", "RELEASED", "CANCELLED"],
       attachment_evidence_type: [
@@ -8444,7 +9018,38 @@ export const Constants = {
       installment_status: ["PENDING", "PAID", "CANCELLED"],
       invoice_installment_kind: ["DEPOSIT", "INSTALLMENT", "FINAL"],
       invoice_status: ["ISSUED", "CANCELLED"],
+      journal_source_type: [
+        "OPENING_BALANCE",
+        "CUSTOMER_PAYMENT",
+        "CUSTOMER_PAYMENT_VOID",
+        "CUSTOMER_DEPOSIT_APPLIED",
+        "CUSTOMER_DEPOSIT_RELEASED",
+        "INVOICE",
+        "INVOICE_VOID",
+        "REVENUE_RECOGNITION",
+        "UNBILLED_RECOGNITION",
+        "CONTRACT_ASSET_RECLASSIFICATION",
+        "REVENUE_REVERSAL",
+        "EVENT_EXPENSE",
+        "EVENT_EXPENSE_VOID",
+        "HOST_EARNING",
+        "HOST_EARNING_VOID",
+        "HOST_PAYOUT",
+        "HOST_PAYOUT_VOID",
+        "STAFF_ADVANCE",
+        "STAFF_ADVANCE_VOID",
+        "STAFF_ADVANCE_SETTLEMENT",
+        "STAFF_RECEIVABLE_RECOGNITION",
+        "SUPPLIER_INVOICE",
+        "SUPPLIER_INVOICE_VOID",
+        "SUPPLIER_PAYMENT",
+        "SUPPLIER_PAYMENT_VOID",
+        "TREASURY_TRANSFER",
+        "JOURNAL_REVERSAL",
+        "ADJUSTMENT",
+      ],
       membership_status: ["ACTIVE", "INACTIVE", "INVITED"],
+      normal_balance: ["DEBIT", "CREDIT"],
       package_status: ["ACTIVE", "INACTIVE"],
       payment_method: [
         "CASH",
@@ -8501,6 +9106,7 @@ export const Constants = {
         "GENERAL",
       ],
       supplier_status: ["ACTIVE", "INACTIVE"],
+      treasury_account_type: ["CASH", "BANK", "OTHER"],
       warehouse_movement_kind: ["DISPATCH", "RETURN"],
       warehouse_valuation_basis: ["CATALOG_COST_SNAPSHOT"],
     },
