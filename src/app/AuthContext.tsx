@@ -19,6 +19,8 @@ import {
 } from "./organizationPreference";
 import { AuthContext, type ActiveMembership, type AuthContextValue } from "./authContext";
 
+const EMPTY_CAPABILITIES = new Set<string>();
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
@@ -258,9 +260,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * without owner overrides). Hiding/enabling in the UI is NEVER the
    * security boundary — every mutation is enforced by RPC/RLS.
    */
-  const effectiveCapabilities =
-    capabilitiesQuery.isSuccess || capabilitiesQuery.isError
-      ? capabilitiesQuery.data ?? null
+  const effectiveCapabilities = capabilitiesQuery.isSuccess
+    ? capabilitiesQuery.data
+    : capabilitiesQuery.isError
+      ? EMPTY_CAPABILITIES
       : null;
 
   const hasCapability = useCallback(
