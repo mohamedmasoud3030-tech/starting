@@ -5329,6 +5329,80 @@ export type Database = {
           raw_balance: number
         }[]
       }
+      accounting_customer_positions: {
+        Args: { p_event_id?: string; p_org_id: string }
+        Returns: {
+          accounts_receivable_gross: number
+          collected_amount_gross: number
+          commercial_pre_vat: number
+          commercial_value: number
+          customer_deposits_gross: number
+          customer_deposits_net: number
+          customer_id: string
+          customer_name: string
+          event_id: string
+          event_number: string
+          event_status: Database["public"]["Enums"]["event_status"]
+          invoiced_amount_gross: number
+          invoiced_amount_net: number
+          outstanding_ar: number
+          recognized_revenue: number
+          unbilled_receivable_gross: number
+          vat_amount: number
+        }[]
+      }
+      accounting_cutover_status: {
+        Args: { p_org_id: string }
+        Returns: {
+          committed: boolean
+          cutover_at: string
+          cutover_by: string
+          opening_entities: Json
+          opening_journal_count: number
+          vat_payable: number
+        }[]
+      }
+      accounting_journal_history: {
+        Args: {
+          p_event_id?: string
+          p_from?: string
+          p_limit?: number
+          p_offset?: number
+          p_org_id: string
+          p_source_type?: Database["public"]["Enums"]["journal_source_type"]
+          p_to?: string
+        }
+        Returns: {
+          account_code: string
+          account_id: string
+          account_name: string
+          credit: number
+          debit: number
+          entry_date: string
+          entry_id: string
+          entry_number: string
+          event_at: string
+          event_id: string
+          is_reversal: boolean
+          line_memo: string
+          memo: string
+          reversal_of: string
+          reversed_by: string
+          source_id: string
+          source_type: Database["public"]["Enums"]["journal_source_type"]
+        }[]
+      }
+      accounting_payroll_positions: {
+        Args: { p_org_id: string }
+        Returns: {
+          advances_outstanding: number
+          net_position: number
+          payable: number
+          receivable: number
+          staff_member_id: string
+          staff_name: string
+        }[]
+      }
       accounting_reconciliation: {
         Args: { p_org_id: string }
         Returns: {
@@ -5340,6 +5414,30 @@ export type Database = {
           metric: string
           operational_balance: number
           status: string
+        }[]
+      }
+      accounting_supplier_positions: {
+        Args: { p_org_id: string }
+        Returns: {
+          ap_balance: number
+          last_posting_date: string
+          open_invoice_count: number
+          supplier_id: string
+          supplier_name: string
+        }[]
+      }
+      accounting_trial_balance: {
+        Args: { p_from?: string; p_org_id: string; p_to?: string }
+        Returns: {
+          account_id: string
+          account_type: Database["public"]["Enums"]["account_type"]
+          balance: number
+          code: string
+          credit_total: number
+          debit_total: number
+          name: string
+          normal_balance: Database["public"]["Enums"]["normal_balance"]
+          raw_balance: number
         }[]
       }
       adjust_consumable_stock: {
