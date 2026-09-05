@@ -1020,6 +1020,9 @@ export function attendanceError(error: unknown): string {
   if (message.includes("PAYOUT_ALLOCATION_AMOUNT_INVALID")) return "مبلغ التوزيع يجب أن يكون أكبر من صفر";
   if (message.includes("PAYOUT_ALLOCATION_EVENT_REQUIRED")) return "حدد المناسبة لكل توزيع";
   if (message.includes("PAYOUT_ALLOCATIONS_INVALID")) return "توزيع المناسبات غير صالح";
+  if (message.includes("TREASURY_NEGATIVE_BALANCE_NOT_ALLOWED")) return "رصيد الصندوق لا يكفي لهذا الصرف";
+  if (message.includes("TREASURY_ACCOUNT_NOT_FOUND")) return "حساب الصندوق غير موجود";
+  if (message.includes("TREASURY_ACCOUNT_INACTIVE")) return "حساب الصندوق غير نشط";
   if (message.includes("FACE_STALE_MATCH")) return "انتهت صلاحية نتيجة التطابق — أعد المحاولة";
   if (message.includes("FACE_MATCH_CANDIDATE_MISMATCH")) return "نتيجة التطابق لا تطابق المضيف المختار";
   if (message.includes("FACE_MATCH_CONSUMED")) return "استُخدمت نتيجة التطابق مسبقاً";

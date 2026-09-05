@@ -253,6 +253,9 @@ export function financeError(error: unknown): string {
   if (message.includes("EXPENSE_DESCRIPTION_REQUIRED")) return "اكتب وصف المصروف";
   if (message.includes("EXPENSE_VOID_REASON_REQUIRED")) return "اكتب سبب إلغاء المصروف";
   if (message.includes("EXPENSE_ALREADY_VOIDED")) return "هذا المصروف ملغى بالفعل";
+  if (message.includes("TREASURY_NEGATIVE_BALANCE_NOT_ALLOWED")) return "رصيد الصندوق لا يكفي لهذا المصروف";
+  if (message.includes("TREASURY_ACCOUNT_NOT_FOUND")) return "حساب الصندوق غير موجود";
+  if (message.includes("TREASURY_ACCOUNT_INACTIVE")) return "حساب الصندوق غير نشط";
   if (message.includes("INVALID_PAYMENT_AMOUNT")) return "المبلغ غير صالح — يجب أن يكون أكبر من صفر";
   if (message.includes("NOT_AUTHORIZED")) return "ليس لديك صلاحية لهذا الإجراء المالي";
   return message;

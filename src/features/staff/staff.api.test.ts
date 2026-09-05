@@ -70,4 +70,10 @@ describe("attendanceError", () => {
       "مسجّل مسبقاً",
     );
   });
+
+  it("translates treasury posting failures into Arabic", () => {
+    expect(attendanceError(new Error("TREASURY_NEGATIVE_BALANCE_NOT_ALLOWED"))).toContain(
+      "رصيد الصندوق",
+    );
+  });
 });

@@ -108,8 +108,8 @@ select is((select public._xp_debit('9a000000-0000-0000-0000-0000000000a1',public
 select is((select public._xp_debit('9a000000-0000-0000-0000-0000000000a1',(select chart_account_id from public.treasury_accounts where organization_id='9a000000-0000-0000-0000-0000000000a1' and name='Petty Cash'))),475.000,'petty cash restored to 475');
 -- Original journal remains, reversal references it.
 select is((select count(*)::int from public.journal_entries where organization_id='9a000000-0000-0000-0000-0000000000a1' and source_type='EVENT_EXPENSE' and not is_reversal),2,'both originals immutable');
-select is((select count(*)::int from public.journal_entries where organization_id='9a000000-0000-0000-0000-0000000000a1' and source_type='JOURNAL_REVERSAL' and is_reversal),1,'one reversal journal');
-select is((select count(*)::int from public.journal_entries where organization_id='9a000000-0000-0000-0000-0000000000a1' and source_type='JOURNAL_REVERSAL' and reversal_of is not null),1,'reversal references an original');
+select is((select count(*)::int from public.journal_entries where organization_id='9a000000-0000-0000-0000-0000000000a1' and source_type='EVENT_EXPENSE_VOID' and is_reversal),1,'one EVENT_EXPENSE_VOID reversal');
+select is((select count(*)::int from public.journal_entries where organization_id='9a000000-0000-0000-0000-0000000000a1' and source_type='EVENT_EXPENSE_VOID' and reversal_of is not null),1,'reversal references an original');
 -- Repeat void rejected.
 select throws_ok($$select public.void_event_expense('9a000000-0000-0000-0000-0000000000a1',(select id from public.event_expenses where organization_id='9a000000-0000-0000-0000-0000000000a1' and reference='RC-2'),'again','9d000000-0000-0000-0000-000000000021')$$,'P0001','EXPENSE_ALREADY_VOIDED','repeat void rejected');
 
