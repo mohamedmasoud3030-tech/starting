@@ -63,4 +63,9 @@ describe("financeError", () => {
     expect(financeError(new Error("TREASURY_ACCOUNT_NOT_FOUND"))).toContain("غير موجود");
     expect(financeError(new Error("TREASURY_ACCOUNT_INACTIVE"))).toContain("غير نشط");
   });
+
+  it("explains opening-cutover failures in Arabic", () => {
+    expect(financeError(new Error("OPENING_CUTOVER_ALREADY_COMMITTED"))).toContain("الافتتاحية");
+    expect(financeError(new Error("OPENING_VAT_INVALID"))).toContain("ضريبة");
+  });
 });

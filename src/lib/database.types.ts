@@ -1997,6 +1997,9 @@ export type Database = {
       organization_settings: {
         Row: {
           accent_color: string | null
+          accounting_cutover_at: string | null
+          accounting_cutover_by: string | null
+          accounting_cutover_vat_payable: number | null
           address_line1: string | null
           city: string | null
           commercial_registration: string | null
@@ -2027,6 +2030,9 @@ export type Database = {
         }
         Insert: {
           accent_color?: string | null
+          accounting_cutover_at?: string | null
+          accounting_cutover_by?: string | null
+          accounting_cutover_vat_payable?: number | null
           address_line1?: string | null
           city?: string | null
           commercial_registration?: string | null
@@ -2057,6 +2063,9 @@ export type Database = {
         }
         Update: {
           accent_color?: string | null
+          accounting_cutover_at?: string | null
+          accounting_cutover_by?: string | null
+          accounting_cutover_vat_payable?: number | null
           address_line1?: string | null
           city?: string | null
           commercial_registration?: string | null
@@ -2814,6 +2823,82 @@ export type Database = {
             columns: ["organization_id", "event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      staff_advance_settlements: {
+        Row: {
+          advance_id: string | null
+          amount: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          reason: string | null
+          recorded_by: string
+          request_fingerprint: string
+          settlement_date: string
+          staff_member_id: string
+          status: Database["public"]["Enums"]["host_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          advance_id?: string | null
+          amount: number
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          organization_id: string
+          reason?: string | null
+          recorded_by: string
+          request_fingerprint: string
+          settlement_date: string
+          staff_member_id: string
+          status?: Database["public"]["Enums"]["host_payment_status"]
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          advance_id?: string | null
+          amount?: number
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          organization_id?: string
+          reason?: string | null
+          recorded_by?: string
+          request_fingerprint?: string
+          settlement_date?: string
+          staff_member_id?: string
+          status?: Database["public"]["Enums"]["host_payment_status"]
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_advance_settlements_advance_fk"
+            columns: ["organization_id", "advance_id"]
+            isOneToOne: false
+            referencedRelation: "staff_advances"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_advance_settlements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_advance_settlements_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -4359,6 +4444,28 @@ export type Database = {
         Args: { p_event_id: string; p_org_id: string }
         Returns: number
       }
+      _ledger_event_raw: {
+        Args: { p_account_id: string; p_event_id: string; p_org_id: string }
+        Returns: number
+      }
+      _ledger_raw: {
+        Args: { p_account_id: string; p_org_id: string }
+        Returns: number
+      }
+      _opening_customer_positions: {
+        Args: { p_org_id: string }
+        Returns: {
+          ar: number
+          contract_asset: number
+          deferred: number
+          deposits: number
+          event_id: string
+        }[]
+      }
+      _opening_lines_with_equity: {
+        Args: { p_org_id: string; p_pairs: Json }
+        Returns: Json
+      }
       _post_close_revenue: {
         Args: { p_event_id: string; p_org_id: string }
         Returns: undefined
@@ -4408,6 +4515,10 @@ export type Database = {
       _resolve_treasury_chart: {
         Args: { p_org_id: string; p_treasury_id: string }
         Returns: string
+      }
+      _staff_advance_remaining: {
+        Args: { p_advance_id: string; p_org_id: string }
+        Returns: number
       }
       _staff_payroll_position: {
         Args: { p_org_id: string; p_staff_member_id: string }
@@ -5218,6 +5329,19 @@ export type Database = {
           raw_balance: number
         }[]
       }
+      accounting_reconciliation: {
+        Args: { p_org_id: string }
+        Returns: {
+          difference: number
+          dimension: string
+          entity_id: string
+          entity_label: string
+          ledger_balance: number
+          metric: string
+          operational_balance: number
+          status: string
+        }[]
+      }
       adjust_consumable_stock: {
         Args: {
           p_idempotency_key: string
@@ -5762,6 +5886,14 @@ export type Database = {
           p_unit: number
         }
         Returns: number
+      }
+      commit_opening_cutover: {
+        Args: {
+          p_idempotency_key?: string
+          p_org_id: string
+          p_vat_payable?: number
+        }
+        Returns: Json
       }
       complete_evidence_reclaim: {
         Args: {
@@ -7125,6 +7257,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      preview_opening_cutover: {
+        Args: { p_org_id: string; p_vat_payable?: number }
+        Returns: Json
+      }
       procurement_line_total: {
         Args: { p_quantity: number; p_unit_cost: number }
         Returns: number
@@ -8147,6 +8283,9 @@ export type Database = {
         }
         Returns: {
           accent_color: string | null
+          accounting_cutover_at: string | null
+          accounting_cutover_by: string | null
+          accounting_cutover_vat_payable: number | null
           address_line1: string | null
           city: string | null
           commercial_registration: string | null
@@ -8527,6 +8666,40 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "journal_entries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      settle_staff_advance: {
+        Args: {
+          p_advance_id?: string
+          p_amount: number
+          p_idempotency_key?: string
+          p_org_id: string
+          p_reason?: string
+          p_settlement_date: string
+          p_staff_member_id: string
+        }
+        Returns: {
+          advance_id: string | null
+          amount: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          reason: string | null
+          recorded_by: string
+          request_fingerprint: string
+          settlement_date: string
+          staff_member_id: string
+          status: Database["public"]["Enums"]["host_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "staff_advance_settlements"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -9058,6 +9231,37 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "staff_advances"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      void_staff_advance_settlement: {
+        Args: {
+          p_idempotency_key?: string
+          p_org_id: string
+          p_reason: string
+          p_settlement_id: string
+        }
+        Returns: {
+          advance_id: string | null
+          amount: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          reason: string | null
+          recorded_by: string
+          request_fingerprint: string
+          settlement_date: string
+          staff_member_id: string
+          status: Database["public"]["Enums"]["host_payment_status"]
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "staff_advance_settlements"
           isOneToOne: true
           isSetofReturn: false
         }

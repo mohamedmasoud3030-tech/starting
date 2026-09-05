@@ -539,6 +539,33 @@ export function useRecordAdvance(orgId: string | null) {
   });
 }
 
+export function useSettleStaffAdvance(orgId: string | null) {
+  const q = useQueryClient();
+  return useMutation({
+    mutationFn: (v: {
+      staffMemberId: string;
+      amountMilli: MilliOMR;
+      settlementDate: string;
+      reason: string;
+      advanceId?: string | null;
+    }) =>
+      callRpc<Record<string, unknown>>("settle_staff_advance", {
+        p_org_id: orgId,
+        p_staff_member_id: v.staffMemberId,
+        p_amount: toDbNumeric(v.amountMilli),
+        p_settlement_date: v.settlementDate,
+        p_reason: v.reason || null,
+        p_advance_id: v.advanceId ?? null,
+        p_idempotency_key: crypto.randomUUID(),
+      }),
+    onSuccess: () => {
+      void q.invalidateQueries({ queryKey: ["staff-advances", orgId] });
+      void q.invalidateQueries({ queryKey: ["org-payroll-archive", orgId] });
+      void q.invalidateQueries({ queryKey: ["host-payroll-summary", orgId] });
+    },
+  });
+}
+
 export function useVoidAdvance(orgId: string | null) {
   const q = useQueryClient();
   return useMutation({
@@ -1023,6 +1050,13 @@ export function attendanceError(error: unknown): string {
   if (message.includes("TREASURY_NEGATIVE_BALANCE_NOT_ALLOWED")) return "رصيد الصندوق لا يكفي لهذا الصرف";
   if (message.includes("TREASURY_ACCOUNT_NOT_FOUND")) return "حساب الصندوق غير موجود";
   if (message.includes("TREASURY_ACCOUNT_INACTIVE")) return "حساب الصندوق غير نشط";
+  if (message.includes("SETTLEMENT_EXCEEDS_PAYABLE")) return "التسوية أكبر من راتب المضيف المستحق";
+  if (message.includes("SETTLEMENT_EXCEEDS_RECEIVABLE")) return "التسوية أكبر من سلفة المضيف";
+  if (message.includes("SETTLEMENT_EXCEEDS_ADVANCE")) return "التسوية أكبر من المتبقي من هذه السلفة";
+  if (message.includes("PAYROLL_PAYABLE_ZERO")) return "لا يوجد راتب مستحق لتسويته";
+  if (message.includes("STAFF_RECEIVABLE_ZERO")) return "لا توجد سلفة مفتوحة لتسويتها";
+  if (message.includes("SETTLEMENT_ALREADY_VOIDED")) return "هذه التسوية ملغاة بالفعل";
+  if (message.includes("SETTLEMENT_DATE_REQUIRED")) return "يرجى تحديد تاريخ التسوية";
   if (message.includes("FACE_STALE_MATCH")) return "انتهت صلاحية نتيجة التطابق — أعد المحاولة";
   if (message.includes("FACE_MATCH_CANDIDATE_MISMATCH")) return "نتيجة التطابق لا تطابق المضيف المختار";
   if (message.includes("FACE_MATCH_CONSUMED")) return "استُخدمت نتيجة التطابق مسبقاً";

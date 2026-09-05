@@ -76,4 +76,9 @@ describe("attendanceError", () => {
       "رصيد الصندوق",
     );
   });
+
+  it("translates advance-settlement failures into Arabic", () => {
+    expect(attendanceError(new Error("SETTLEMENT_EXCEEDS_PAYABLE"))).toContain("راتب");
+    expect(attendanceError(new Error("STAFF_RECEIVABLE_ZERO"))).toContain("سلفة");
+  });
 });
