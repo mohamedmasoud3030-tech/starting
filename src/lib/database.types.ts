@@ -5333,6 +5333,43 @@ export type Database = {
           raw_balance: number
         }[]
       }
+      accounting_ap_aging: {
+        Args: { p_as_of?: string; p_org_id: string }
+        Returns: {
+          age_days: number
+          aging_bucket: string
+          ap_balance: number
+          ap_origin_date: string
+          supplier_id: string
+          supplier_name: string
+        }[]
+      }
+      accounting_ar_aging: {
+        Args: { p_as_of?: string; p_org_id: string }
+        Returns: {
+          age_days: number
+          aging_bucket: string
+          ar_gross: number
+          ar_origin_date: string
+          customer_id: string
+          customer_name: string
+          event_id: string
+          event_number: string
+        }[]
+      }
+      accounting_contract_asset_aging: {
+        Args: { p_as_of?: string; p_org_id: string }
+        Returns: {
+          age_days: number
+          aging_bucket: string
+          contract_asset_gross: number
+          customer_id: string
+          customer_name: string
+          event_id: string
+          event_number: string
+          recognition_date: string
+        }[]
+      }
       accounting_customer_positions: {
         Args: { p_event_id?: string; p_org_id: string }
         Returns: {
@@ -5353,6 +5390,33 @@ export type Database = {
           recognized_revenue: number
           unbilled_receivable_gross: number
           vat_amount: number
+        }[]
+      }
+      accounting_customer_statement: {
+        Args: {
+          p_customer_id?: string
+          p_event_id?: string
+          p_from?: string
+          p_limit?: number
+          p_offset?: number
+          p_org_id: string
+          p_to?: string
+        }
+        Returns: {
+          allocations: Json
+          created_at: string
+          customer_id: string
+          customer_name: string
+          document_number: string
+          entry_date: string
+          entry_number: string
+          event_id: string
+          event_number: string
+          impact_on_outstanding: number
+          is_reversal: boolean
+          memo: string
+          running_outstanding: number
+          source_type: Database["public"]["Enums"]["journal_source_type"]
         }[]
       }
       accounting_cutover_status: {
@@ -5428,6 +5492,31 @@ export type Database = {
           open_invoice_count: number
           supplier_id: string
           supplier_name: string
+        }[]
+      }
+      accounting_supplier_statement: {
+        Args: {
+          p_from?: string
+          p_limit?: number
+          p_offset?: number
+          p_org_id: string
+          p_supplier_id: string
+          p_to?: string
+        }
+        Returns: {
+          ap_credit: number
+          ap_debit: number
+          created_at: string
+          document_date: string
+          document_number: string
+          entry_date: string
+          entry_number: string
+          event_id: string
+          event_number: string
+          is_reversal: boolean
+          memo: string
+          running_balance: number
+          source_type: Database["public"]["Enums"]["journal_source_type"]
         }[]
       }
       accounting_trial_balance: {
