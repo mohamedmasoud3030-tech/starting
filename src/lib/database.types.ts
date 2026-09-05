@@ -4444,6 +4444,10 @@ export type Database = {
         Args: { p_event_id: string; p_org_id: string }
         Returns: number
       }
+      _ledger_event_deposit_vat: {
+        Args: { p_event_id: string; p_org_id: string }
+        Returns: number
+      }
       _ledger_event_raw: {
         Args: { p_account_id: string; p_event_id: string; p_org_id: string }
         Returns: number

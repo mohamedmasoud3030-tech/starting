@@ -271,14 +271,20 @@ positions; `select` directly on `journal_lines` as `authenticated` is denied.
    joins and `event_id`. If the contract later demands cost centres or departments, that is a
    schema tranche, not a reporting tranche.
 
-## 12. Known 0093 edge case observed during re-verification (out of scope here)
+## 12. Known 0093 edge case — RESOLVED by 0095
 
-`accounting_reconciliation` CUSTOMER rows and `commit_opening_cutover` customer gaps compare
+`accounting_reconciliation` CUSTOMER rows and `commit_opening_cutover` customer gaps compared
 **operational gross** deposits (`Σ customer_payments RECORDED`) against the **ledger net**
 deposit balance (`−raw(2000)`). For VAT-registered orgs, deposit VAT lives in `2150`, so an
-open uninvoiced event with a VAT deposit shows a 0093-era reconciliation `DIFFERENCE` equal to
-the deposit VAT, and cutover would post a matching extra deposit opening. Non-VAT orgs are
-unaffected (all 0093 tests are non-VAT). 0094 does not change 0093 policy; it exposes both
-`customer_deposits_net` (ledger 2000) and `customer_deposits_gross` (net + deposit VAT), which
-makes the two views comparable. A future tranche should decide whether reconciliation uses
-gross (adding deposit VAT back) or net (netting operational deposits) for VAT orgs.
+open uninvoiced event with a VAT deposit showed a 0093-era reconciliation `DIFFERENCE` equal to
+the deposit VAT, and a late cutover posted a matching extra deposit opening (double-counted
+against 2150). 0094 exposed both `customer_deposits_net` and `customer_deposits_gross` to make
+the two views comparable and deferred the decision.
+
+**Resolution (0095, `20260905180000_0095_vat_gross_deposit_reconciliation.sql`):** the contract
+answers the deferred question — §17 compares deposits **gross**. One canonical private helper
+`_ledger_event_deposit_vat(org, event)` (2150 lines sourced `CUSTOMER_PAYMENT`/
+`CUSTOMER_PAYMENT_VOID`, journal state, voids net to zero) is now used by the reconciliation
+`deposits` metric, the cutover deposit gap (gross-deposit opening branches only), and
+`accounting_customer_positions.customer_deposits_gross` (which also gained void-safety).
+See `docs/research/vat-gross-deposit-reconciliation.md`.
