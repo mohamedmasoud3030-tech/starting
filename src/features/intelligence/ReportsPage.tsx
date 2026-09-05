@@ -2,7 +2,10 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/app/authContext";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import {
   rangeForFilter,
@@ -33,24 +36,34 @@ export function ReportsPage() {
         title="التقارير"
         description="أسئلة الأعمال الحقيقية: الإيراد، الربحية، المناسبات، الباقات، والعملاء"
         actions={
-          <div className="flex gap-1" role="group" aria-label="فترة التقرير">
-            {([["today", "اليوم"], ["week", "الأسبوع"], ["month", "الشهر"], ["all", "الكل"]] as const).map(
-              ([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setFilter(value)}
-                  aria-pressed={filter === value}
-                  className={`min-h-11 rounded-xl px-3 text-sm font-bold ${filter === value ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
-                >
-                  {label}
-                </button>
-              ),
-            )}
-          </div>
+          <SegmentedControl<TimeFilter>
+            ariaLabel="فترة التقرير"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "today", label: "اليوم" },
+              { value: "week", label: "الأسبوع" },
+              { value: "month", label: "الشهر" },
+              { value: "all", label: "الكل" },
+            ]}
+          />
         }
       />
 
+      {events.isLoading ? (
+        <LoadingState full label="جارٍ تجهيز التقرير…" />
+      ) : events.error ? (
+        <ErrorState
+          title="تعذّر تجهيز التقرير"
+          message="حدث خطأ أثناء تحميل بيانات التقارير. أعد المحاولة."
+          onRetry={() => {
+            void events.refetch();
+            void customers.refetch();
+            void packages.refetch();
+          }}
+        />
+      ) : (
+        <>
       <Card className="overflow-hidden">
         <h2 className="border-b border-slate-100 p-4 font-black">الإيراد والربحية حسب المناسبة</h2>
         <div className="overflow-x-auto">
@@ -162,6 +175,8 @@ export function ReportsPage() {
           </div>
         </Card>
       </div>
+        </>
+      )}
     </div>
   );
 }

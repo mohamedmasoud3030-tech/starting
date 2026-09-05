@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
+import { AsyncState } from "@/components/ui/AsyncState";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Spinner } from "@/components/ui/Spinner";
 import { TruncationNotice } from "@/components/ui/TruncationNotice";
 import { ITEM_TYPE_LABELS, PRICING_METHOD_LABELS } from "@/lib/domain";
 import { listIsTruncated } from "@/lib/listCap";
@@ -58,14 +58,6 @@ export function CatalogPage() {
     return matchesSearch && matchesType;
   });
 
-  if (itemsQuery.isLoading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
-
   return (
     <div>
       <PageHeader
@@ -86,6 +78,11 @@ export function CatalogPage() {
         }
       />
 
+      <AsyncState
+        loading={itemsQuery.isLoading}
+        error={itemsQuery.error}
+        onRetry={() => void itemsQuery.refetch()}
+      >
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
@@ -175,6 +172,7 @@ export function CatalogPage() {
           ))}
         </ul>
       )}
+      </AsyncState>
 
       <CatalogItemDialog
         open={dialogOpen}

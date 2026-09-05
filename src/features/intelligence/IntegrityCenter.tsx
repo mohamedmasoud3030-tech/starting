@@ -3,6 +3,7 @@ import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useIntegrityFindings } from "./intelligence.api";
 
@@ -30,6 +31,12 @@ export function IntegrityCenter() {
 
       {findings.isLoading ? (
         <Card className="p-4 text-slate-500">جارٍ الفحص…</Card>
+      ) : findings.error ? (
+        <ErrorState
+          title="تعذّر فحص سلامة البيانات"
+          message="حدث خطأ أثناء فحص سلامة البيانات. أعد المحاولة."
+          onRetry={() => void findings.refetch()}
+        />
       ) : (findings.data ?? []).length === 0 ? (
         <Card className="flex items-center gap-3 border-emerald-200 bg-emerald-50 p-5 text-emerald-800">
           <ShieldAlert className="h-6 w-6" />

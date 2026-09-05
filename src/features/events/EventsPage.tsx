@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { TruncationNotice } from "@/components/ui/TruncationNotice";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -169,8 +171,9 @@ export function EventsPage() {
         </div>
       )}
 
-      {events.isLoading ? <p className="py-12 text-center text-slate-500">جارٍ تحميل المناسبات…</p> :
-        !events.data?.rows.length ? <EmptyState title="لا توجد مناسبات" description="المسار الصحيح: أصدر عرض سعر ثم حوّله إلى مناسبة بعد موافقة العميل." action={<Link to="/quotes/new" className="inline-flex min-h-12 items-center rounded-xl bg-brand-700 px-5 font-bold text-white">+ عرض سعر جديد</Link>} /> :
+      {events.isLoading ? <LoadingState full label="جارٍ تحميل المناسبات…" /> :
+        events.error ? <ErrorState title="تعذّر تحميل المناسبات" message="حدث خطأ أثناء تحميل المناسبات. أعد المحاولة." onRetry={() => void events.refetch()} /> :
+        !events.data?.rows.length ? <EmptyState title="لا توجد مناسبات" description="المسار الصحيح: أصدر عرض سعر ثم حوّله إلى مناسبة بعد موافقة العميل." action={<Link to="/quotes/new" className="inline-flex min-h-12 items-center rounded-xl bg-brand-700 px-5 font-bold text-white"><Plus className="h-5 w-5" /> عرض سعر جديد</Link>} /> :
         visibleEvents.length === 0 ? <EmptyState title="لا توجد نتائج مطابقة" description="غيّر عبارة البحث أو عامل التصفية." /> :
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="hidden grid-cols-[minmax(0,1.5fr)_minmax(9rem,1fr)_minmax(9rem,1fr)_auto] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-sm font-bold text-slate-500 md:grid">

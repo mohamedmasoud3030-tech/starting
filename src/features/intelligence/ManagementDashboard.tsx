@@ -4,7 +4,10 @@ import { AlertTriangle, CalendarDays, TrendingUp, Wallet } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { formatOMR } from "@/lib/money";
 import {
   rangeForFilter,
@@ -41,21 +44,17 @@ export function ManagementDashboard() {
         title="لوحة الإدارة"
         description="نظرة إدارية: ما يحدث اليوم، ما يحتاج تدخلاً، أين المال، وما هو مربح فعلاً"
         actions={
-          <div className="flex gap-1" role="group" aria-label="فترة العرض">
-            {([["today", "اليوم"], ["week", "الأسبوع"], ["month", "الشهر"], ["all", "الكل"]] as const).map(
-              ([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setFilter(value)}
-                  aria-pressed={filter === value}
-                  className={`min-h-11 rounded-xl px-3 text-sm font-bold ${filter === value ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
-                >
-                  {label}
-                </button>
-              ),
-            )}
-          </div>
+          <SegmentedControl<TimeFilter>
+            ariaLabel="فترة العرض"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "today", label: "اليوم" },
+              { value: "week", label: "الأسبوع" },
+              { value: "month", label: "الشهر" },
+              { value: "all", label: "الكل" },
+            ]}
+          />
         }
       />
 
@@ -93,6 +92,16 @@ export function ManagementDashboard() {
       </section>
 
       {/* E1 — KPIs */}
+      {metrics.isLoading ? (
+        <LoadingState label="جارٍ تحميل المؤشرات…" />
+      ) : metrics.error ? (
+        <ErrorState
+          title="تعذّر تحميل المؤشرات"
+          message="حدث خطأ أثناء تحميل مؤشرات لوحة الإدارة. أعد المحاولة."
+          onRetry={() => void metrics.refetch()}
+        />
+      ) : (
+        <>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi icon={CalendarDays} label="مناسبات اليوم" value={m?.events_today ?? "—"} to="/operations" />
         <Kpi icon={AlertTriangle} label="جاهزية منخفضة" value={m?.events_low_readiness ?? "—"} to="/operations" tone="warning" />
@@ -155,6 +164,8 @@ export function ManagementDashboard() {
           </Card>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

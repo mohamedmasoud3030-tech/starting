@@ -7,11 +7,15 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { InlineError } from "@/components/ui/ErrorState";
+import { Input } from "@/components/ui/Input";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { JobPath } from "@/components/ui/JobPath";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import { InlineError } from "@/components/ui/ErrorState";
 import {
   arabicQuotationError,
   useCancelQuotationDraft,
@@ -110,20 +114,41 @@ export function QuotesPage() {
       )}
 
       <div className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 md:grid-cols-[minmax(0,1fr)_auto]">
-        <label className="relative">
+        <label className="relative block">
           <span className="sr-only">البحث في عروض الأسعار</span>
           <Search className="pointer-events-none absolute right-3 top-3.5 h-5 w-5 text-slate-400" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ابحث بالرقم، العميل أو الموقع" className="min-h-12 w-full rounded-xl border border-slate-200 bg-white pr-10 pl-3 text-base outline-none focus:border-brand-500" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="ابحث بالرقم، العميل أو الموقع"
+            aria-label="البحث في عروض الأسعار"
+            className="pr-10"
+          />
         </label>
-        <div className="flex gap-1 overflow-x-auto" aria-label="تصفية حالة العرض">
-          {([['ALL','الكل'],['DRAFT','المسودات'],['ISSUED','المرسلة'],['ACCEPTED','المعتمدة'],['REJECTED','المرفوضة'],['CONVERTED','المحوّلة']] as const).map(([value, label]) => (
-            <button key={value} type="button" onClick={() => setStatusFilter(value)} aria-pressed={statusFilter === value} className={`min-h-12 shrink-0 rounded-xl px-3 text-sm font-bold ${statusFilter === value ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>{label}</button>
-          ))}
-        </div>
+        <SegmentedControl<QuotationStatus | "ALL">
+          ariaLabel="تصفية حالة العرض"
+          className="overflow-x-auto"
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={[
+            { value: "ALL", label: "الكل" },
+            { value: "DRAFT", label: "المسودات" },
+            { value: "ISSUED", label: "المرسلة" },
+            { value: "ACCEPTED", label: "المعتمدة" },
+            { value: "REJECTED", label: "المرفوضة" },
+            { value: "CONVERTED", label: "المحوّلة" },
+          ]}
+        />
       </div>
 
       {quotes.isLoading ? (
-        <p>جارٍ التحميل…</p>
+        <LoadingState full label="جارٍ تحميل عروض الأسعار…" />
+      ) : quotes.error ? (
+        <ErrorState
+          title="تعذّر تحميل عروض الأسعار"
+          message="حدث خطأ أثناء تحميل عروض الأسعار. أعد المحاولة."
+          onRetry={() => void quotes.refetch()}
+        />
       ) : !quotes.data?.length ? (
         <EmptyState
           title="لا توجد عروض أسعار"

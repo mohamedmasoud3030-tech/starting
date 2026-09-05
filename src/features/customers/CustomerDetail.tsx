@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useParams } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
-import { FileText, Phone, MessageCircle } from "lucide-react";
+import { useParams, Link } from "@tanstack/react-router";
+import { ArrowRight, FileText, Phone, MessageCircle } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { CUSTOMER_TYPE_LABELS } from "@/lib/domain";
@@ -35,8 +36,32 @@ export function CustomerDetail() {
 
   const row = (c360.data ?? []).find((c) => c.customer_id === customerId);
 
-  if (c360.isLoading) return <p className="py-12 text-center text-slate-500">جارٍ التحميل…</p>;
-  if (!row) return <p className="py-12 text-center text-slate-500">تعذر العثور على العميل.</p>;
+  if (c360.isLoading) return <LoadingState full label="جارٍ تحميل بيانات العميل…" />;
+  if (c360.error) {
+    return (
+      <ErrorState
+        title="تعذّر تحميل بيانات العميل"
+        message="حدث خطأ أثناء تحميل بيانات هذا العميل. أعد المحاولة."
+        onRetry={() => void c360.refetch()}
+      />
+    );
+  }
+  if (!row) {
+    return (
+      <div className="space-y-5">
+        <BackLink />
+        <EmptyState
+          title="العميل غير موجود"
+          description="قد يكون العميل قد حُذف أو أنك لست ضمن المنشأة الصحيحة."
+          action={
+            <Link to="/customers">
+              <Button variant="outline">العودة إلى قائمة العملاء</Button>
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
 
   const repeatCustomer = row.events_count >= 2;
 
@@ -45,7 +70,7 @@ export function CustomerDetail() {
 
   return (
     <div className="space-y-5">
-      <Link to="/customers" className="font-bold text-brand-700">→ العودة إلى العملاء</Link>
+      <BackLink />
       <PageHeader
         title={row.name}
         description={row.phone ?? ""}
@@ -184,6 +209,18 @@ export function CustomerDetail() {
         )}
       </PrintDocumentDialog>
     </div>
+  );
+}
+
+function BackLink() {
+  return (
+    <Link
+      to="/customers"
+      className="inline-flex items-center gap-1.5 font-bold text-brand-700 hover:text-brand-800"
+    >
+      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+      العودة إلى العملاء
+    </Link>
   );
 }
 
