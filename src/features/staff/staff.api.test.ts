@@ -70,4 +70,15 @@ describe("attendanceError", () => {
       "مسجّل مسبقاً",
     );
   });
+
+  it("translates treasury posting failures into Arabic", () => {
+    expect(attendanceError(new Error("TREASURY_NEGATIVE_BALANCE_NOT_ALLOWED"))).toContain(
+      "رصيد الصندوق",
+    );
+  });
+
+  it("translates advance-settlement failures into Arabic", () => {
+    expect(attendanceError(new Error("SETTLEMENT_EXCEEDS_PAYABLE"))).toContain("راتب");
+    expect(attendanceError(new Error("STAFF_RECEIVABLE_ZERO"))).toContain("سلفة");
+  });
 });

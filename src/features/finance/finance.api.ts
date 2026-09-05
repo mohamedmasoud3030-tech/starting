@@ -243,6 +243,35 @@ export function useReopenFinancially(orgId: string | null, eventId: string) {
   });
 }
 
+export function useCommitOpeningCutover(orgId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ vatPayable }: { vatPayable: number }) =>
+      callRpc("commit_opening_cutover", {
+        p_org_id: orgId,
+        p_vat_payable: vatPayable,
+        p_idempotency_key: crypto.randomUUID(),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["accounting-reconciliation", orgId] });
+    },
+  });
+}
+
+export function useAccountingReconciliation(orgId: string | null) {
+  return useQuery({
+    queryKey: ["accounting-reconciliation", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("accounting_reconciliation", {
+        p_org_id: orgId!,
+      });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 export function financeError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes("FINANCIAL_CLOSE_REQUIRES_ACCEPTED_QUOTATION")) return "لا يمكن الإغلاق المالي بدون عرض سعر معتمد";
@@ -253,6 +282,11 @@ export function financeError(error: unknown): string {
   if (message.includes("EXPENSE_DESCRIPTION_REQUIRED")) return "اكتب وصف المصروف";
   if (message.includes("EXPENSE_VOID_REASON_REQUIRED")) return "اكتب سبب إلغاء المصروف";
   if (message.includes("EXPENSE_ALREADY_VOIDED")) return "هذا المصروف ملغى بالفعل";
+  if (message.includes("TREASURY_NEGATIVE_BALANCE_NOT_ALLOWED")) return "رصيد الصندوق لا يكفي لهذا المصروف";
+  if (message.includes("TREASURY_ACCOUNT_NOT_FOUND")) return "حساب الصندوق غير موجود";
+  if (message.includes("TREASURY_ACCOUNT_INACTIVE")) return "حساب الصندوق غير نشط";
+  if (message.includes("OPENING_CUTOVER_ALREADY_COMMITTED")) return "تم اعتماد الأرصدة الافتتاحية مسبقاً";
+  if (message.includes("OPENING_VAT_INVALID")) return "رصيد ضريبة القيمة المضافة الافتتاحي غير صالح";
   if (message.includes("INVALID_PAYMENT_AMOUNT")) return "المبلغ غير صالح — يجب أن يكون أكبر من صفر";
   if (message.includes("NOT_AUTHORIZED")) return "ليس لديك صلاحية لهذا الإجراء المالي";
   return message;

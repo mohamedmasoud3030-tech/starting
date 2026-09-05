@@ -57,4 +57,15 @@ describe("financeError", () => {
     expect(financeError(new Error("FINANCIAL_CLOSURE_BLOCKS_MUTATION"))).toContain("مغلقة ماليًا");
     expect(financeError(new Error("REOPEN_REASON_REQUIRED"))).toContain("سبب إعادة الفتح");
   });
+
+  it("explains treasury posting failures in Arabic", () => {
+    expect(financeError(new Error("TREASURY_NEGATIVE_BALANCE_NOT_ALLOWED"))).toContain("رصيد الصندوق");
+    expect(financeError(new Error("TREASURY_ACCOUNT_NOT_FOUND"))).toContain("غير موجود");
+    expect(financeError(new Error("TREASURY_ACCOUNT_INACTIVE"))).toContain("غير نشط");
+  });
+
+  it("explains opening-cutover failures in Arabic", () => {
+    expect(financeError(new Error("OPENING_CUTOVER_ALREADY_COMMITTED"))).toContain("الافتتاحية");
+    expect(financeError(new Error("OPENING_VAT_INVALID"))).toContain("ضريبة");
+  });
 });
