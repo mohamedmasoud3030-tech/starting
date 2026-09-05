@@ -12,6 +12,7 @@ export type NavTarget =
   | "/customers"
   | "/staff"
   | "/reports"
+  | "/accounting"
   | "/integrity"
   | "/search"
   | "/settings";
@@ -81,6 +82,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     label: "الإدارة والتحليل",
     items: [
       { to: "/reports", label: "التقارير", financial: true },
+      { to: "/accounting", label: "المحاسبة", financial: true },
       { to: "/integrity", label: "مركز السلامة", financial: true },
     ],
   },
