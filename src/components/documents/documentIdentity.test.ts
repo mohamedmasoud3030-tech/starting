@@ -40,6 +40,9 @@ const settings: OrganizationSettingsRow = {
   vat_registered: true,
   vat_percent: 5,
   vat_registration_number: "OM-VAT-1",
+  accounting_cutover_at: null,
+  accounting_cutover_by: null,
+  accounting_cutover_vat_payable: null,
   created_at: "",
   updated_at: "",
 };

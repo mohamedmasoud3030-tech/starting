@@ -16,7 +16,16 @@ import {
 import { TeamPanel } from "./TeamPanel";
 
 type FormState = Record<
-  Exclude<keyof OrganizationSettingsRow, "organization_id" | "created_at" | "updated_at">,
+  Exclude<
+    keyof OrganizationSettingsRow,
+    | "organization_id"
+    | "created_at"
+    | "updated_at"
+    // Cutover stamps are financial-core commands, not branding settings.
+    | "accounting_cutover_at"
+    | "accounting_cutover_by"
+    | "accounting_cutover_vat_payable"
+  >,
   string
 >;
 
@@ -54,7 +63,15 @@ function toForm(row: OrganizationSettingsRow | null): FormState {
     ...EMPTY_FORM,
     ...Object.fromEntries(
       Object.entries(row)
-        .filter(([k]) => k !== "organization_id" && k !== "created_at" && k !== "updated_at")
+        .filter(
+          ([k]) =>
+            k !== "organization_id" &&
+            k !== "created_at" &&
+            k !== "updated_at" &&
+            k !== "accounting_cutover_at" &&
+            k !== "accounting_cutover_by" &&
+            k !== "accounting_cutover_vat_payable",
+        )
         .map(([k, v]) => [
           k,
           k === "vat_registered" ? String(!!v) : v == null ? "" : String(v),
