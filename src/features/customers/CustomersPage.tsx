@@ -9,10 +9,11 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { Field } from "@/components/ui/Field";
 import { Dialog } from "@/components/ui/Dialog";
+import { AsyncState } from "@/components/ui/AsyncState";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Spinner } from "@/components/ui/Spinner";
 import { TruncationNotice } from "@/components/ui/TruncationNotice";
+import { useToast } from "@/components/ui/toastContext";
 import { CUSTOMER_TYPE_LABELS } from "@/lib/domain";
 import { listIsTruncated } from "@/lib/listCap";
 import type { CustomerRow, CustomerType } from "@/lib/dbTypes";
@@ -24,20 +25,13 @@ import {
 
 export function CustomersPage() {
   const { currentOrganization, canWriteCustomers } = useAuth();
+  const toast = useToast();
   const orgId = currentOrganization?.id ?? null;
   const customersQuery = useCustomersPage(orgId);
   const saveMutation = useSaveCustomer(orgId);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CustomerRow | null>(null);
-
-  if (customersQuery.isLoading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
 
   const customers = customersQuery.data?.rows ?? [];
   const customersTruncated =
@@ -64,6 +58,11 @@ export function CustomersPage() {
         }
       />
 
+      <AsyncState
+        loading={customersQuery.isLoading}
+        error={customersQuery.error}
+        onRetry={() => void customersQuery.refetch()}
+      >
       {customersTruncated && (
         <div className="mb-4 space-y-3">
           <TruncationNotice
@@ -148,6 +147,7 @@ export function CustomersPage() {
           ))}
         </ul>
       )}
+      </AsyncState>
 
       <CustomerDialog
         open={dialogOpen}
@@ -174,6 +174,9 @@ export function CustomersPage() {
             values,
           });
           setDialogOpen(false);
+          toast.success(
+            editing ? `تم حفظ تعديلات العميل "${values.name}".` : `تمت إضافة العميل "${values.name}" بنجاح.`,
+          );
         }}
       />
     </div>

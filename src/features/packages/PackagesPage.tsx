@@ -5,8 +5,8 @@ import { canManageCommercialFor } from "@/app/authRoles";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { AsyncState } from "@/components/ui/AsyncState";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Spinner } from "@/components/ui/Spinner";
 import { useCatalogItems } from "@/features/catalog/catalog.api";
 import type { CatalogListItem } from "@/features/catalog/catalog.api";
 import { formatQuantity } from "@/lib/utils";
@@ -28,14 +28,6 @@ export function PackagesPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PackageWithLines | null>(null);
-
-  if (packagesQuery.isLoading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Spinner className="h-8 w-8" />
-      </div>
-    );
-  }
 
   const packages = packagesQuery.data ?? [];
 
@@ -59,6 +51,11 @@ export function PackagesPage() {
         }
       />
 
+      <AsyncState
+        loading={packagesQuery.isLoading}
+        error={packagesQuery.error}
+        onRetry={() => void packagesQuery.refetch()}
+      >
       {packages.length === 0 ? (
         <EmptyState
           title="لا توجد باقات بعد"
@@ -94,6 +91,7 @@ export function PackagesPage() {
           ))}
         </ul>
       )}
+      </AsyncState>
 
       <PackageDialog
         open={dialogOpen}

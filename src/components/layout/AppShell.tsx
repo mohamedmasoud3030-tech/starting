@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { LogOut } from "lucide-react";
 import { useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/app/authContext";
+import { ToastProvider } from "@/components/ui/Toast";
 import { DesktopSidebar } from "./DesktopSidebar";
 import { MobileNav } from "./MobileNav";
 import { OfflineBanner } from "./OfflineBanner";
@@ -81,7 +82,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           tabIndex={-1}
           className="min-w-0 flex-1 px-3 py-4 pb-28 outline-none sm:px-4 sm:py-6 md:px-6 md:pb-6 lg:px-8"
         >
-          <div className="mx-auto max-w-6xl">{children}</div>
+          <div className="mx-auto max-w-6xl">
+            <ToastProvider>{children}</ToastProvider>
+          </div>
         </main>
       </div>
 

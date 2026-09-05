@@ -3,8 +3,10 @@ import { Save } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -182,7 +184,13 @@ export function SettingsPage() {
       </div>
 
       {settings.isLoading ? (
-        <p className="py-12 text-center text-slate-500">جارٍ تحميل الإعدادات…</p>
+        <LoadingState full label="جارٍ تحميل الإعدادات…" />
+      ) : settings.error ? (
+        <ErrorState
+          title="تعذّر تحميل الإعدادات"
+          message="حدث خطأ أثناء تحميل إعدادات المنشأة. أعد المحاولة."
+          onRetry={() => void settings.refetch()}
+        />
       ) : (
         <form id="settings-form" onSubmit={onSubmit} className="space-y-5">
           <Card className="p-5">

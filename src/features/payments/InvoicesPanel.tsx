@@ -16,6 +16,7 @@ import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { MoneyInput } from "@/components/MoneyInput";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { useToast } from "@/components/ui/toastContext";
 import { formatOMR, type MilliOMR } from "@/lib/money";
 import { todayInMuscat } from "@/lib/dates";
 import {
@@ -57,6 +58,7 @@ export function InvoicesPanel({
   acceptedRevenueMilli: number | null;
 }) {
   const { currentOrganization } = useAuth();
+  const toast = useToast();
   const settings = useOrganizationSettings(orgId);
   const invoice = useEventInvoice(orgId, eventId);
   const installments = useEventInstallments(orgId, eventId);
@@ -118,6 +120,7 @@ export function InvoicesPanel({
         note: "",
       });
       setOpen(false);
+      toast.success(`تم إصدار الفاتورة ${invoiceNumber.trim()} وجدولة الأقساط.`);
     } catch (cause) {
       setError(invoiceError(cause));
     }
@@ -129,6 +132,7 @@ export function InvoicesPanel({
     try {
       await voidInvoice.mutateAsync({ invoiceId: inv.invoiceId, reason });
       setConfirmingVoid(false);
+      toast.info("تم إلغاء الفاتورة وتثبيت السبب في السجل.");
     } catch (cause) {
       setError(invoiceError(cause));
     }

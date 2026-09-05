@@ -3,7 +3,9 @@ import { Link } from "@tanstack/react-router";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { EVENT_STATUS_LABELS } from "@/features/events/eventWorkspace.model";
 import { readinessTone } from "@/features/events/operationalReadiness";
 import { useEvents, type EventRow } from "@/features/events/events.api";
@@ -55,20 +57,25 @@ export function CalendarPage() {
     <div>
       <PageHeader title="التقويم" description="رؤية المناسبات يومياً أو شهرياً — اضغط على يوم لعرض مناسباته" />
 
+      {events.isLoading ? null : events.error ? (
+        <ErrorState
+          title="تعذّر تحميل المناسبات"
+          message="حدث خطأ أثناء تحميل المناسبات للتقويم. أعد المحاولة."
+          onRetry={() => void events.refetch()}
+          className="mb-4"
+        />
+      ) : null}
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 overflow-x-auto" role="group" aria-label="عرض التقويم">
-          {([["month", "الشهر"], ["day", "اليوم"]] as const).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setView(value)}
-              aria-pressed={view === value}
-              className={`min-h-11 shrink-0 rounded-xl px-4 text-sm font-bold ${view === value ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl<ViewMode>
+          ariaLabel="عرض التقويم"
+          value={view}
+          onChange={setView}
+          options={[
+            { value: "month", label: "الشهر" },
+            { value: "day", label: "اليوم" },
+          ]}
+        />
         {view === "month" && (
           <p className="text-lg font-black text-slate-800">{monthLabel(selected.year, selected.month)}</p>
         )}

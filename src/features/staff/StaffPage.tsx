@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { buildDocumentIdentity } from "@/components/documents/documentIdentity";
@@ -319,7 +321,16 @@ export function StaffPage() {
       />
       <PayrollPeriodCard orgId={orgId} />
       {staff.isLoading || archive.isLoading ? (
-        <p>جارٍ التحميل…</p>
+        <LoadingState label="جارٍ تحميل بيانات الفريق…" />
+      ) : staff.error || archive.error ? (
+        <ErrorState
+          title="تعذّر تحميل بيانات الفريق"
+          message="حدث خطأ أثناء تحميل المضيفين والأجور. أعد المحاولة."
+          onRetry={() => {
+            void staff.refetch();
+            void archive.refetch();
+          }}
+        />
       ) : (staff.data ?? []).length === 0 ? (
         <EmptyState
           title="لا يوجد مضيفون"

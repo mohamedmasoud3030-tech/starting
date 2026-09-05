@@ -4,8 +4,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
 import { useAuth } from "@/app/authContext";
@@ -70,10 +72,16 @@ function MembersSection({ orgId }: { orgId: string }) {
   const members = useOrgMembers(orgId);
 
   if (members.isLoading) {
+    return <LoadingState label="جارٍ تحميل الأعضاء…" />;
+  }
+
+  if (members.isError) {
     return (
-      <div className="flex justify-center py-6">
-        <Spinner className="h-6 w-6" />
-      </div>
+      <ErrorState
+        title="تعذّر تحميل الأعضاء"
+        message="حدث خطأ أثناء تحميل أعضاء الفريق. أعد المحاولة."
+        onRetry={() => void members.refetch()}
+      />
     );
   }
 

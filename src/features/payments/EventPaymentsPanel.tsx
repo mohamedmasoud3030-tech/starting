@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
 import { VoidReasonPanel } from "@/components/ui/VoidReasonPanel";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/toastContext";
 import { MoneyInput } from "@/components/MoneyInput";
 import { formatOMR, type MilliOMR } from "@/lib/money";
 import type { PaymentMethod } from "@/lib/dbTypes";
@@ -53,6 +56,7 @@ export function EventPaymentsPanel({
   canVoid: boolean;
 }) {
   const { currentOrganization } = useAuth();
+  const toast = useToast();
   const finance = useEventFinance(orgId, eventId);
   const payments = useEventPayments(orgId, eventId);
   const recordPayment = useRecordPayment(orgId, eventId);
@@ -78,11 +82,19 @@ export function EventPaymentsPanel({
   }
 
   if (finance.isLoading || payments.isLoading) {
+    return <LoadingState label="جارٍ تحميل مدفوعات المناسبة…" className="rounded-2xl border border-slate-200 bg-white" />;
+  }
+
+  if (finance.error || payments.error) {
     return (
-      <div className="flex min-h-40 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white" aria-busy="true">
-        <Spinner />
-        <span className="font-bold text-slate-600">جارٍ تحميل مدفوعات المناسبة…</span>
-      </div>
+      <ErrorState
+        title="تعذّر تحميل المدفوعات"
+        message="حدث خطأ أثناء تحميل مدفوعات المناسبة. أعد المحاولة."
+        onRetry={() => {
+          void finance.refetch();
+          void payments.refetch();
+        }}
+      />
     );
   }
 
@@ -103,6 +115,7 @@ export function EventPaymentsPanel({
       setAmountMilli(0);
       setReference("");
       setNotes("");
+      toast.success(`تم تسجيل الدفعة بمبلغ ${formatOMR(amountMilli)} بنجاح.`);
     } catch (cause) {
       setError(paymentError(cause));
     }
@@ -113,6 +126,7 @@ export function EventPaymentsPanel({
     try {
       await voidPayment.mutateAsync({ paymentId, reason });
       setVoiding(null);
+      toast.info("تم إلغاء الدفعة وتثبيتها في السجل مع السبب.");
     } catch (cause) {
       setError(paymentError(cause));
     }
