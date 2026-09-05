@@ -9,7 +9,7 @@
 -- so journal tables (revoked/no-policy) are readable for verification.
 -- ============================================================================
 begin;
-select plan(28);
+select plan(30);
 
 -- Fixtures: org A (OWNER) with a non-VAT and a VAT-registered quotation; org B
 -- proves tenant isolation.
@@ -101,6 +101,17 @@ insert into public.organization_memberships(organization_id,user_id,role) values
 set local "request.jwt.claims"='{"sub":"98000000-0000-0000-0000-000000000003","role":"authenticated"}';
 select throws_ok($$select public.record_customer_payment('98000000-0000-0000-0000-0000000000a1','98000000-0000-0000-0000-0000000000e1',10.000,'CASH',null,null,now(),'98200000-0000-0000-0000-000000000021')$$,'42501','NOT_AUTHORIZED','SUPERVISOR cannot record payments');
 select is((select count(*)::int from public.journal_entries where organization_id='98000000-0000-0000-0000-0000000000a1'),4,'no journal was posted for the denied payment');
+
+-- 10. Authenticated-role commit path (CI extra-DB / PG15): the deferred
+--     journal_lines_balanced trigger must be allowed to SELECT journal_lines
+--     even though that table is revoked from `authenticated`. SET CONSTRAINTS
+--     IMMEDIATE forces the deferred trigger inside this transaction (pgTAP
+--     rolls back and would otherwise never fire it).
+set local role authenticated;
+set local "request.jwt.claims"='{"sub":"98000000-0000-0000-0000-000000000001","role":"authenticated"}';
+select lives_ok($$select public.record_customer_payment('98000000-0000-0000-0000-0000000000a1','98000000-0000-0000-0000-0000000000e1',20.000,'CASH','D-AUTH',null,now(),'98200000-0000-0000-0000-000000000030')$$,'authenticated role can record a posted payment');
+set constraints all immediate;
+select ok(true, 'deferred journal balance trigger may run as authenticated without 42501');
 
 select * from finish();
 rollback;

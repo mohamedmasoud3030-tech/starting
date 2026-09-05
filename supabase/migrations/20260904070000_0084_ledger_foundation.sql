@@ -232,10 +232,18 @@ create trigger journal_lines_immutable
 -- Balanced-journal invariant — enforced at the journal_lines mutation boundary.
 -- DEFERRABLE CONSTRAINT TRIGGER re-validates each parent entry's SUM(debit)=SUM(credit)
 -- and min line count at transaction end, so an unbalanced entry can never commit.
+--
+-- SECURITY DEFINER is required: journal_lines is revoked from `authenticated`
+-- (no client reads). PostgreSQL 15 fires deferred constraint triggers as the
+-- role executing COMMIT, which for business RPCs is `authenticated` after
+-- `SET ROLE`. PostgreSQL 18 fires them as the role that performed the INSERT
+-- (here, the definer of internal_post_journal). Without DEFINER, PG15 COMMIT
+-- of a posted payment fails with 42501 permission denied for journal_lines.
 -- ---------------------------------------------------------------------------
 create or replace function public.assert_journal_balanced()
 returns trigger
 language plpgsql
+security definer
 set search_path = ''
 as $$
 declare
