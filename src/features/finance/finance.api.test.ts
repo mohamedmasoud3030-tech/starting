@@ -44,6 +44,15 @@ describe("mapClosure", () => {
       reopened_at: null,
       reopened_by: null,
       reopen_reason: null,
+      is_ledger_backed: false,
+      deferred_revenue_at_close: null,
+      contract_asset_at_close: null,
+      accounts_receivable_at_close: null,
+      customer_deposits_at_close: null,
+      vat_payable_at_close: null,
+      supplier_ap_at_close: null,
+      payroll_payable_at_close: null,
+      treasury_balance_at_close: null,
       created_at: "2026-11-01T00:00:00Z",
     });
     expect(c.profitAtCloseMilli).toBe(375000);

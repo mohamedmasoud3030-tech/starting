@@ -1048,58 +1048,85 @@ export type Database = {
       }
       event_financial_closures: {
         Row: {
+          accounts_receivable_at_close: number | null
           close_note: string | null
           closed_at: string
           closed_by: string
           collected_at_close: number | null
+          contract_asset_at_close: number | null
           costs_at_close: number | null
           created_at: string
+          customer_deposits_at_close: number | null
+          deferred_revenue_at_close: number | null
           event_id: string
           id: string
+          is_ledger_backed: boolean
           margin_at_close: number | null
           organization_id: string
           outstanding_at_close: number | null
+          payroll_payable_at_close: number | null
           profit_at_close: number | null
           reopen_reason: string | null
           reopened_at: string | null
           reopened_by: string | null
           revenue_at_close: number | null
+          supplier_ap_at_close: number | null
+          treasury_balance_at_close: number | null
+          vat_payable_at_close: number | null
         }
         Insert: {
+          accounts_receivable_at_close?: number | null
           close_note?: string | null
           closed_at?: string
           closed_by: string
           collected_at_close?: number | null
+          contract_asset_at_close?: number | null
           costs_at_close?: number | null
           created_at?: string
+          customer_deposits_at_close?: number | null
+          deferred_revenue_at_close?: number | null
           event_id: string
           id?: string
+          is_ledger_backed?: boolean
           margin_at_close?: number | null
           organization_id: string
           outstanding_at_close?: number | null
+          payroll_payable_at_close?: number | null
           profit_at_close?: number | null
           reopen_reason?: string | null
           reopened_at?: string | null
           reopened_by?: string | null
           revenue_at_close?: number | null
+          supplier_ap_at_close?: number | null
+          treasury_balance_at_close?: number | null
+          vat_payable_at_close?: number | null
         }
         Update: {
+          accounts_receivable_at_close?: number | null
           close_note?: string | null
           closed_at?: string
           closed_by?: string
           collected_at_close?: number | null
+          contract_asset_at_close?: number | null
           costs_at_close?: number | null
           created_at?: string
+          customer_deposits_at_close?: number | null
+          deferred_revenue_at_close?: number | null
           event_id?: string
           id?: string
+          is_ledger_backed?: boolean
           margin_at_close?: number | null
           organization_id?: string
           outstanding_at_close?: number | null
+          payroll_payable_at_close?: number | null
           profit_at_close?: number | null
           reopen_reason?: string | null
           reopened_at?: string | null
           reopened_by?: string | null
           revenue_at_close?: number | null
+          supplier_ap_at_close?: number | null
+          treasury_balance_at_close?: number | null
+          vat_payable_at_close?: number | null
         }
         Relationships: [
           {
@@ -4452,6 +4479,15 @@ export type Database = {
         Args: { p_account_id: string; p_event_id: string; p_org_id: string }
         Returns: number
       }
+      _ledger_event_raw_at: {
+        Args: {
+          p_account_id: string
+          p_at: string
+          p_event_id: string
+          p_org_id: string
+        }
+        Returns: number
+      }
       _ledger_raw: {
         Args: { p_account_id: string; p_org_id: string }
         Returns: number
@@ -6045,22 +6081,31 @@ export type Database = {
           p_org_id: string
         }
         Returns: {
+          accounts_receivable_at_close: number | null
           close_note: string | null
           closed_at: string
           closed_by: string
           collected_at_close: number | null
+          contract_asset_at_close: number | null
           costs_at_close: number | null
           created_at: string
+          customer_deposits_at_close: number | null
+          deferred_revenue_at_close: number | null
           event_id: string
           id: string
+          is_ledger_backed: boolean
           margin_at_close: number | null
           organization_id: string
           outstanding_at_close: number | null
+          payroll_payable_at_close: number | null
           profit_at_close: number | null
           reopen_reason: string | null
           reopened_at: string | null
           reopened_by: string | null
           revenue_at_close: number | null
+          supplier_ap_at_close: number | null
+          treasury_balance_at_close: number | null
+          vat_payable_at_close: number | null
         }
         SetofOptions: {
           from: "*"
@@ -8083,22 +8128,31 @@ export type Database = {
           p_reason: string
         }
         Returns: {
+          accounts_receivable_at_close: number | null
           close_note: string | null
           closed_at: string
           closed_by: string
           collected_at_close: number | null
+          contract_asset_at_close: number | null
           costs_at_close: number | null
           created_at: string
+          customer_deposits_at_close: number | null
+          deferred_revenue_at_close: number | null
           event_id: string
           id: string
+          is_ledger_backed: boolean
           margin_at_close: number | null
           organization_id: string
           outstanding_at_close: number | null
+          payroll_payable_at_close: number | null
           profit_at_close: number | null
           reopen_reason: string | null
           reopened_at: string | null
           reopened_by: string | null
           revenue_at_close: number | null
+          supplier_ap_at_close: number | null
+          treasury_balance_at_close: number | null
+          vat_payable_at_close: number | null
         }
         SetofOptions: {
           from: "*"
