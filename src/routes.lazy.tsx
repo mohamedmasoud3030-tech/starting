@@ -68,6 +68,10 @@ export const ReportsPage = lazy(async () => ({
   default: (await import("@/features/intelligence/ReportsPage")).ReportsPage,
 }));
 
+export const AccountingPage = lazy(async () => ({
+  default: (await import("@/features/accounting/AccountingPage")).AccountingPage,
+}));
+
 export const IntegrityCenter = lazy(async () => ({
   default: (await import("@/features/intelligence/IntegrityCenter")).IntegrityCenter,
 }));

@@ -196,6 +196,7 @@ try {
     "/packages",
     "/customers",
     "/staff",
+    "/accounting",
   ]) {
     await assertSpaRoute(route);
   }

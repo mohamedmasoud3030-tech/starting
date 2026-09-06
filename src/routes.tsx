@@ -30,6 +30,7 @@ import {
   SettingsPage,
   StaffPage,
   StaffProfilePage,
+  AccountingPage,
 } from "@/routes.lazy";
 
 const rootRoute = createRootRoute({
@@ -192,6 +193,12 @@ const reportsRoute = createRoute({
   component: ReportsPage,
 });
 
+const accountingRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/accounting",
+  component: AccountingPage,
+});
+
 const integrityRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/integrity",
@@ -229,6 +236,7 @@ const routeTree = rootRoute.addChildren([
     operationsRoute,
     dashboardRoute,
     reportsRoute,
+    accountingRoute,
     integrityRoute,
     searchRoute,
   ]),
