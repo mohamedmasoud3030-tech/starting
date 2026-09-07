@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useStableIdempotencyKey } from "@/lib/useStableIdempotencyKey";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -68,6 +69,7 @@ export function OrderCreateDialog({
   onOpenChange,
   onCreated,
 }: OrderCreateDialogProps) {
+  const createKey = useStableIdempotencyKey(true);
   const [draft, setDraft] = useState<OrderFormDraft>(() => ({
     supplierId: "",
     eventId: "",

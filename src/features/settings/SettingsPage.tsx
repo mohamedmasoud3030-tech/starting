@@ -32,10 +32,10 @@ type FormState = Record<
 >;
 
 const EMPTY_FORM: FormState = {
-  name_en: "",
+  name_en: "مشروع الإطلاق",
   logo_url: "",
-  primary_color: "",
-  accent_color: "",
+  primary_color: "#059669",
+  accent_color: "#dc2626",
   phone_primary: "",
   phone_secondary: "",
   whatsapp: "",
@@ -48,7 +48,7 @@ const EMPTY_FORM: FormState = {
   region: "",
   country: "",
   document_terms: "",
-  document_footer: "",
+  document_footer: "شكراً لثقتكم بنا، مشروع الإطلاق 2026",
   quotation_number_prefix: "QT",
   invoice_number_prefix: "INV",
   event_number_prefix: "EV",

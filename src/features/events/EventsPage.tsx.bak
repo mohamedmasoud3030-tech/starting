@@ -183,9 +183,9 @@ export function EventsPage() {
             {visibleEvents.map((event) => (
               <li key={event.id}>
                 <button type="button" onClick={() => void navigate({ to: "/events/$eventId", params: { eventId: event.id } })}
-                  className="min-h-[60px] flex flex-col sm:flex-row gap-3 px-4 py-3 transition hover:bg-slate-50 focus-visible:bg-slate-50">
-                  <div >
-                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                  className="grid min-h-24 w-full gap-3 px-4 py-4 text-right transition hover:bg-slate-50 focus-visible:bg-slate-50 md:grid-cols-[minmax(0,1.5fr)_minmax(9rem,1fr)_minmax(9rem,1fr)_auto] md:items-center md:px-5">
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-between gap-3 md:block">
                       <p className="truncate text-base font-black text-slate-900">{event.title}</p>
                       <Badge tone={tones[event.status]} className="md:hidden">{labels[event.status]}</Badge>
                     </div>

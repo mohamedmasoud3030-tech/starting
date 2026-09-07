@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useStableIdempotencyKey } from "@/lib/useStableIdempotencyKey";
 import { Link } from "@tanstack/react-router";
 import { Phone, Plus } from "lucide-react";
 import { useAuth } from "@/app/authContext";
@@ -25,6 +26,7 @@ import {
 
 export function CustomersPage() {
   const { currentOrganization, canWriteCustomers } = useAuth();
+  const createKey = useStableIdempotencyKey(true);
   const toast = useToast();
   const orgId = currentOrganization?.id ?? null;
   const customersQuery = useCustomersPage(orgId);
@@ -172,6 +174,7 @@ export function CustomersPage() {
           await saveMutation.mutateAsync({
             id: editing?.id ?? null,
             values,
+            idempotencyKey: createKey,
           });
           setDialogOpen(false);
           toast.success(

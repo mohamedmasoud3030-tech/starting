@@ -103,7 +103,7 @@ export function HomePage() {
         <h2 id="today-metrics-title" className="sr-only">
           مؤشرات اليوم
         </h2>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-5">
           <StatCard label="مناسبات اليوم" value={metrics.todayEvents} icon={CalendarDays} tone="brand" />
           <StatCard label="جاهزة للتنفيذ" value={metrics.ready} icon={CheckCircle2} tone="success" />
           <StatCard label="تحتاج تدخل" value={metrics.attention} icon={AlertTriangle} tone="warning" />
@@ -134,7 +134,7 @@ export function HomePage() {
             لا توجد مناسبات مجدولة اليوم — تابع المناسبات القادمة من التقويم أو لوحة التشغيل.
           </Card>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {dashboard.todayEvents.map((event) => {
               const readiness = readinessByEventId[event.id];
               const blockers = todayBlockers(readiness);
