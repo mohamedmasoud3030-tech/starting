@@ -84,7 +84,7 @@ select throws_ok($$select public.create_supplier_contract(
   (select supplier_id from public.supplier_summaries where name='مطعم الضيافة المتعاقد'),
   'CTR-2026-003','2026-01-01','2026-12-31',
   4.000,6.000,40,24.0,null,null,'9b000000-0000-0000-0000-000000000202')$$,
-  '23505','','one active contract per restaurant supplier');                                                 -- 6
+  '23505',null,'one active contract per restaurant supplier');                                                 -- 6
 
 set local "request.jwt.claims"='{"sub":"9a000000-0000-0000-0000-000000000003","role":"authenticated"}';
 select throws_ok($$select public.create_supplier_contract(
@@ -139,7 +139,7 @@ select throws_ok($$select public.create_meal_booking(
   '9a000000-0000-0000-0000-0000000000e1',
   (select supplier_id from public.supplier_summaries where name='مطعم الضيافة المتعاقد'),
   'DINNER','2026-10-15',90,'بوفيه إضافي',null,'9b000000-0000-0000-0000-000000000303')$$,
-  '23505','','duplicate open booking rejected');                                                            -- 14
+  '23505',null,'duplicate open booking rejected');                                                            -- 14
 
 -- Service date outside the contract window rejected.
 select throws_ok($$select public.create_meal_booking(
@@ -234,14 +234,14 @@ select is(
 
 set local role anon;
 set local "request.jwt.claims"='{}';
-select throws_ok($$select * from public.meal_booking_operational$$,'42501','','anon cannot read booking projections'); -- 31
+select throws_ok($$select * from public.meal_booking_operational$$,'42501',null,'anon cannot read booking projections'); -- 31
 
 -- Contract ending: historical bookings intact, new bookings refused.
 set local role authenticated;
 set local "request.jwt.claims"='{"sub":"9a000000-0000-0000-0000-000000000001","role":"authenticated"}';
 select lives_ok($$select public.end_supplier_contract(
   '9a000000-0000-0000-0000-0000000000a1',
-  (select id from public.supplier_contracts where contract_number='CTR-2026-001'),
+  (select contract_id from public.supplier_contract_summaries where contract_number='CTR-2026-001'),
   '9b000000-0000-0000-0000-000000000600')$$,
   'OWNER ends the restaurant contract');                                                                     -- 32
 
