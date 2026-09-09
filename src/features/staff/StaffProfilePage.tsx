@@ -3,7 +3,6 @@ import { Link, useParams } from "@tanstack/react-router";
 import {
   ArrowRight,
   Briefcase,
-  CalendarDays,
   ScanFace,
   UserRound,
 } from "lucide-react";
@@ -23,7 +22,6 @@ import {
 } from "./labels";
 import { HostFinanceSection } from "./HostFinanceSection";
 import { FaceEnrollmentPanel } from "./face/FaceEnrollmentPanel";
-import { LeavesPanel } from "./LeavesPanel";
 import { StaffMemberDialog } from "./StaffMemberDialog";
 import {
   useHostPayrollSummary,
@@ -160,7 +158,7 @@ export function StaffProfilePage() {
       <BackLink />
       <PageHeader
         title={`الملف الشخصي — ${member.name}`}
-        description="كل ما يخص العضو في هذا الملف: هويته وبيانات تعاقده وتواريخ مستنداته، إجازاته وغيابه، وحضوره ومستحقاته في مناسباتك — حسب صلاحياتك."
+        description="كل ما يخص العضو في هذا الملف: هويته وبيانات عمله وتواريخ مستنداته، وحضوره ومستحقاته في مناسباتك — حسب صلاحياتك."
         actions={
           canManage && editRow.data ? (
             <>
@@ -297,20 +295,6 @@ export function StaffProfilePage() {
           )}
 
           <Card>
-            <CardBody className="space-y-3">
-              <h2 className="flex items-center gap-2 text-lg font-black text-slate-900">
-                <CalendarDays className="h-5 w-5 text-brand-700" />
-                سجل الإجازات والغياب
-              </h2>
-              <LeavesPanel
-                orgId={orgId}
-                memberId={staffId}
-                canManage={canManage}
-              />
-            </CardBody>
-          </Card>
-
-          <Card>
             <CardBody>
               <h2 className="mb-2 text-lg font-black text-slate-900">الملخص المالي</h2>
               {!summaryQuery.data ? (
@@ -438,7 +422,7 @@ export function StaffProfilePage() {
         </>
       ) : (
         <Card className="bg-slate-50 p-5 text-sm leading-7 text-slate-600">
-          البيانات المالية وملف العضو الكامل (التعاقد، المستندات، الإجازات) تظهر
+          البيانات المالية وملف العضو الكامل (التعاقد، المستندات) تظهر
           لحسابات الرواتب فقط. هذا الملف يعرض الهوية وحالة التسجيل فقط لحسابك.
         </Card>
       )}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarDays, Plus, Printer, ScrollText } from "lucide-react";
+import { Plus, Printer, ScrollText } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -34,7 +34,6 @@ import {
   type StaffMemberRow,
 } from "./staff.api";
 import { CONTRACT_STATUS_LABELS, STAFF_TYPE_LABELS } from "./labels";
-import { LeavesPanel } from "./LeavesPanel";
 import { StaffMemberDialog } from "./StaffMemberDialog";
 
 /**
@@ -313,7 +312,6 @@ export function StaffPage() {
     statusFilter === "ALL"
       ? allMembers
       : allMembers.filter((m) => m.isActive === (statusFilter === "ACTIVE"));
-  const names = new Map(allMembers.map((m) => [m.id, m.name]));
 
   if (!canReadPayroll) {
     return (
@@ -334,7 +332,7 @@ export function StaffPage() {
     <div className="space-y-4">
       <PageHeader
         title="الفريق والموارد البشرية"
-        description="لكل عضو في فريقك ملف كامل في مكان واحد: بياناته وتواريخ مستنداته، إجازاته وغيابه، وحضوره ومستحقاته في مناسباتك. الحضور يُسجَّل من داخل كل مناسبة — لا يوجد دوام بمواعيد أو أيام محددة."
+        description="لكل عضو في فريقك ملف واحد: بياناته وتواريخ مستنداته، وحضوره ومستحقاته في مناسباتك. المضيفون يُستدعَون للمناسبات — فمن حضر سُجّل حضوره من داخل المناسبة، ومن لم يُستدعَ أو لم يحضر فلا يُسجَّل عنه شيء."
         actions={
           canManageStaff ? (
             <Button
@@ -354,7 +352,7 @@ export function StaffPage() {
       ) : staff.error || archive.error ? (
         <ErrorState
           title="تعذّر تحميل بيانات الفريق"
-          message="حدث خطأ أثناء تحميل بيانات الفريق وسجل الإجازات والأجور. أعد المحاولة."
+          message="حدث خطأ أثناء تحميل بيانات الفريق والأجور. أعد المحاولة."
           onRetry={() => {
             void staff.refetch();
             void archive.refetch();
@@ -363,7 +361,7 @@ export function StaffPage() {
       ) : (staff.data ?? []).length === 0 ? (
         <EmptyState
           title="لا يوجد أعضاء بعد"
-          description="أضف أول عضو في الفريق لبدء إسناد المناسبات، وتسجيل الحضور، ومتابعة الملفات والإجازات."
+          description="أضف أول عضو في الفريق لبدء إسناد المناسبات وتسجيل الحضور ومتابعة الملفات."
         />
       ) : (
         <div className="space-y-3">
@@ -420,22 +418,6 @@ export function StaffPage() {
           )}
         </div>
       )}
-
-      <Card>
-        <CardBody className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-5 w-5 text-brand-700" />
-              <h2 className="font-black">سجل الإجازات والغياب</h2>
-            </div>
-          </div>
-          <LeavesPanel
-            orgId={orgId}
-            names={names}
-            canManage={canManageStaff}
-          />
-        </CardBody>
-      </Card>
 
       <PayrollPeriodCard orgId={orgId} />
 

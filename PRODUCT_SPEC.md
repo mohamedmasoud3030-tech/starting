@@ -151,14 +151,14 @@ per (event, staff, date, shift MORNING/EVENING) with live statuses
 PRESENT/LATE/PARTIAL/ABSENT and non-destructive VOIDED; earned amount computed
 from hours/rate (PER_HOUR) or fixed rate (PER_DAY/PER_EVENT/MANUAL) in exact
 3-decimal OMR; host-level advances and payouts ledgers with void; per-event and
-global payroll summaries; dashboard attendance-gap alerts. HR directory
-fields (hire/birth dates, nationality, job title, department, emergency contact,
-IBAN, contract status ACTIVE/PROBATION/ENDED, civil-ID and health-card expiries,
-migration 0100) extend each roster row into a full per-member file, and a
-lightweight leaves/absence register (`staff_leaves`, 0100/0101 — annual, sick,
-emergency, unpaid, or event absence, each PENDING/APPROVED/REJECTED/CANCELLED
-with reviewer audit) documents notices without implying any fixed-duty
-schedule — attendance itself stays event-driven.
+global payroll summaries; dashboard attendance-gap alerts. Migration 0100 adds
+per-member directory fields (hire/birth dates, nationality, job title,
+department, emergency contact, IBAN, contract status, and civil-ID/health-card
+expiry dates) that extend each roster row into a fuller member file. Team
+members are HOSTS called in per event — not salaried employees — so there are
+no leave entitlements and no absence register; attendance stays event-driven
+(a host who was called but did not show simply has no attendance row). The
+tentative `staff_leaves` register introduced by 0100/0101 was removed by 0102.
 
 ### 3.12 Owner voice ("اسمع الصفحة") **[V]**
 One-button Arabic narration of page summaries via browser `speechSynthesis`.
@@ -192,7 +192,7 @@ writes.
 | `/packages` | Package templates | commercial roles (nav-gated) | |
 | `/consumables` | Consumable stock | all members (adjust = OWNER/MANAGER) | |
 | `/procurement` | Suppliers & orders | cost roles only | non-cost roles see a clear message |
-| `/staff` | الفريق والموارد البشرية — one full per-member file (identity, employment/contract + document expiries, leaves/absence register), attendance and payroll inside the events lifecycle | all members (payroll + HR file = cost/payroll roles) | |
+| `/staff` | الفريق والموارد البشرية — one full per-member file (identity, engagement/contract + document expiries), attendance and payroll inside the events lifecycle | all members (payroll + member file = cost/payroll roles) | |
 
 All routes are lazy-loaded (`src/routes.lazy.tsx`). **[V]**
 

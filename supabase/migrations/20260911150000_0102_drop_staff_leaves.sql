@@ -1,0 +1,15 @@
+-- 0102 — remove the staff_leaves register.
+--
+-- Correction of 0100/0101 after the owner clarified the model: team members
+-- are HOSTS called in for events, not salaried employees, so they have no
+-- leave entitlements (annual/sick/unpaid) and no absence register. A host who
+-- was called but did not show simply has no attendance row for that event.
+--
+-- The lightweight "leave/absence register" invented a staff-employee model
+-- that does not exist in this business. Attendance stays event-driven; nothing
+-- is recorded for a no-show.
+--
+-- 0100/0101 stay in the migration history (applied files are immutable); this
+-- migration removes the table they created. Dropping the table also drops its
+-- RLS policies and the set_updated_at trigger automatically.
+drop table if exists public.staff_leaves;
