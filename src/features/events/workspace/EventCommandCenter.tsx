@@ -121,7 +121,10 @@ export function EventCommandCenter({
               <li className="font-bold text-amber-800">{o.equipment_shortage} أصناف ناقصة</li>
             </ul>
           ) : (
-            <p className="text-sm text-emerald-800">مكتملة ✓</p>
+            <p className="flex items-center gap-1.5 text-sm text-emerald-800">
+              <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+              مكتملة
+            </p>
           )}
         </DimensionCard>
 
@@ -142,7 +145,10 @@ export function EventCommandCenter({
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-emerald-800">لا نقص في المواد ✓</p>
+            <p className="flex items-center gap-1.5 text-sm text-emerald-800">
+              <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+              لا نقص في المواد
+            </p>
           )}
         </DimensionCard>
 
@@ -224,9 +230,9 @@ export function EventCommandCenter({
             )}
             {center.documents.quotation_status && (
               <p className="text-sm text-slate-500">
-                عرض السعر: {center.documents.quotation_status === "ACCEPTED" || center.documents.quotation_status === "CONVERTED" ? "معتمد ✓" : center.documents.quotation_status}
+                عرض السعر: {center.documents.quotation_status === "ACCEPTED" || center.documents.quotation_status === "CONVERTED" ? "معتمد" : center.documents.quotation_status}
                 {center.documents.invoice_status && (
-                  <> · الفاتورة: {center.documents.invoice_status === "PAID" ? "مدفوعة ✓" : "صادرة"}</>
+                  <> · الفاتورة: {center.documents.invoice_status === "PAID" ? "مدفوعة" : "صادرة"}</>
                 )}
                 {center.documents.warehouse_sheet_lines > 0 && (
                   <> · أمر تجهيز المخزن: {center.documents.warehouse_sheet_lines} بنداً</>
@@ -274,7 +280,18 @@ function DimensionCard({
             {title}
           </h3>
           <Badge tone={missing ? "warning" : "success"}>
-            {missing ? (reason ? readinessReasonLabel(reason) : "يحتاج معالجة") : "مكتمل ✓"}
+            {missing ? (
+              reason ? (
+                readinessReasonLabel(reason)
+              ) : (
+                "يحتاج معالجة"
+              )
+            ) : (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                مكتمل
+              </>
+            )}
           </Badge>
         </div>
         {children}

@@ -5,6 +5,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
+  HelpCircle,
   MapPin,
   MessageCircle,
   Package,
@@ -15,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { TruncationNotice } from "@/components/ui/TruncationNotice";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
@@ -41,6 +43,74 @@ const timeFormatter = new Intl.DateTimeFormat("ar-OM", {
   hour: "numeric",
   minute: "2-digit",
 });
+
+/**
+ * Readiness badge with a shape cue in addition to tone and text: the daily
+ * question «هل المناسبة جاهزة؟» must be scannable by hue-independent means
+ * (aging eyes / color-vision deficiency / sunlight on site).
+ */
+function ReadinessBadge({ status }: { status: string | null | undefined }) {
+  return (
+    <Badge tone={readinessTone(status)}>
+      {status === "READY" ? (
+        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+      ) : status === "NOT_READY" ? (
+        <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+      ) : (
+        <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
+      )}
+      {readinessLabel(status)}
+    </Badge>
+  );
+}
+
+/** Skeleton mirroring a today-event card's geometry (zero layout shift). */
+function EventCardsSkeleton() {
+  return (
+    <div
+      role="status"
+      aria-busy="true"
+      className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+    >
+      <span className="sr-only">جارٍ تحميل حالة مناسبات اليوم…</span>
+      {[0, 1, 2].map((i) => (
+        <Card key={i} className="p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+            <Skeleton className="h-6 w-16 rounded-full" />
+          </div>
+          <Skeleton className="mt-4 h-4 w-full" />
+          <Skeleton className="mt-2 h-4 w-2/3" />
+          <div className="mt-4 flex gap-2 border-t border-slate-100 pt-4">
+            <Skeleton className="h-11 w-32 rounded-xl" />
+            <Skeleton className="h-11 w-28 rounded-xl" />
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/** Skeleton mirroring two compact list rows (collections / closures / alerts). */
+function ListRowsSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status" aria-busy="true" className="space-y-2">
+      <span className="sr-only">{label}</span>
+      {[0, 1].map((i) => (
+        <Card key={i} className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-44" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+          <Skeleton className="h-6 w-24 rounded-full" />
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 /**
  * Today / Daily Operations dashboard (Scope D).
@@ -118,17 +188,17 @@ export function HomePage() {
             <h2 id="today-events-title" className="text-xl font-bold text-slate-900">
               مناسبات اليوم
             </h2>
-            <p className="text-sm text-slate-500">
+            <p className="text-base text-slate-500">
               المرتبطة بالحاجة إلى إجراء أولاً، ثم حسب وقت البداية في توقيت مسقط
             </p>
           </div>
-          <Link to="/events" className="text-sm font-bold text-brand-700 hover:text-brand-900">
+          <Link to="/events" className="text-base font-bold text-brand-700 hover:text-brand-900">
             كل المناسبات
           </Link>
         </div>
 
         {!dashboardLoaded ? (
-          <Card className="p-5 text-slate-500">جارٍ تحميل حالة مناسبات اليوم...</Card>
+          <EventCardsSkeleton />
         ) : dashboard.todayEvents.length === 0 ? (
           <Card className="p-5 text-slate-600">
             لا توجد مناسبات مجدولة اليوم — تابع المناسبات القادمة من التقويم أو لوحة التشغيل.
@@ -151,18 +221,16 @@ export function HomePage() {
                       >
                         {event.title}
                       </Link>
-                      <p className="mt-1 text-sm text-slate-500">{event.event_number}</p>
+                      <p className="mt-1 text-base text-slate-500">{event.event_number}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-bold text-slate-600">
+                      <span className="text-base font-bold text-slate-600">
                         {timeFormatter.format(new Date(event.start_at))}
                       </span>
                       <Badge tone="neutral">
                         {EVENT_STATUS_ARABIC[event.status] ?? event.status}
                       </Badge>
-                      <Badge tone={readinessTone(readiness?.status)}>
-                        {readinessLabel(readiness?.status)}
-                      </Badge>
+                      <ReadinessBadge status={readiness?.status} />
                     </div>
                   </div>
 
@@ -183,28 +251,29 @@ export function HomePage() {
                     </ul>
                   )}
                   {readiness?.status === "READY" && blockers.length === 0 && (
-                    <p className="mt-3 text-sm font-semibold text-emerald-800">
-                      جاهزة ✓ — لا عوائق تشغيلية مسجلة
+                    <p className="mt-3 flex items-center gap-1.5 text-base font-semibold text-emerald-800">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      جاهزة — لا عوائق تشغيلية مسجلة
                     </p>
                   )}
 
-                  <div className="mt-3 grid gap-1 text-sm text-slate-600 sm:grid-cols-3">
+                  <div className="mt-3 grid gap-1 text-base text-slate-600 sm:grid-cols-3">
                     <span className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-slate-400" />
+                      <MapPin className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
                       {event.venue_name}
                     </span>
                     <span className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-slate-400" />
+                      <Users className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
                       {event.guest_count} ضيف
                     </span>
                     <span className="flex items-center gap-2">
-                      <Clock3 className="h-4 w-4 text-slate-400" />
+                      <Clock3 className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
                       {EVENT_STATUS_ARABIC[event.status] ?? event.status}
                     </span>
                   </div>
 
                   {canReadFinance && readiness?.status === "NOT_READY" && (
-                    <p className="mt-2 text-xs text-slate-400">
+                    <p className="mt-2 text-sm text-slate-400">
                       ملاحظة: الجاهزية التشغيلية لا تتأثر بالتحصيل — راجع قسم «يحتاج تحصيل» بشكل منفصل.
                     </p>
                   )}
@@ -213,7 +282,7 @@ export function HomePage() {
                     <Link
                       to="/events/$eventId"
                       params={{ eventId: event.id }}
-                      className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-4 py-2 text-sm font-bold text-white hover:bg-brand-800"
+                      className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-4 py-2 text-base font-bold text-white hover:bg-brand-800"
                     >
                       فتح مركز القيادة
                     </Link>
@@ -222,9 +291,9 @@ export function HomePage() {
                         href={whatsappUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800 hover:bg-emerald-100"
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-base font-bold text-emerald-800 hover:bg-emerald-100"
                       >
-                        <MessageCircle className="h-4 w-4" />
+                        <MessageCircle className="h-4 w-4" aria-hidden="true" />
                         مشاركة واتساب
                       </a>
                     ) : (
@@ -246,12 +315,12 @@ export function HomePage() {
             <h2 id="collections-title" className="text-xl font-bold text-slate-900">
               يحتاج تحصيل
             </h2>
-            <p className="text-sm text-slate-500">
+            <p className="text-base text-slate-500">
               مبالغ متبقية على مناسبات نشطة أو منتهية — منفصل تماماً عن الجاهزية التشغيلية.
             </p>
           </div>
           {!collectionsLoaded ? (
-            <Card className="p-5 text-slate-500">جارٍ فحص التحصيل...</Card>
+            <ListRowsSkeleton label="جارٍ فحص التحصيل…" />
           ) : collections.length === 0 ? (
             <Card className="border-emerald-200 bg-emerald-50 p-5 text-emerald-800">
               لا متبقٍ يستحق المتابعة الآن — التحصيل مطابق للقيمة المعتمدة.
@@ -266,11 +335,11 @@ export function HomePage() {
                         <div>
                           <p className="font-bold text-slate-900">
                             {row.event_title}
-                            <span className="mr-2 text-sm font-normal text-slate-500">
+                            <span className="mr-2 text-base font-normal text-slate-500">
                               · {row.customer_name}
                             </span>
                           </p>
-                          <p className="text-sm text-slate-500">
+                          <p className="text-base text-slate-500">
                             {row.event_number} · {timeFormatter.format(new Date(row.start_at))}
                           </p>
                         </div>
@@ -296,12 +365,12 @@ export function HomePage() {
             <h2 id="closures-title" className="text-xl font-bold text-slate-900">
               مناسبات جاهزة للإغلاق
             </h2>
-            <p className="text-sm text-slate-500">
+            <p className="text-base text-slate-500">
               الإغلاق التشغيلي يتطلب إرجاع المعدات وتسوية المواد؛ الإغلاق المالي يتطلب استيفاء المتبقي — وفق قواعد النظام نفسها.
             </p>
           </div>
           {!closuresLoaded ? (
-            <Card className="p-5 text-slate-500">جارٍ فحص حالات الإغلاق...</Card>
+            <ListRowsSkeleton label="جارٍ فحص حالات الإغلاق…" />
           ) : closures.length === 0 ? (
             <Card className="p-5 text-slate-600">
               لا توجد مناسبات تستحق إجراء إغلاق الآن.
@@ -319,20 +388,21 @@ export function HomePage() {
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="font-bold text-slate-900">
                           {row.event_title}
-                          <span className="mr-2 text-sm font-normal text-slate-500">
+                          <span className="mr-2 text-base font-normal text-slate-500">
                             · {row.event_number}
                           </span>
                         </p>
                         <div className="flex items-center gap-2">
                           {row.outstanding !== null && (
-                            <span className="text-sm text-slate-500" dir="ltr">
+                            <span className="text-base text-slate-500" dir="ltr">
                               متبقٍ {outstandingMilliText(row.outstanding)}
                             </span>
                           )}
                           <Badge tone={row.action === "CLOSE_OPS" ? "brand" : "warning"}>
+                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
                             {row.action === "CLOSE_OPS"
-                              ? "جاهزة للإغلاق التشغيلي ✓"
-                              : "جاهزة للإغلاق المالي ✓"}
+                              ? "جاهزة للإغلاق التشغيلي"
+                              : "جاهزة للإغلاق المالي"}
                           </Badge>
                         </div>
                       </div>
@@ -350,13 +420,13 @@ export function HomePage() {
           <h2 id="alerts-title" className="text-xl font-bold text-slate-900">
             التنبيهات التشغيلية
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-base text-slate-500">
             تنبيهات مشتقة من الجاهزية والمخزون الفعلي، وليست إحصائيات تقديرية.
           </p>
         </div>
 
         {!dashboardLoaded ? (
-          <Card className="p-5 text-slate-500">جارٍ فحص التنبيهات...</Card>
+          <ListRowsSkeleton label="جارٍ فحص التنبيهات…" />
         ) : dashboard.alerts.length === 0 && attendanceGaps.length === 0 ? (
           <Card className="border-emerald-200 bg-emerald-50 p-5 text-emerald-800">
             لا توجد تنبيهات تشغيلية تحتاج تدخل الآن.
@@ -379,10 +449,11 @@ export function HomePage() {
                           ? "mt-0.5 h-5 w-5 shrink-0 text-red-700"
                           : "mt-0.5 h-5 w-5 shrink-0 text-amber-700"
                       }
+                      aria-hidden="true"
                     />
                     <div>
                       <p className="font-bold text-slate-900">{alert.title}</p>
-                      <p className="mt-1 text-sm text-slate-700">{alert.detail}</p>
+                      <p className="mt-1 text-base text-slate-700">{alert.detail}</p>
                     </div>
                   </div>
                 </Card>
@@ -403,10 +474,10 @@ export function HomePage() {
               <Link key={gap.eventId} to="/events/$eventId" params={{ eventId: gap.eventId }} search={{ tab: "الحضور" }}>
                 <Card className="border-amber-200 bg-amber-50 p-4 hover:border-amber-300">
                   <div className="flex items-start gap-3">
-                    <UserCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                    <UserCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
                     <div>
                       <p className="font-bold text-slate-900">{gap.eventTitle}</p>
-                      <p className="mt-1 text-sm text-slate-700">
+                      <p className="mt-1 text-base text-slate-700">
                         مُسند لها {toArabicDigits(gap.assignmentCount)} مضيفاً ولم يُسجَّل حضور{" "}
                         {toArabicDigits(gap.attendanceCount)} منهم اليوم.
                       </p>
@@ -453,7 +524,7 @@ function ShortcutCard({
             <p className="mt-1 text-3xl font-bold text-slate-900">{value ?? "—"}</p>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
-            <Icon className="h-6 w-6" />
+            <Icon className="h-6 w-6" aria-hidden="true" />
           </div>
         </div>
       </Card>

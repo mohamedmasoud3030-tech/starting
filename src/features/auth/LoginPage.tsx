@@ -62,7 +62,10 @@ export function LoginPage() {
         <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
           {/* Product introduction: what it is, who it serves, how access works. */}
           <section aria-label="عن النظام" className="text-center lg:text-right">
-            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-700 text-xl font-bold text-white sm:h-16 sm:w-16 sm:text-2xl lg:mx-0">
+            <div
+              aria-hidden="true"
+              className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-700 text-xl font-bold text-white sm:h-16 sm:w-16 sm:text-2xl lg:mx-0"
+            >
               ض
             </div>
             <h1 className="text-2xl font-black leading-tight text-slate-900 sm:text-3xl">
@@ -76,21 +79,21 @@ export function LoginPage() {
             <ul className="mx-auto mt-6 hidden max-w-md space-y-3 text-right sm:block lg:mx-0">
               {CAPABILITIES.map((capability) => (
                 <li key={capability.title} className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" />
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
                   <div>
                     <p className="font-bold text-slate-800">{capability.title}</p>
-                    <p className="text-sm text-slate-500">{capability.detail}</p>
+                    <p className="text-base text-slate-500">{capability.detail}</p>
                   </div>
                 </li>
               ))}
             </ul>
 
-            <p className="mx-auto mt-6 max-w-md text-sm leading-6 text-slate-500 lg:mx-0">
+            <p className="mx-auto mt-6 max-w-md text-base leading-7 text-slate-500 lg:mx-0">
               مصمَّم لمكاتب خدمات الضيافة والمناسبات في سلطنة عُمان — أعراس،
               عزاء، مجالس، فعاليات.
             </p>
 
-            <p className="mx-auto mt-3 max-w-md rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600 lg:mx-0">
+            <p className="mx-auto mt-3 max-w-md rounded-xl border border-slate-200 bg-white px-4 py-3 text-base leading-7 text-slate-600 lg:mx-0">
               لديك حساب؟ سجّل الدخول. مستخدم جديد؟ أنشئ حسابك ثم منشأتك الأولى.
             </p>
           </section>
@@ -100,7 +103,7 @@ export function LoginPage() {
             <h2 className="sr-only">تسجيل الدخول</h2>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
               {!isSupabaseConfigured && (
-                <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800 sm:text-base">
+                <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-base leading-7 text-amber-800">
                   النظام غير مهيأ بعد. يرجى ضبط إعدادات الاتصال في ملف البيئة (
                   <span dir="ltr" className="font-mono">
                     .env
@@ -136,18 +139,18 @@ export function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="pl-14"
+                      className="ps-14"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
                       aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
-                      className="absolute left-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
+                      className="absolute start-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
                     >
                       {showPassword ? (
-                        <EyeOff className="h-5 w-5" />
+                        <EyeOff className="h-5 w-5" aria-hidden="true" />
                       ) : (
-                        <Eye className="h-5 w-5" />
+                        <Eye className="h-5 w-5" aria-hidden="true" />
                       )}
                     </button>
                   </div>
@@ -156,7 +159,7 @@ export function LoginPage() {
                 {error && (
                   <div
                     role="alert"
-                    className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold leading-6 text-red-700 sm:text-base"
+                    className="rounded-xl border border-red-200 bg-red-50 p-3 text-base font-semibold leading-7 text-red-700"
                   >
                     {error}
                   </div>
@@ -172,7 +175,7 @@ export function LoginPage() {
                 </Button>
               </form>
             </div>
-            <div className="mt-4 space-y-2 text-center text-sm">
+            <div className="mt-4 space-y-2 text-center text-base">
               <p className="text-slate-500">
                 ليس لديك حساب؟{" "}
                 <Link to="/signup" className="font-bold text-brand-700">
