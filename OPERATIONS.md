@@ -87,6 +87,20 @@ DB_URL=… npm run db:backup-restore-proof                       # local-only gu
   `docs/operations/backup-restore.md` (incl. the circular-FK warning for
   data-only dumps and the restore-into-separate-target procedure).
 
+### 5.1 Audit-log retention (`audit_events`)
+
+- Policy (migration 0098, defect D20): audit events older than **24 months**
+  are purgeable; the purge is **per organization**, **OWNER-only**, and is
+  itself recorded in the audit trail before any row is deleted.
+- The purge is manual/schedulable via
+  `public.purge_old_audit_events(org_id, older_than)` — the default cutoff is
+  24 months; pass an explicit `older_than` to override per call.
+- Suggested operational cadence: run it monthly per organization (for example
+  through pg_cron or an external scheduler using an OWNER-scoped service
+  token). Full removal of a closed organization's data is out of scope —
+  this command never deletes rows younger than the cutoff, and there is no
+  destructive org-drop path in the schema.
+
 ## 6. Monitoring & incident basics
 
 - Available today: Supabase dashboard (DB health, auth logs), Vercel deployment
