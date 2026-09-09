@@ -385,7 +385,7 @@ export function omrToSpoken(
  * Home / owner dashboard: what is happening today and what needs attention.
  *
  * Example:
- * "عندك اليوم ٣ مناسبات. مناسبتان جاهزتان. مناسبة قاعة الريان اليوم الساعة
+ * "عندك اليوم ٣ مناسبات. مناسبتان جاهزتان. مناسبة قاعة النخيل اليوم الساعة
  * ٧ مساءً ناقصها شخصان من الفريق. لا توجد مشاكل أخرى تحتاج تدخل الآن."
  */
 export function buildHomeVoiceSummary(input: HomeSummaryInput): string {

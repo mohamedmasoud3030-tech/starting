@@ -78,7 +78,7 @@ export function OnboardingPage() {
                 id="org-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="مثال: مؤسسة الريان للضيافة"
+                placeholder="مثال: مشاريع جودة الإنطلاقة"
                 required
               />
             </Field>

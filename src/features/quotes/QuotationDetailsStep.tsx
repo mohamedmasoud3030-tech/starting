@@ -91,7 +91,7 @@ export function QuotationDetailsStep({
             id="qq-venue"
             value={form.venueName}
             onChange={(e) => onFieldChange("venueName", e.target.value)}
-            placeholder="قاعة الريان"
+            placeholder="قاعة النخيل"
           />
         </Field>
         <Field label="عدد الضيوف (إن معروف)" htmlFor="qq-guests">

@@ -30,7 +30,7 @@ function order(overrides: Partial<ProcurementOrderListItem>): ProcurementOrderLi
 describe("orderList.model", () => {
   const orders = [
     order({ id: "1", orderNumber: "PO-100", status: "DRAFT", supplier: { id: "s1", name: "مورد النور" } }),
-    order({ id: "2", orderNumber: "PO-101", status: "SENT", supplier: { id: "s2", name: "مطعم الريان" } }),
+    order({ id: "2", orderNumber: "PO-101", status: "SENT", supplier: { id: "s2", name: "مطعم النخيل" } }),
     order({ id: "3", orderNumber: "PO-102", status: "DRAFT", supplier: { id: "s3", name: "شركة الساحل" }, event: null }),
   ];
 
@@ -41,9 +41,9 @@ describe("orderList.model", () => {
 
   it("filters by search across number, supplier and event title", () => {
     expect(filterOrders(orders, "po-101", "ALL").map((o) => o.id)).toEqual(["2"]);
-    expect(filterOrders(orders, "الريان", "ALL").map((o) => o.id)).toEqual(["2"]);
+    expect(filterOrders(orders, "النخيل", "ALL").map((o) => o.id)).toEqual(["2"]);
     expect(filterOrders(orders, "زفاف مريم", "ALL").map((o) => o.id)).toEqual(["1", "2"]);
-    expect(hasActiveFilters("الريان", "ALL")).toBe(true);
+    expect(hasActiveFilters("النخيل", "ALL")).toBe(true);
   });
 
   it("filters by status", () => {
@@ -52,7 +52,7 @@ describe("orderList.model", () => {
   });
 
   it("combines search and status", () => {
-    expect(filterOrders(orders, "الريان", "SENT").map((o) => o.id)).toEqual(["2"]);
+    expect(filterOrders(orders, "النخيل", "SENT").map((o) => o.id)).toEqual(["2"]);
     expect(filterOrders(orders, "الساحل", "SENT")).toEqual([]);
   });
 });

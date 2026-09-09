@@ -19,10 +19,10 @@ describe("OnboardingPage (first-login organization creation)", () => {
     createOrganization.mockResolvedValue(undefined);
     render(<OnboardingPage />);
 
-    await userEvent.type(screen.getByLabelText(/اسم المنشأة/), "مؤسسة الريان");
+    await userEvent.type(screen.getByLabelText(/اسم المنشأة/), "مؤسسة النخيل");
     await userEvent.click(screen.getByRole("button", { name: "إنشاء منشأتي" }));
 
-    expect(createOrganization).toHaveBeenCalledWith("مؤسسة الريان");
+    expect(createOrganization).toHaveBeenCalledWith("مؤسسة النخيل");
   });
 
   it("surfaces the provider error message", async () => {

@@ -18,12 +18,12 @@ function event(): EventRow {
     organization_id: "org",
     customer_id: "cu-1",
     event_number: "EV-2026-00001",
-    title: "مناسبة قاعة الريان",
+    title: "مناسبة قاعة النخيل",
     event_type: "زفاف",
     start_at: "2026-08-20T16:00:00+04:00",
     end_at: "2026-08-20T22:00:00+04:00",
     guest_count: 120,
-    venue_name: "قاعة الريان",
+    venue_name: "قاعة النخيل",
     location_details: null,
     contact_name: null,
     contact_phone: null,
@@ -52,7 +52,7 @@ describe("EditEventDialog (F12)", () => {
     );
 
     const title = screen.getByLabelText(/عنوان المناسبة/);
-    expect(title).toHaveValue("مناسبة قاعة الريان");
+    expect(title).toHaveValue("مناسبة قاعة النخيل");
 
     await userEvent.clear(title);
     await userEvent.type(title, "مناسبة معدلة");
@@ -65,7 +65,7 @@ describe("EditEventDialog (F12)", () => {
       startAt: expect.any(String),
       endAt: expect.any(String),
       guestCount: 120,
-      venue: "قاعة الريان",
+      venue: "قاعة النخيل",
       contactName: "",
       contactPhone: "",
       notes: "",

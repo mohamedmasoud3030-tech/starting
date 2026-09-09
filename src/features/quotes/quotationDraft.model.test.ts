@@ -38,7 +38,7 @@ describe("quotationDraft.model", () => {
         event_type_snapshot: "WEDDING",
         start_at_snapshot: "2026-09-01T16:00:00Z",
         end_at_snapshot: null,
-        venue_snapshot: "قاعة الريان",
+        venue_snapshot: "قاعة النخيل",
         notes: "ملاحظة",
       });
       expect(form.prospectName).toBe("مريم");
@@ -47,7 +47,7 @@ describe("quotationDraft.model", () => {
       expect(form.prospectCompany).toBe("شركة النور");
       expect(form.startAt).toMatch(/^2026-09-01T/);
       expect(form.endAt).toBe("");
-      expect(form.venueName).toBe("قاعة الريان");
+      expect(form.venueName).toBe("قاعة النخيل");
       expect(form.notes).toBe("ملاحظة");
     });
 

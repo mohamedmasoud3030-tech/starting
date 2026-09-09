@@ -49,7 +49,7 @@ function event(overrides: Partial<{
     title: "ضيافة المساء",
     start_at: "2026-08-15T15:00:00.000Z",
     status: "CONFIRMED",
-    venue_name: "قاعة الريان",
+    venue_name: "قاعة النخيل",
     guest_count: 120,
     contact_phone: "+968 9123 4567",
     ...overrides,
@@ -121,7 +121,7 @@ describe("WhatsApp sharing", () => {
     expect(url).toContain("https://wa.me/96891234567?text=");
     const decoded = decodeURIComponent(url ?? "");
     expect(decoded).toContain("ضيافة المساء");
-    expect(decoded).toContain("قاعة الريان");
+    expect(decoded).toContain("قاعة النخيل");
     expect(decoded).toContain("120");
     expect(decoded).not.toContain("ريال");
   });

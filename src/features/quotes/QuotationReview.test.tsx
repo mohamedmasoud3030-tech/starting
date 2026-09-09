@@ -47,7 +47,7 @@ vi.mock("@/lib/supabase", () => {
     prospect_whatsapp: null, prospect_company: null, event_number_snapshot: null,
     event_title_snapshot: "زفاف", event_type_snapshot: "WEDDING", guest_count_snapshot: 120,
     start_at_snapshot: "2026-09-01T10:00:00+04:00", end_at_snapshot: "2026-09-01T14:00:00+04:00",
-    venue_snapshot: "قاعة الريان", location_snapshot: null, terms: null, notes: null,
+    venue_snapshot: "قاعة النخيل", location_snapshot: null, terms: null, notes: null,
     total_selling: "850.000", issued_at: "2026-08-14T00:00:00Z", accepted_at: null,
     converted_event_id: state.convertedEventId, created_at: "2026-08-14T00:00:00Z", updated_at: "2026-08-14T00:00:00Z",
   });
@@ -124,7 +124,7 @@ describe("QuotationReview", () => {
     renderReview();
     expect(await screen.findByText("QT-2026-00001 · مراجعة 1")).toBeInTheDocument();
     expect(screen.getByText("محمد")).toBeInTheDocument();
-    expect(screen.getByText("قاعة الريان")).toBeInTheDocument();
+    expect(screen.getByText("قاعة النخيل")).toBeInTheDocument();
     expect(screen.getByText("بوفيه")).toBeInTheDocument();
     expect(screen.getAllByText("850.000 ر.ع.").length).toBeGreaterThan(0);
   });
@@ -160,7 +160,7 @@ describe("QuotationReview", () => {
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toBeInTheDocument();
     expect(screen.getByLabelText(/اسم المناسبة/)).toHaveValue("زفاف");
-    expect(screen.getByLabelText(/الموقع/)).toHaveValue("قاعة الريان");
+    expect(screen.getByLabelText(/الموقع/)).toHaveValue("قاعة النخيل");
 
     await user.click(screen.getByRole("button", { name: "تأكيد التحويل" }));
     await waitFor(() =>
@@ -168,7 +168,7 @@ describe("QuotationReview", () => {
     );
     const convertCall = state.rpcCalls.find((c) => c.name === "convert_quotation_to_event");
     expect(convertCall?.args.p_quotation_id).toBe("qt-1");
-    expect(convertCall?.args.p_venue_name).toBe("قاعة الريان");
+    expect(convertCall?.args.p_venue_name).toBe("قاعة النخيل");
     expect(convertCall?.args.p_guest_count).toBe(120);
     await waitFor(() =>
       expect(navigateMock).toHaveBeenCalledWith({
