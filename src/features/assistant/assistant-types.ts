@@ -57,5 +57,7 @@ export interface AssistantResponse {
   meta: {
     source: "deterministic" | "model" | "fallback";
     degraded: boolean;
+    /** True when the reply was grounded on a server-side live org snapshot. */
+    live?: boolean;
   };
 }

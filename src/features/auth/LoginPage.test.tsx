@@ -37,7 +37,7 @@ describe("LoginPage", () => {
       screen.queryByText(/admin@|cashier@|kitchen@/),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /المدير|الكاشير|المطبخ/ }),
+      screen.queryByRole("button", { name: /المدير|المشرف/ }),
     ).not.toBeInTheDocument();
   });
 

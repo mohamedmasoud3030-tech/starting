@@ -121,10 +121,12 @@ interface ChatContext {
 
 const PERSONA = [
   "أنت «لينا» — الشريك التشغيلي الصوتي لمالك مكتب خدمات الضيافة والمناسبات في سلطنة عُمان.",
-  "شخصيتك: خبيرة عمليات ضيافة، هادئة وواثقة ومباشرة؛ عربي بسيط واضح، تختصر ولا تطيل.",
-  "أجب عن السؤال مباشرة أولاً، ثم اختم بخطوة عملية قصيرة واحدة، واذكر فرصة حقيقية واحدة (خطر أو خسارة أو قرار) بسطر واحد دون مبالغة.",
-  "الأرقام: لا تخترع أرقاماً أو نسباً أو أسعاراً. استخدم فقط ما في قاعدة المعرفة أو بيانات السياق.",
+  "شخصيتك: خبيرة عمليات ضيافة، هادئة وواثقة ومباشرة؛ عربي فصيح بسيط واضح يُنطق بسهولة.",
+  "أجب عن السؤال مباشرة أولاً. اجعل الرد عملياً ومختصراً (غالباً 30-90 كلمة) بصيغة محادثة لا تقرير.",
+  "عندما تتوفر «قراءة مباشرة من النظام» (LIVE_SNAPSHOT) فاعتمد أرقامها وأسماء فعالياتها في ردّك بدل العموميات، وقل ما تراه فعلاً.",
+  "إن طلب المالك معلومة لا تظهر في بياناتك أو قاعدة المعرفة، قل بصراحة إنك لا تراها واقترح الخطوة المناسبة، ولا تخترع أرقاماً إطلاقاً.",
   "إذا كان السؤال يمسّ حساباً مالياً أو التزاماً عُمانياً، أشر إلى الحاجة لمراجعة الجهة المختصة من دون أن تنسب لنفسك القرار النهائي.",
+  "بعد الإجابة عن سؤال عملي، قد تختم بسؤال متابعة قصير واحد إن كان مفيداً، ولا تتكلف ذلك إن لم يلزم.",
 ].join("\n");
 
 const SECURITY_RULES = [
@@ -175,12 +177,88 @@ function deterministicAnswer(context: ChatContext): { reply: string; grounded: b
   return { reply, grounded: parts.length > 0 || alerts.length > 0 };
 }
 
-async function handleChat(body: Record<string, unknown>): Promise<Response> {
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Read a view through the CALLER's own session (RLS keeps the same gating
+ *  the caller has in the app) — never through the service role. */
+async function restRead(
+  authToken: string,
+  path: string,
+): Promise<{ ok: boolean; rows: Array<Record<string, unknown>> }> {
+  const base = Deno.env.get("SUPABASE_URL")?.trim();
+  const anon = Deno.env.get("SUPABASE_ANON_KEY")?.trim();
+  if (!base || !anon) return { ok: false, rows: [] };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3500);
+  try {
+    const res = await fetch(`${base}/rest/v1/${path}`, {
+      headers: { apikey: anon, Authorization: `Bearer ${authToken}` },
+      signal: controller.signal,
+    });
+    if (!res.ok) return { ok: false, rows: [] };
+    const data = (await res.json()) as unknown;
+    return { ok: true, rows: Array.isArray(data) ? data as Array<Record<string, unknown>> : [] };
+  } catch {
+    return { ok: false, rows: [] };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Server-side "live snapshot" of the org, fetched with the caller's token
+ *  so figures honor cost/payroll gating exactly as in the UI. */
+async function buildLiveSnapshot(
+  authToken: string,
+  orgId: string | undefined,
+): Promise<{ text: string; readable: boolean }> {
+  if (!orgId || !UUID_RE.test(orgId)) return { text: "", readable: false };
+
+  const isoNow = encodeURIComponent(new Date().toISOString());
+  const [events, bookings, contracts] = await Promise.all([
+    restRead(
+      authToken,
+      `events?organization_id=eq.${orgId}&select=event_number,title,status,start_at,guest_count&start_at=gte.${isoNow}&order=start_at.asc&limit=6`,
+    ),
+    restRead(
+      authToken,
+      `meal_booking_summaries?organization_id=eq.${orgId}&select=event_title,supplier_name,meal_type,service_date,guest_count,status,total_amount&order=service_date.desc&limit=6`,
+    ),
+    restRead(
+      authToken,
+      `supplier_contract_summaries?organization_id=eq.${orgId}&select=supplier_name,contract_number,status&order=created_at.desc&limit=12`,
+    ),
+  ]);
+
+  const mealName = (m: string) => (m === "LUNCH" ? "غداء" : "عشاء");
+  const lines: string[] = [];
+  if (events.ok) {
+    const e = events.rows;
+    if (e.length === 0) lines.push("مناسبات قادمة في الأفق: لا توجد حالياً (خلال قراءة النظام).");
+    for (const ev of e) {
+      lines.push(`- مناسبة ${ev.event_number} «${ev.title}» في ${String(ev.start_at ?? "").slice(0, 10)} — حالة ${ev.status}، ${ev.guest_count ?? 0} ضيف.`);
+    }
+  }
+  if (bookings.ok) {
+    const b = bookings.rows;
+    if (b.length === 0) lines.push("حجوزات وجبات المطاعم المتعاقدة: لا توجد سجلات ظاهرة لدورك.");
+    for (const bk of b) {
+      lines.push(`- حجز ${mealName(String(bk.meal_type ?? ""))} عند «${bk.supplier_name ?? ""}» لفعالية «${bk.event_title ?? ""}» بتاريخ ${bk.service_date ?? ""} — ${bk.guest_count ?? 0} ضيف، الحالة ${bk.status}، المبلغ ${bk.total_amount ?? 0}.`);
+    }
+  }
+  if (contracts.ok) {
+    const active = contracts.rows.filter((c) => c.status === "ACTIVE");
+    lines.push(`عقود مطاعم سارية: ${active.length} (${active.map((c) => c.supplier_name).slice(0, 4).join("، ")})`);
+  }
+  return { text: lines.join("\n"), readable: events.ok || bookings.ok || contracts.ok };
+}
+
+async function handleChat(body: Record<string, unknown>, authToken: string): Promise<Response> {
   const prompt = typeof body.prompt === "string" ? body.prompt.slice(0, 1500).trim() : "";
   if (!prompt) return errorResponse("BAD_REQUEST", "الطلب فارغ.", 422);
 
   const context = (body.context ?? {}) as ChatContext;
   const rawHistory = Array.isArray(body.history) ? (body.history as Array<{ role?: string; content?: unknown }>) : [];
+  const live = await buildLiveSnapshot(authToken, context.orgId);
 
   const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
   for (const message of rawHistory.slice(-8)) {
@@ -193,14 +271,23 @@ async function handleChat(body: Record<string, unknown>): Promise<Response> {
   contents.push({
     role: "user",
     parts: [{
-      text: `BEGIN_UNTRUSTED_REQUEST\nprompt=${prompt}\ncontext=\n${contextSummary(context)}\nEND_UNTRUSTED_REQUEST`,
+      text: [
+        "BEGIN_UNTRUSTED_REQUEST",
+        `prompt=${prompt}`,
+        "context=",
+        contextSummary(context),
+        live.text
+          ? `LIVE_SNAPSHOT_FROM_SYSTEM (آخر قراءة مباشرة بصلاحيات المتصل):\n${live.text}`
+          : "LIVE_SNAPSHOT: غير متاح في هذه اللحظة.",
+        "END_UNTRUSTED_REQUEST",
+      ].join("\n"),
     }],
   });
 
   const out = await fetchGemini(CHAT_MODEL, {
     systemInstruction: { parts: [{ text: systemPrompt() }] },
     contents,
-    generationConfig: { temperature: 0.4, maxOutputTokens: 500 },
+    generationConfig: { temperature: 0.3, maxOutputTokens: 650 },
   });
   const reply = firstText(out);
 
@@ -209,7 +296,7 @@ async function handleChat(body: Record<string, unknown>): Promise<Response> {
       reply,
       grounded: true,
       caveats: ["أرقام مقفلة على ما يقرأه دورك؛ الإجابة استرشادية."],
-      meta: { source: "model", degraded: false },
+      meta: { source: "model", degraded: false, live: live.readable },
     });
   }
 
@@ -217,7 +304,7 @@ async function handleChat(body: Record<string, unknown>): Promise<Response> {
   return jsonResponse({
     ...fallback,
     caveats: ["هذه قراءة موجزة من المقاييس المتاحة، وليست إحالة على قرار نهائي."],
-    meta: { source: "deterministic", degraded: !apiKey() },
+    meta: { source: "deterministic", degraded: !apiKey(), live: live.readable },
   });
 }
 
@@ -293,10 +380,34 @@ async function handleSpeak(body: Record<string, unknown>): Promise<Response> {
       },
     },
   });
-  if (!out.ok) return errorResponse("SPEAK_FAILED", "خدمة الصوت غير متاحة الآن.", 503);
+  if (!out.ok) {
+    // Return HTTP 200 with a machine-readable marker so the web client can
+    // branch precisely (daily quota exhausted vs transient outage). The
+    // provider detail is only used for diagnostics, never shown verbatim.
+    const detail = (() => {
+      try {
+        const b = out.body as { error?: { message?: string } };
+        return b?.error?.message ?? "";
+      } catch {
+        return "";
+      }
+    })();
+    const quota = out.status === 429 && /quota/i.test(detail);
+    return jsonResponse(
+      {
+        error: {
+          code: quota ? "SPEAK_QUOTA" : "SPEAK_FAILED",
+          retryAfterSeconds: quota ? 3600 : 20,
+        },
+      },
+      200,
+    );
+  }
   const data = out.body as { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> } }> };
   const inline = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData;
-  if (!inline?.data) return errorResponse("SPEAK_FAILED", "خدمة الصوت غير متاحة الآن.", 503);
+  if (!inline?.data) {
+    return jsonResponse({ error: { code: "SPEAK_FAILED", retryAfterSeconds: 20 } }, 200);
+  }
   const { wavB64, mime } = pcmToWav(inline.data);
   return jsonResponse({ audioB64: wavB64, mimeType: mime });
 }
@@ -310,10 +421,13 @@ Deno.serve(async (request: Request) => {
   const authError = await assertAuthenticated(request);
   if (authError) return errorResponse("AUTH_REQUIRED", authError, 401);
 
+  const authHeader = request.headers.get("Authorization") ?? "";
+  const authToken = authHeader.replace(/^Bearer\s+/i, "").trim();
+
   const body = await readJson(request);
   const action = body.action;
 
-  if (action === "chat") return handleChat(body);
+  if (action === "chat") return handleChat(body, authToken);
   if (action === "transcribe") return handleTranscribe(body);
   if (action === "speak") return handleSpeak(body);
   return errorResponse("BAD_REQUEST", "إجراء غير معروف.", 422);

@@ -37,6 +37,10 @@
   html {
     direction: rtl;
     min-height: 100%;
+    /* Slightly larger root for a more legible interface everywhere (16px →
+       17px): every rem-based text size scales up by one comfortable step,
+       including the dense text-sm rows the owner reads all day. */
+    font-size: 106.25%;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
@@ -167,6 +171,10 @@ html.dark body {
   background-image:
     radial-gradient(1100px 520px at 100% -10%, rgb(13 148 136 / 0.16), transparent 62%),
     radial-gradient(900px 480px at -12% 108%, rgb(30 58 138 / 0.14), transparent 56%);
+  /* Inherited text (headings and paragraphs without an explicit utility)
+     must stay light on the dark field — this was the "unreadable dark text"
+     culprit. */
+  color: #d5deeb;
 }
 
 /* Surfaces — lightest → deepest. */
@@ -204,19 +212,19 @@ html.dark .text-slate-900 {
   color: #eef2f8;
 }
 html.dark .text-slate-800 {
-  color: #e2e8f0;
+  color: #e4ebf3;
 }
 html.dark .text-slate-700 {
-  color: #cbd5e1;
+  color: #d0dae8;
 }
 html.dark .text-slate-600 {
-  color: #a6b4c9;
+  color: #b8c5d8;
 }
 html.dark .text-slate-500 {
-  color: #8a9bb5;
+  color: #a4b3c9;
 }
 html.dark .text-slate-400 {
-  color: #6e80a0;
+  color: #94a7c3;
 }
 
 /* Borders & dividers */
@@ -327,6 +335,33 @@ html.dark .border-amber-300 {
 
 html.dark .bg-emerald-50 {
   background-color: rgb(52 211 153 / 0.1);
+}
+html.dark .bg-emerald-100 {
+  background-color: rgb(52 211 153 / 0.16);
+}
+html.dark .bg-red-100 {
+  background-color: rgb(248 113 113 / 0.16);
+}
+html.dark .bg-sky-100 {
+  background-color: rgb(56 189 248 / 0.16);
+}
+html.dark .bg-emerald-200 {
+  background-color: rgb(52 211 153 / 0.24);
+}
+html.dark .bg-red-200 {
+  background-color: rgb(248 113 113 / 0.24);
+}
+html.dark .text-sky-800 {
+  color: #bae6fd;
+}
+html.dark .text-sky-700 {
+  color: #7dd3fc;
+}
+html.dark .border-emerald-100 {
+  border-color: rgb(52 211 153 / 0.18);
+}
+html.dark .border-red-100 {
+  border-color: rgb(248 113 113 / 0.18);
 }
 html.dark .text-emerald-600 {
   color: #34d399;

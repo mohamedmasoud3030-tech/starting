@@ -110,12 +110,24 @@ describe("synthesizeSpeech", () => {
     expect(invoke).toHaveBeenCalledWith("ai-assistant", {
       body: { action: "speak", text: "مرحباً بك" },
     });
-    expect(clip.audioB64).toBe("V0FW");
-    expect(clip.mimeType).toBe("audio/wav");
+    expect(clip).toEqual({ kind: "ok", audioB64: "V0FW", mimeType: "audio/wav" });
   });
 
-  it("throws when the audio payload is missing", async () => {
+  it("marks the outcome as failed when the audio payload is missing", async () => {
     invoke.mockResolvedValue({ data: { mimeType: "audio/wav" }, error: null });
-    await expect(synthesizeSpeech("مرحباً")).rejects.toThrow(/غير متاحة/);
+    await expect(synthesizeSpeech("مرحباً")).resolves.toEqual({ kind: "failed" });
+  });
+
+  it("marks the outcome as quota when the provider budget is spent", async () => {
+    invoke.mockResolvedValue({
+      data: { error: { code: "SPEAK_QUOTA", retryAfterSeconds: 3600 } },
+      error: null,
+    });
+    await expect(synthesizeSpeech("مرحباً")).resolves.toEqual({ kind: "quota" });
+  });
+
+  it("marks a network failure as failed rather than throwing", async () => {
+    invoke.mockRejectedValue(new Error("offline"));
+    await expect(synthesizeSpeech("مرحباً")).resolves.toEqual({ kind: "failed" });
   });
 });

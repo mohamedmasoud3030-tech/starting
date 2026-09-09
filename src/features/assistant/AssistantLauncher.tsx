@@ -45,6 +45,7 @@ export function AssistantLauncher() {
 
   const [open, setOpen] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
+  const [audioSpeaking, setAudioSpeaking] = useState(false);
   const voice = useAssistantVoice();
   const voiceInput = useVoiceInput();
 
@@ -61,35 +62,166 @@ export function AssistantLauncher() {
   });
 
   const spokenAssistantCount = useRef(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const pendingSpeakRef = useRef<{ text: string } | null>(null);
+  /** Small LRU of cloud clips by exact reply text — replays never re-bill
+   *  the provider quota and start instantly. */
+  const cloudClipCacheRef = useRef<Map<string, { audioB64: string; mimeType: string }>>(new Map());
+  /** When the cloud voice quota is spent, stop calling it until this time. */
+  const cloudBlockedUntilRef = useRef(0);
+
+  const playCloudClip = useCallback(
+    (audioB64: string, mimeType: string): Promise<boolean> => {
+      const element = audioElRef.current;
+      if (!element) return Promise.resolve(false);
+      return new Promise((resolve) => {
+        if (element.currentSrc) {
+          try {
+            URL.revokeObjectURL(element.currentSrc);
+          } catch {
+            /* noop */
+          }
+        }
+        const url = base64ToAudioUrl(audioB64, mimeType);
+        const finish = (ok: boolean) => {
+          element.onplay = null;
+          element.onended = null;
+          element.onerror = null;
+          resolve(ok);
+        };
+        element.onplay = () => setAudioSpeaking(true);
+        element.onended = () => {
+          setAudioSpeaking(false);
+          try {
+            URL.revokeObjectURL(url);
+          } catch {
+            /* noop */
+          }
+          finish(true);
+        };
+        element.onerror = () => {
+          setAudioSpeaking(false);
+          finish(false);
+        };
+        element.src = url;
+        element.load();
+        element.play().then(
+          () => finish(true),
+          () => {
+            // Autoplay policy / decode failure on mobile.
+            setAudioSpeaking(false);
+            finish(false);
+          },
+        );
+      });
+    },
+    [],
+  );
 
   const stopAudio = useCallback(() => {
-    audioRef.current?.pause();
+    const el = audioElRef.current;
+    if (el) {
+      el.pause();
+      el.onended = null;
+      el.onerror = null;
+      if (el.src) {
+        try {
+          URL.revokeObjectURL(el.currentSrc || el.src);
+        } catch {
+          /* noop */
+        }
+      }
+      el.removeAttribute("src");
+    }
+    setAudioSpeaking(false);
     voice.stop();
   }, [voice]);
 
-  const speakText = useCallback(
-    async (text: string) => {
-      if (!text.trim()) return;
-      voice.stop();
-      try {
-        const clip = await synthesizeSpeech(text);
-        const url = base64ToAudioUrl(clip.audioB64, clip.mimeType);
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.src = "";
-        }
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        await audio.play();
-        return;
-      } catch {
-        // Cloud voice unavailable → fall back to the local feminine voice.
-        voice.speak(text);
+  const speakLocally = useCallback(
+    (trimmed: string): boolean => {
+      // Browser-local feminine Arabic voice (unlimited, works offline).
+      const started = voice.speak(trimmed);
+      if (!started) {
+        // Autoplay/lock or no speech engine yet — retry on the next tap
+        // inside a user gesture where the browser allows audio.
+        pendingSpeakRef.current = { text: trimmed };
       }
+      return started;
     },
     [voice],
   );
+
+  const speakText = useCallback(
+    async (text: string) => {
+      const trimmed = text?.trim();
+      if (!trimmed) return;
+      const el = audioElRef.current;
+      el?.pause();
+      voice.stop();
+      setAudioSpeaking(false);
+
+      const cache = cloudClipCacheRef.current;
+      const cached = cache.get(trimmed);
+
+      // 1) Replay from the in-session cache — instant, free.
+      if (cached) {
+        const played = await playCloudClip(cached.audioB64, cached.mimeType);
+        if (played) {
+          pendingSpeakRef.current = null;
+          return;
+        }
+        // Cached clip failed to decode/play → local voice.
+        speakLocally(trimmed);
+        return;
+      }
+
+      // 2) Feminine cloud voice — unless today's provider quota is spent.
+      const cloudAllowed = Date.now() >= cloudBlockedUntilRef.current;
+      if (cloudAllowed) {
+        const outcome = await synthesizeSpeech(trimmed);
+        if (outcome.kind === "ok") {
+          cache.set(trimmed, { audioB64: outcome.audioB64, mimeType: outcome.mimeType });
+          if (cache.size > 5) {
+            const oldest = cache.keys().next().value as string | undefined;
+            if (oldest) cache.delete(oldest);
+          }
+          const played = await playCloudClip(outcome.audioB64, outcome.mimeType);
+          if (played) {
+            pendingSpeakRef.current = null;
+            return;
+          }
+          speakLocally(trimmed);
+          return;
+        }
+        if (outcome.kind === "quota") {
+          // Whole-day budget spent: don't keep probing the provider.
+          cloudBlockedUntilRef.current = Date.now() + 60 * 60 * 1000;
+        }
+        // kind === "failed" → transient, allow a quick retry next time.
+      }
+
+      // 3) Browser-local feminine Arabic voice as the resilient fallback.
+      speakLocally(trimmed);
+    },
+    [voice, playCloudClip, speakLocally],
+  );
+
+  // A pending voice reply is retried on the next user tap (user gesture),
+  // which lifts the autoplay restriction on mobile browsers.
+  useEffect(() => {
+    if (!open || !pendingSpeakRef.current) return;
+    const onPointer = () => {
+      const pending = pendingSpeakRef.current?.text;
+      if (pending) {
+        pendingSpeakRef.current = null;
+        void speakText(pending);
+      }
+    };
+    window.addEventListener("pointerdown", onPointer, { once: true });
+    return () => window.removeEventListener("pointerdown", onPointer);
+  }, [open, speakText, pendingSpeakRef]);
+
+  const speaking = voice.speaking || audioSpeaking;
 
   // Read each new assistant reply aloud when auto-speak is on.
   useEffect(() => {
@@ -127,6 +259,9 @@ export function AssistantLauncher() {
 
   return (
     <>
+      {/* Persistent (attached) audio element: required for reliable playback
+          of the cloud voice on mobile WebKit/Blink. */}
+      <audio ref={audioElRef} className="hidden" preload="auto" aria-hidden="true" />
       {open ? (
         <AssistantPanel
           messages={assistant.messages}
@@ -139,7 +274,7 @@ export function AssistantLauncher() {
           onMic={toggleMic}
           onSpeak={speakText}
           onStopSpeaking={stopAudio}
-          speaking={voice.speaking}
+          speaking={speaking}
           onSend={assistant.sendPrompt}
           onClose={() => setOpen(false)}
         />
