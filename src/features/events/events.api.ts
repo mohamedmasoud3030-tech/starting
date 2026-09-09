@@ -1,8 +1,8 @@
-import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { callRpc } from "@/lib/rpc";
+import { clampPage, pageRange, totalPagesFor, usePagedList } from "@/lib/pagination";
 import { eventQuotesOrFilter } from "./eventWorkspace.model";
 
 /**
@@ -187,34 +187,41 @@ export function useEvents(orgId: string | null) {
 }
 
 /**
- * Paginated events list for the Events screen (defect D21): "load more"
- * pattern with exact totals. The dashboard keeps using `useEvents` so
+ * Paginated events list for the Events screen (defect D21): real 0-based
+ * pages with exact totals. The dashboard keeps using `useEvents` so
  * today's-events filtering is never silently capped by pagination.
  */
 export function useEventsPage(orgId: string | null, pageSize = 50) {
-  const [size, setSize] = useState(pageSize);
+  const { page, setPage } = usePagedList(orgId);
   const query = useQuery({
-    queryKey: ["events-page", orgId, size],
+    queryKey: ["events-page", orgId, page, pageSize],
     enabled: !!orgId,
     placeholderData: (previous) => previous,
     queryFn: async (): Promise<EventList> => {
+      const [from, to] = pageRange(page, pageSize);
       const { data, error, count } = await db
         .from("events")
         .select("*", { count: "exact" })
         .eq("organization_id", orgId!)
         .order("start_at")
-        .range(0, size - 1);
+        .order("id")
+        .range(from, to);
       if (error) throw error;
       return { rows: (data ?? []) as EventRow[], total: count ?? null };
     },
   });
-  const loaded = query.data?.rows.length ?? 0;
-  const total = query.data?.total ?? null;
-  const hasMore = typeof total === "number" && loaded < total;
+  const totalPages = totalPagesFor(query.data?.total ?? null, pageSize);
+  const goToPage = (next: number) => setPage(clampPage(next, totalPages));
   return {
     ...query,
-    hasMore,
-    loadMore: () => setSize((current) => current + pageSize),
+    page,
+    pageSize,
+    totalPages,
+    hasPreviousPage: page > 0,
+    hasNextPage: totalPages == null ? false : page + 1 < totalPages,
+    goToPage,
+    nextPage: () => goToPage(page + 1),
+    previousPage: () => goToPage(page - 1),
   };
 }
 

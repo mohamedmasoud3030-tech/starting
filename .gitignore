@@ -1,1 +1,24 @@
-DATA_DISPLAY_IMPROVEMENTS.md\nFORM_IMPROVEMENT_STANDARD.md\nINTERFACE_CURRENT_STATE.md\nPAGE_IMPROVEMENT_ARCHITECTURE.md\nPAGE_STRUCTURE_IMPROVEMENTS.md\nSHARED_COMPONENT_IMPROVEMENTS.md\nsrc/features/events/EventsPage.tsx.bak
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Local environment files (never commit real credentials)
+.env
+.env.*
+!.env.example
+
+# Logs and OS noise
+*.log
+.DS_Store
+
+# Editor/IDE
+.vscode
+.idea
+
+# Backup files
+*.bak
+
+# Test/coverage artifacts
+coverage

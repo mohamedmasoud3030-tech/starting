@@ -7501,6 +7501,10 @@ export type Database = {
         Args: { p_quantity: number; p_unit_cost: number }
         Returns: number
       }
+      purge_old_audit_events: {
+        Args: { p_older_than?: string; p_org_id: string }
+        Returns: number
+      }
       quotation_fingerprint: { Args: { p_payload: Json }; Returns: string }
       quotation_pricing: {
         Args: {

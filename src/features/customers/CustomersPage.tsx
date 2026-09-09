@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { useStableIdempotencyKey } from "@/lib/useStableIdempotencyKey";
 import { Link } from "@tanstack/react-router";
 import { Phone, Plus } from "lucide-react";
 import { useAuth } from "@/app/authContext";
@@ -13,10 +12,9 @@ import { Dialog } from "@/components/ui/Dialog";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { TruncationNotice } from "@/components/ui/TruncationNotice";
+import { PaginationBar } from "@/components/ui/PaginationBar";
 import { useToast } from "@/components/ui/toastContext";
 import { CUSTOMER_TYPE_LABELS } from "@/lib/domain";
-import { listIsTruncated } from "@/lib/listCap";
 import type { CustomerRow, CustomerType } from "@/lib/dbTypes";
 import {
   type CustomerFormValues,
@@ -26,7 +24,6 @@ import {
 
 export function CustomersPage() {
   const { currentOrganization, canWriteCustomers } = useAuth();
-  const createKey = useStableIdempotencyKey(true);
   const toast = useToast();
   const orgId = currentOrganization?.id ?? null;
   const customersQuery = useCustomersPage(orgId);
@@ -36,9 +33,21 @@ export function CustomersPage() {
   const [editing, setEditing] = useState<CustomerRow | null>(null);
 
   const customers = customersQuery.data?.rows ?? [];
-  const customersTruncated =
-    customersQuery.isSuccess &&
-    listIsTruncated(customersQuery.data?.rows.length ?? 0, customersQuery.data?.total);
+
+  const paginationBar = (
+    <PaginationBar
+      page={customersQuery.page}
+      pageSize={customersQuery.pageSize}
+      totalPages={customersQuery.totalPages}
+      hasPreviousPage={customersQuery.hasPreviousPage}
+      hasNextPage={customersQuery.hasNextPage}
+      isFetching={customersQuery.isFetching}
+      onPrevious={customersQuery.previousPage}
+      onNext={customersQuery.nextPage}
+      rowsCount={customersQuery.data?.rows.length ?? 0}
+      total={customersQuery.data?.total ?? null}
+    />
+  );
 
   return (
     <div>
@@ -65,23 +74,6 @@ export function CustomersPage() {
         error={customersQuery.error}
         onRetry={() => void customersQuery.refetch()}
       >
-      {customersTruncated && (
-        <div className="mb-4 space-y-3">
-          <TruncationNotice
-            message={`يتم عرض ${customersQuery.data?.rows.length ?? 0} من ${customersQuery.data?.total ?? "…"} عميلاً.`}
-          />
-          {customersQuery.hasMore && (
-            <Button
-              variant="secondary"
-              onClick={() => customersQuery.loadMore()}
-              disabled={customersQuery.isFetching}
-            >
-              {customersQuery.isFetching ? "جارٍ التحميل…" : "عرض المزيد من العملاء"}
-            </Button>
-          )}
-        </div>
-      )}
-
       {customers.length === 0 ? (
         <EmptyState
           title="لا يوجد عملاء بعد"
@@ -149,6 +141,7 @@ export function CustomersPage() {
           ))}
         </ul>
       )}
+      {paginationBar}
       </AsyncState>
 
       <CustomerDialog
@@ -174,7 +167,6 @@ export function CustomersPage() {
           await saveMutation.mutateAsync({
             id: editing?.id ?? null,
             values,
-            idempotencyKey: createKey,
           });
           setDialogOpen(false);
           toast.success(

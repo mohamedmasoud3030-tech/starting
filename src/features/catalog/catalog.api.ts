@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { clampPage, pageRange, totalPagesFor, usePagedList } from "@/lib/pagination";
 import { toDbNumeric, type DbAmount } from "@/lib/money";
 import type {
   CatalogCategoryRow,
@@ -185,21 +185,23 @@ export function useCatalogItems(orgId: string | null, includeCost = false) {
   });
 }
 
-/** Paginated catalog list for the Catalog screen (D21-ext). */
+/** Paginated catalog list for the Catalog screen (D21): real 0-based pages. */
 export function useCatalogItemsPage(orgId: string | null, includeCost = false, pageSize = 50) {
-  const [size, setSize] = useState(pageSize);
+  const { page, setPage } = usePagedList(orgId);
   const query = useQuery({
-    queryKey: ["catalog-items-page", orgId, includeCost, size],
+    queryKey: ["catalog-items-page", orgId, includeCost, page, pageSize],
     enabled: !!orgId,
     placeholderData: (previous) => previous,
     queryFn: async (): Promise<CatalogItemList> => {
+      const [from, to] = pageRange(page, pageSize);
       if (includeCost) {
         const { data, error, count } = await supabase
           .from("catalog_items")
           .select("*", { count: "exact" })
           .eq("organization_id", orgId!)
           .order("name", { ascending: true })
-          .range(0, size - 1);
+          .order("id")
+          .range(from, to);
         if (error) throw error;
         return { rows: (data ?? []) as CatalogListItem[], total: count ?? null };
       }
@@ -208,18 +210,24 @@ export function useCatalogItemsPage(orgId: string | null, includeCost = false, p
         .select("*", { count: "exact" })
         .eq("organization_id", orgId!)
         .order("name", { ascending: true })
-        .range(0, size - 1);
+        .order("id")
+        .range(from, to);
       if (error) throw error;
       return { rows: (data ?? []).flatMap(fromOperationalRow), total: count ?? null };
     },
   });
-  const loaded = query.data?.rows.length ?? 0;
-  const total = query.data?.total ?? null;
-  const hasMore = typeof total === "number" && loaded < total;
+  const totalPages = totalPagesFor(query.data?.total ?? null, pageSize);
+  const goToPage = (next: number) => setPage(clampPage(next, totalPages));
   return {
     ...query,
-    hasMore,
-    loadMore: () => setSize((current) => current + pageSize),
+    page,
+    pageSize,
+    totalPages,
+    hasPreviousPage: page > 0,
+    hasNextPage: totalPages == null ? false : page + 1 < totalPages,
+    goToPage,
+    nextPage: () => goToPage(page + 1),
+    previousPage: () => goToPage(page - 1),
   };
 }
 

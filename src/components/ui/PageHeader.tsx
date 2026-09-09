@@ -2,7 +2,7 @@ import { useAuth } from "@/app/authContext";
 import { useOrganizationSettings } from "@/features/settings/settings.api";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 
 type PageHeaderProps = {
   title: string;
@@ -24,13 +24,13 @@ export function PageHeader({
   const [showBranding, setShowBranding] = useState(false);
   
   useEffect(() => {
-    setShowBranding(!isLoading && settings?.data?.name_en);
+    setShowBranding(!isLoading && !!settings?.name_en);
   }, [settings, isLoading]);
-  
-  const companyName = settings?.data?.name_en ?? "مشروع الإطلاق";
-  const primaryColor = settings?.data?.primary_color ?? "#059669";
-  const accentColor = settings?.data?.accent_color ?? "#dc2626";
-  
+
+  const companyName = settings?.name_en ?? "مشروع الإطلاق";
+  const primaryColor = settings?.primary_color ?? "#0d9488";
+  const accentColor = settings?.accent_color ?? "#dc2626";
+
   return (
     <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
       {/* Company branding row - appears below title on mobile, above on desktop */}
@@ -38,15 +38,21 @@ export function PageHeader({
         <div className="flex items-center gap-3 mb-3 sm:mb-0 sm:order-2">
           <Badge
             className={cn(
-              "bg-primary-100 text-primary-800 text-xs font-medium rounded-xl",
-              "transition-colors hover:bg-primary-200"
+              "bg-brand-100 text-brand-800 text-xs font-medium rounded-xl",
+              "transition-colors hover:bg-brand-200"
             )}
           >
             <span className="font-medium truncate w-32">{companyName}</span>
           </Badge>
           <div className="flex gap-1 text-xs">
-            <span className="w-2 h-2 rounded-full bg-primary-600"></span>
-            <span className="w-2 h-2 rounded-full bg-accent-600"></span>
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: primaryColor }}
+            ></span>
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: accentColor }}
+            ></span>
           </div>
         </div>
       )}
@@ -65,7 +71,7 @@ export function PageHeader({
             {actions}
           </div>
         )}
-      )}
+      </div>
     </div>
   );
 }

@@ -87,6 +87,20 @@ DB_URL=… npm run db:backup-restore-proof                       # local-only gu
   `docs/operations/backup-restore.md` (incl. the circular-FK warning for
   data-only dumps and the restore-into-separate-target procedure).
 
+### 5.1 Audit-log retention (`audit_events`)
+
+- Policy (migration 0098, defect D20): audit events older than **24 months**
+  are purgeable; the purge is **per organization**, **OWNER-only**, and is
+  itself recorded in the audit trail before any row is deleted.
+- The purge is manual/schedulable via
+  `public.purge_old_audit_events(org_id, older_than)` — the default cutoff is
+  24 months; pass an explicit `older_than` to override per call.
+- Suggested operational cadence: run it monthly per organization (for example
+  through pg_cron or an external scheduler using an OWNER-scoped service
+  token). Full removal of a closed organization's data is out of scope —
+  this command never deletes rows younger than the cutoff, and there is no
+  destructive org-drop path in the schema.
+
 ## 6. Monitoring & incident basics
 
 - Available today: Supabase dashboard (DB health, auth logs), Vercel deployment
@@ -120,8 +134,9 @@ DB_URL=… npm run db:backup-restore-proof                       # local-only gu
   `f1b53ac`).
 - **Offline banner visible:** informational only; writes remain idempotent and
   the database is authoritative.
-- **List warning "أول 1000 …":** PostgREST `max_rows` cap reached; pagination
-  is planned (defect D21).
+- **List warning "أول 1000 …":** PostgREST `max_rows` cap reached on the
+  procurement lists (they keep an explicit warning by design); the main lists
+  (events/customers/catalog) use real pagination (defect D21).
 
 ## 9. Production migration runbook (releases with migrations 0056–0060)
 
@@ -163,3 +178,31 @@ repair migration.
   shows the "not configured" state).
 - No `VITE_PUBLIC_DEMO_MODE` variable exists (it was deleted from code).
 - Managed backups are enabled with a defined retention.
+
+## 10. Production parity checkbook (never executed from any working session)
+
+The production Supabase project and Vercel deployment have **never been
+verified against the migrations in git**. Run this before any launch claim:
+
+```bash
+# 1) Auth contexts (requires an owner-held access token + CLI login)
+supabase login
+supabase link --project-ref <PROJECT_REF>
+
+# 2) Compare applied migrations vs git (expect one row per file in
+#    supabase/migrations/, currently 99)
+supabase migration list --local   # 99 local
+supabase migration list --linked  # must equal the local list
+
+# 3) Spot-check security-critical markers on production (read-only)
+select count(*) from supabase_migrations.schema_migrations;              -- 99
+select not exists (select 1 from pg_roles where rolname='public_demo_admin'); -- t
+select count(*)::int from information_schema.role_routine_grants
+  where grantee='anon' and routine_name='create_organization';            -- 0
+select to_regprocedure('public.purge_old_audit_events(uuid,timestamptz)') is not null; -- t
+
+# 4) Vercel: confirm the deployment's commit SHA matches the merged commit
+vercel inspect <deployment-url>          # or via the Vercel dashboard
+```
+
+Never run pgTAP or seed files on production — they insert test data.

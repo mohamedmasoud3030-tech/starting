@@ -31,14 +31,24 @@ vi.mock("@/features/ownerVoice/screenSummary", () => ({
   toArabicDigits: (x: string | number) => String(x),
 }));
 
+vi.mock("@/features/settings/settings.api", () => ({
+  useOrganizationSettings: () => ({ data: null, isLoading: false }),
+}));
+
 vi.mock("./events.api", () => ({
   useEventsPage: () => ({
     data: { rows: [], total: 0 },
     isLoading: false,
     isSuccess: true,
-    hasMore: false,
-    loadMore: () => {},
     isFetching: false,
+    page: 0,
+    pageSize: 50,
+    totalPages: 1,
+    hasPreviousPage: false,
+    hasNextPage: false,
+    goToPage: () => {},
+    nextPage: () => {},
+    previousPage: () => {},
   }),
   useCreateEvent: () => ({ mutateAsync: createMutate, isPending: false }),
   arabicError: (cause: unknown) =>
@@ -55,9 +65,15 @@ vi.mock("@/features/customers/customers.api", () => ({
     data: { rows: state.customers, total: state.customers.length },
     isLoading: false,
     isSuccess: true,
-    hasMore: false,
-    loadMore: () => {},
     isFetching: false,
+    page: 0,
+    pageSize: 50,
+    totalPages: 1,
+    hasPreviousPage: false,
+    hasNextPage: false,
+    goToPage: () => {},
+    nextPage: () => {},
+    previousPage: () => {},
   }),
 }));
 
