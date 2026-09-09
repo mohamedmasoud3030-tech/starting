@@ -134,7 +134,7 @@ export function StaffMemberDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={isEditing ? "تعديل بيانات عضو" : "إضافة عضو جديد"}
-      description="ملف الموارد البشرية للعضو: بيانات الاتصال والعقد، مع طريقة الأجر الافتراضية لحساب الحضور."
+      description="ملف العضو ضمن فريقك: بياناته وطريقة الأجر الافتراضية لحساب حضوره في المناسبات، مع سجل تعاقده ومستنداته."
     >
       <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
         <Field label="الاسم" htmlFor="staff-name" required>

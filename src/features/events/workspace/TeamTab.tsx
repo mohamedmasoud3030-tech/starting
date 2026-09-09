@@ -69,7 +69,7 @@ export function TeamTab({
             </p>
             {staff.length === 0 ? (
               <p className="text-sm font-semibold text-slate-600">
-                أضف أفراد الفريق أولاً من صفحة الموارد البشرية (الفريق).
+                أضف أفراد الفريق أولاً من صفحة «الفريق والموارد البشرية».
               </p>
             ) : available.length === 0 ? (
               <p className="text-sm font-semibold text-slate-600">

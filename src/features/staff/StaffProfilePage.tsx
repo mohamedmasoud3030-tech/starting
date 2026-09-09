@@ -160,7 +160,7 @@ export function StaffProfilePage() {
       <BackLink />
       <PageHeader
         title={`الملف الشخصي — ${member.name}`}
-        description="كل ما يخص العضو في هذا الملف: الهوية والعقد وتواريخ المستندات، الإجازات والغياب، الحضور والمستحقات — حسب صلاحياتك."
+        description="كل ما يخص العضو في هذا الملف: هويته وبيانات تعاقده وتواريخ مستنداته، إجازاته وغيابه، وحضوره ومستحقاته في مناسباتك — حسب صلاحياتك."
         actions={
           canManage && editRow.data ? (
             <>
@@ -229,7 +229,7 @@ export function StaffProfilePage() {
               <CardBody className="space-y-4">
                 <h2 className="flex items-center gap-2 text-lg font-black text-slate-900">
                   <Briefcase className="h-5 w-5 text-brand-700" />
-                  بيانات التوظيف والعقد
+                  بيانات العمل والتعاقد
                 </h2>
                 {hr ? (
                   <>
@@ -288,7 +288,7 @@ export function StaffProfilePage() {
                   </>
                 ) : (
                   <p className="text-sm text-slate-500">
-                    لم تُسجَّل بيانات توظيف إضافية بعد — استخدم «تعديل بيانات
+                    لم تُسجَّل بيانات عمل إضافية بعد — استخدم «تعديل بيانات
                     العضو» لإضافتها.
                   </p>
                 )}
@@ -438,7 +438,7 @@ export function StaffProfilePage() {
         </>
       ) : (
         <Card className="bg-slate-50 p-5 text-sm leading-7 text-slate-600">
-          البيانات المالية وملف التوظيف الكامل (العقد، المستندات، الإجازات) تظهر
+          البيانات المالية وملف العضو الكامل (التعاقد، المستندات، الإجازات) تظهر
           لحسابات الرواتب فقط. هذا الملف يعرض الهوية وحالة التسجيل فقط لحسابك.
         </Card>
       )}
@@ -478,7 +478,7 @@ function BackLink() {
       className="inline-flex items-center gap-1 text-sm font-bold text-brand-700 hover:text-brand-900"
     >
       <ArrowRight className="h-4 w-4" />
-      رجوع إلى الموارد البشرية
+      رجوع إلى الفريق
     </Link>
   );
 }

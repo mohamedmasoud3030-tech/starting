@@ -82,9 +82,10 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     label: "الفريق",
     // The staff page is a payroll + HR surface (server-gated by payroll.read).
-    // The label reads as الموارد البشرية: one full file per member (identity,
-    // contract & document expiries, leaves register, attendance and payroll).
-    items: [{ to: "/staff", label: "الموارد البشرية", payroll: true }],
+    // The page serves the team inside the events lifecycle (hosts are assigned,
+    // attend and are settled per event) plus the per-member HR file. The label
+    // keeps the operational identity first: «الفريق والموارد البشرية».
+    items: [{ to: "/staff", label: "الفريق والموارد البشرية", payroll: true }],
   },
   {
     label: "الإدارة والتحليل",

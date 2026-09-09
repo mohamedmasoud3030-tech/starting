@@ -192,7 +192,7 @@ writes.
 | `/packages` | Package templates | commercial roles (nav-gated) | |
 | `/consumables` | Consumable stock | all members (adjust = OWNER/MANAGER) | |
 | `/procurement` | Suppliers & orders | cost roles only | non-cost roles see a clear message |
-| `/staff` | الموارد البشرية — one full HR file per member (identity, employment/contract + document expiries, leaves/absence register), attendance, payroll | all members (payroll + HR file = cost/payroll roles) | |
+| `/staff` | الفريق والموارد البشرية — one full per-member file (identity, employment/contract + document expiries, leaves/absence register), attendance and payroll inside the events lifecycle | all members (payroll + HR file = cost/payroll roles) | |
 
 All routes are lazy-loaded (`src/routes.lazy.tsx`). **[V]**
 
