@@ -18,6 +18,7 @@ import {
   useOrgLeaves,
   useSaveLeave,
   useUpdateLeaveStatus,
+  type LeaveRow,
   type LeaveStatus,
   type LeaveType,
 } from "./staff.api";
@@ -103,6 +104,10 @@ export function LeavesPanel({
           </Button>
         )}
       </div>
+
+      {memberId && !leavesQuery.isLoading && !leavesQuery.isError && (
+        <MemberLeaveSummary rows={rows} />
+      )}
 
       {decideError && (
         <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-bold text-red-700" role="alert">
@@ -203,6 +208,33 @@ export function LeavesPanel({
         names={names}
         canManage={canManage}
       />
+    </div>
+  );
+}
+
+/** Member-file summary (plan C): approved days, pending requests, event absences. */
+function MemberLeaveSummary({ rows }: { rows: LeaveRow[] }) {
+  const approvedDays = rows
+    .filter((r) => r.status === "APPROVED")
+    .reduce((sum, r) => sum + r.daysCount, 0);
+  const pending = rows.filter((r) => r.status === "PENDING").length;
+  const eventAbsences = rows.filter((r) => r.leaveType === "EVENT_ABSENCE").length;
+  const daysLabel =
+    approvedDays === Math.trunc(approvedDays)
+      ? String(Math.trunc(approvedDays))
+      : String(approvedDays);
+
+  return (
+    <div className="flex flex-wrap gap-2 text-sm">
+      <span className="rounded-full bg-emerald-50 px-3 py-1 font-bold text-emerald-800">
+        موافَق عليها: {daysLabel} يوم
+      </span>
+      <span className="rounded-full bg-slate-100 px-3 py-1 font-bold text-slate-700">
+        بانتظار الموافقة: {pending}
+      </span>
+      <span className="rounded-full bg-amber-50 px-3 py-1 font-bold text-amber-800">
+        غياب عن مناسبات: {eventAbsences}
+      </span>
     </div>
   );
 }

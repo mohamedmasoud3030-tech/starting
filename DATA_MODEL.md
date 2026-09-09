@@ -161,7 +161,16 @@ writes). No hard delete; inactive customers are not selectable for new events.
   `create_event_invoice`, `void_invoice` (OWNER/MANAGER/ACCOUNTANT).
 
 ### 3.10 Staff, attendance & payroll
-- `staff_members` — roster with default compensation; manage OWNER/MANAGER.
+- `staff_members` — roster with default compensation and the per-member HR
+  file (0100): hire/birth dates, nationality, job title, department,
+  emergency phone, IBAN, `contract_status` ACTIVE/PROBATION/ENDED, and
+  civil-ID / health-card expiry dates; manage OWNER/MANAGER, read = cost roles.
+- `staff_leaves` (0100/0101) — lightweight leaves/absence REGISTER (annual /
+  sick / emergency / unpaid / event-absence), dates + days, reason, and
+  PENDING/APPROVED/REJECTED/CANCELLED with reviewer audit (`recorded_by`,
+  `decided_by`, `decided_at`). Attendance stays event-driven (see
+  `15-staff-attendance.md`); the register records notices, it never drives
+  duty schedules or payroll.
 - `event_staff_assignments` — per-event assignments with time-overlap
   rejection; ACTIVE/RELEASED/CANCELLED.
 - `staff_attendance` — one live record per (org, event, staff, date, shift);
@@ -207,9 +216,11 @@ Operational projections: `catalog_items_operational`,
   `authenticated`.
 - `authenticated`: SELECT through row-scoped policies; direct write grants
   exist only on `customers`, `catalog_*`, `packages`, `package_items`,
-  `staff_members`, `equipment_capacity`, `organizations` (UPDATE owner),
-  `organization_memberships` (owner policy) — each guarded by role checks on
-  the target row's `organization_id`.
+  `staff_members`, `staff_leaves` (register: insert/update under
+  `has_permission(org,'staff.manage')`), `equipment_capacity`,
+  `organizations` (UPDATE owner), `organization_memberships` (owner policy) —
+  each guarded by role checks on the target row's `organization_id`. No
+  `DELETE` grant on `staff_leaves` (append-only register).
 - Sensitive functions not executable by clients: `record_audit`,
   `begin/finish_command`, `record_consumable_movement`, `create_organization`
   (post-migration 0056), `handle_new_user`.
