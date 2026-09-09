@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { clampPage, pageRange, totalPagesFor, usePagedList } from "@/lib/pagination";
 import type { CustomerRow, CustomerType } from "@/lib/dbTypes";
 
 export interface CustomerFormValues {
@@ -46,31 +46,38 @@ function toInsert(orgId: string, values: CustomerFormValues) {
   };
 }
 
-/** Paginated customers list for the Customers screen (D21-ext). */
+/** Paginated customers list for the Customers screen (D21): real 0-based pages. */
 export function useCustomersPage(orgId: string | null, pageSize = 50) {
-  const [size, setSize] = useState(pageSize);
+  const { page, setPage } = usePagedList(orgId);
   const query = useQuery({
-    queryKey: ["customers-page", orgId, size],
+    queryKey: ["customers-page", orgId, page, pageSize],
     enabled: !!orgId,
     placeholderData: (previous) => previous,
     queryFn: async (): Promise<CustomerList> => {
+      const [from, to] = pageRange(page, pageSize);
       const { data, error, count } = await supabase
         .from("customers")
         .select("*", { count: "exact" })
         .eq("organization_id", orgId!)
         .order("name", { ascending: true })
-        .range(0, size - 1);
+        .order("id")
+        .range(from, to);
       if (error) throw error;
       return { rows: (data ?? []) as CustomerRow[], total: count ?? null };
     },
   });
-  const loaded = query.data?.rows.length ?? 0;
-  const total = query.data?.total ?? null;
-  const hasMore = typeof total === "number" && loaded < total;
+  const totalPages = totalPagesFor(query.data?.total ?? null, pageSize);
+  const goToPage = (next: number) => setPage(clampPage(next, totalPages));
   return {
     ...query,
-    hasMore,
-    loadMore: () => setSize((current) => current + pageSize),
+    page,
+    pageSize,
+    totalPages,
+    hasPreviousPage: page > 0,
+    hasNextPage: totalPages == null ? false : page + 1 < totalPages,
+    goToPage,
+    nextPage: () => goToPage(page + 1),
+    previousPage: () => goToPage(page - 1),
   };
 }
 

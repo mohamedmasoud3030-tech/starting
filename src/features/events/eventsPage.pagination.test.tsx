@@ -15,7 +15,9 @@ const range = vi.fn();
 vi.mock("@/lib/supabase", () => ({
   supabase: {
     from: () => ({
-      select: () => ({ eq: () => ({ order: () => ({ range }) }) }),
+      select: () => ({
+        eq: () => ({ order: () => ({ order: () => ({ range }) }) }),
+      }),
     }),
   },
 }));
@@ -42,8 +44,8 @@ describe("useEventsPage (D21)", () => {
     );
   });
 
-  it("loads the first page and reports more rows when the total exceeds it", async () => {
-    state.rows = Array.from({ length: 50 }, (_, i) => ({ id: `e${i}`, start_at: "2026-08-20T10:00:00+04:00" }));
+  it("loads the first page with an exact total and stable ordering", async () => {
+    state.rows = Array.from({ length: 120 }, (_, i) => ({ id: `e${i}`, start_at: "2026-08-20T10:00:00+04:00" }));
     state.total = 120;
 
     const { result } = renderHook(() => useEventsPage("org-1", 50), { wrapper });
@@ -51,21 +53,84 @@ describe("useEventsPage (D21)", () => {
 
     expect(range).toHaveBeenCalledWith(0, 49);
     expect(result.current.data?.rows).toHaveLength(50);
-    expect(result.current.hasMore).toBe(true);
+    expect(result.current.page).toBe(0);
+    expect(result.current.totalPages).toBe(3);
+    expect(result.current.hasPreviousPage).toBe(false);
+    expect(result.current.hasNextPage).toBe(true);
   });
 
-  it("loadMore fetches the next slice and stops reporting more at the total", async () => {
-    state.rows = Array.from({ length: 60 }, (_, i) => ({ id: `e${i}` }));
-    state.total = 60;
+  it("nextPage fetches the following 50-row window and stops at the last page", async () => {
+    state.rows = Array.from({ length: 120 }, (_, i) => ({ id: `e${i}` }));
+    state.total = 120;
 
     const { result } = renderHook(() => useEventsPage("org-1", 50), { wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     act(() => {
-      result.current.loadMore();
+      result.current.nextPage();
     });
-    await waitFor(() => expect(range).toHaveBeenLastCalledWith(0, 99));
-    await waitFor(() => expect(result.current.hasMore).toBe(false));
-    expect(result.current.data?.rows).toHaveLength(60);
+    await waitFor(() => expect(range).toHaveBeenLastCalledWith(50, 99));
+    await waitFor(() => expect(result.current.page).toBe(1));
+
+    act(() => {
+      result.current.nextPage();
+    });
+    await waitFor(() => expect(range).toHaveBeenLastCalledWith(100, 149));
+    await waitFor(() => expect(result.current.hasNextPage).toBe(false));
+
+    act(() => {
+      result.current.nextPage();
+    });
+    await waitFor(() => expect(result.current.page).toBe(2));
+  });
+
+  it("previousPage returns to earlier windows and clamps at the first page", async () => {
+    state.rows = Array.from({ length: 120 }, (_, i) => ({ id: `e${i}` }));
+    state.total = 120;
+
+    const { result } = renderHook(() => useEventsPage("org-1", 50), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    act(() => {
+      result.current.goToPage(2);
+    });
+    await waitFor(() => expect(result.current.page).toBe(2));
+
+    act(() => {
+      result.current.previousPage();
+    });
+    await waitFor(() => expect(range).toHaveBeenLastCalledWith(50, 99));
+    expect(result.current.page).toBe(1);
+    expect(result.current.hasPreviousPage).toBe(true);
+
+    act(() => {
+      result.current.previousPage();
+    });
+    await waitFor(() => expect(result.current.page).toBe(0));
+
+    act(() => {
+      result.current.previousPage();
+    });
+    await waitFor(() => expect(result.current.page).toBe(0));
+    expect(result.current.hasPreviousPage).toBe(false);
+  });
+
+  it("goToPage clamps out-of-range targets to the last valid page", async () => {
+    state.rows = Array.from({ length: 120 }, (_, i) => ({ id: `e${i}` }));
+    state.total = 120;
+
+    const { result } = renderHook(() => useEventsPage("org-1", 50), { wrapper });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    act(() => {
+      result.current.goToPage(42);
+    });
+    await waitFor(() => expect(result.current.page).toBe(2));
+    expect(range).toHaveBeenLastCalledWith(100, 149);
+
+    act(() => {
+      result.current.goToPage(-3);
+    });
+    await waitFor(() => expect(result.current.page).toBe(0));
   });
 });

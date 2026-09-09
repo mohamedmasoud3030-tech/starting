@@ -4,7 +4,7 @@ import { CalendarDays, MapPin, Plus, Search, Users } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { TruncationNotice } from "@/components/ui/TruncationNotice";
+import { PaginationBar } from "@/components/ui/PaginationBar";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -17,7 +17,6 @@ import { Textarea } from "@/components/ui/Textarea";
 import { useCustomers } from "@/features/customers/customers.api";
 import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
 import { buildEventsListVoiceSummary } from "@/features/ownerVoice/screenSummary";
-import { listIsTruncated } from "@/lib/listCap";
 import { muscatWallClockToIso } from "@/lib/dates";
 import { useStableIdempotencyKey } from "@/lib/useStableIdempotencyKey";
 import { orderEvents, type EventListSortMode } from "./eventsListOrder";
@@ -115,8 +114,20 @@ export function EventsPage() {
   const voiceSummary = events.isSuccess
     ? buildEventsListVoiceSummary({ events: events.data?.rows ?? [] })
     : null;
-  const eventsTruncated =
-    events.isSuccess && (events.hasMore || listIsTruncated(events.data?.rows.length ?? 0, events.data?.total));
+  const paginationBar = (
+    <PaginationBar
+      page={events.page}
+      pageSize={events.pageSize}
+      totalPages={events.totalPages}
+      hasPreviousPage={events.hasPreviousPage}
+      hasNextPage={events.hasNextPage}
+      isFetching={events.isFetching}
+      onPrevious={events.previousPage}
+      onNext={events.nextPage}
+      rowsCount={events.data?.rows.length ?? 0}
+      total={events.data?.total ?? null}
+    />
+  );
 
   return (
     <div>
@@ -154,28 +165,11 @@ export function EventsPage() {
         </div>
       </div>
 
-      {eventsTruncated && (
-        <div className="mb-4 space-y-3">
-          <TruncationNotice
-            message={`يتم عرض ${events.data?.rows.length ?? 0} من ${events.data?.total ?? "…"} مناسبة. اعرض المزيد حتى تكتمل القائمة.`}
-          />
-          {events.hasMore && (
-            <Button
-              variant="secondary"
-              onClick={() => events.loadMore()}
-              disabled={events.isFetching}
-            >
-              {events.isFetching ? "جارٍ التحميل…" : "عرض المزيد من المناسبات"}
-            </Button>
-          )}
-        </div>
-      )}
-
       {events.isLoading ? <LoadingState full label="جارٍ تحميل المناسبات…" /> :
         events.error ? <ErrorState title="تعذّر تحميل المناسبات" message="حدث خطأ أثناء تحميل المناسبات. أعد المحاولة." onRetry={() => void events.refetch()} /> :
         !events.data?.rows.length ? <EmptyState title="لا توجد مناسبات" description="المسار الصحيح: أصدر عرض سعر ثم حوّله إلى مناسبة بعد موافقة العميل." action={<Link to="/quotes/new" className="inline-flex min-h-12 items-center rounded-xl bg-brand-700 px-5 font-bold text-white"><Plus className="h-5 w-5" /> عرض سعر جديد</Link>} /> :
-        visibleEvents.length === 0 ? <EmptyState title="لا توجد نتائج مطابقة" description="غيّر عبارة البحث أو عامل التصفية." /> :
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        visibleEvents.length === 0 ? <><EmptyState title="لا توجد نتائج مطابقة" description="غيّر عبارة البحث أو عامل التصفية." />{paginationBar}</> :
+        <><div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="hidden grid-cols-[minmax(0,1.5fr)_minmax(9rem,1fr)_minmax(9rem,1fr)_auto] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-sm font-bold text-slate-500 md:grid">
             <span>المناسبة والعميل</span><span>الموعد</span><span>الموقع والضيوف</span><span>الحالة</span>
           </div>
@@ -201,7 +195,7 @@ export function EventsPage() {
               </li>
             ))}
           </ul>
-        </div>}
+        </div>{paginationBar}</>}
 
       <Dialog open={open} onOpenChange={setOpen} title="مناسبة جديدة" description="أنشئ مناسبة مباشرة لعميل مسجل. عروض العملاء المتوقعين تبدأ من شاشة عروض الأسعار.">
         <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
