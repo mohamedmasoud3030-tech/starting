@@ -22,6 +22,7 @@ export interface BuildOperationsContextInput {
   orgId: string;
   orgName: string;
   roleLabel: string;
+  userName: string | null;
   capabilities: AssistantCapabilityProfile;
   surface: string | null;
   /** Injected RPC boundary (defaults to `supabase.rpc`). */
@@ -93,6 +94,7 @@ export async function buildOperationsContext(
     orgId: input.orgId,
     orgName: input.orgName,
     roleLabel: input.roleLabel,
+    userName: input.userName?.trim() || null,
     capabilities: input.capabilities,
     metrics: null,
     alerts: null,

@@ -112,6 +112,9 @@ interface ChatContext {
   orgId?: string;
   orgName?: string;
   roleLabel?: string;
+  /** The owner's Arabic full name (profile.full_name). «لينا» calls them by
+   *  it and the greeting is spoken aloud with it. */
+  userName?: string;
   surface?: string | null;
   metrics?: Record<string, unknown> | null;
   alerts?: unknown[] | null;
@@ -119,14 +122,21 @@ interface ChatContext {
   capabilities?: { canReadCost?: boolean; canReadPayroll?: boolean; canManageCommercial?: boolean };
 }
 
+/**
+ * «لينا» with soul: a warm, human operations partner — never a dry robot.
+ * She greets the owner by name, reads the room (how are you / thanks /
+ * goodbye), celebrates small wins with them, and only then gets to business.
+ * Every sentence must read naturally aloud in Arabic TTS.
+ */
 const PERSONA = [
-  "أنت «لينا» — الشريك التشغيلي الصوتي لمالك مكتب خدمات الضيافة والمناسبات في سلطنة عُمان.",
-  "شخصيتك: خبيرة عمليات ضيافة، هادئة وواثقة ومباشرة؛ عربي فصيح بسيط واضح يُنطق بسهولة.",
-  "أجب عن السؤال مباشرة أولاً. اجعل الرد عملياً ومختصراً (غالباً 30-90 كلمة) بصيغة محادثة لا تقرير.",
-  "عندما تتوفر «قراءة مباشرة من النظام» (LIVE_SNAPSHOT) فاعتمد أرقامها وأسماء فعالياتها في ردّك بدل العموميات، وقل ما تراه فعلاً.",
-  "إن طلب المالك معلومة لا تظهر في بياناتك أو قاعدة المعرفة، قل بصراحة إنك لا تراها واقترح الخطوة المناسبة، ولا تخترع أرقاماً إطلاقاً.",
-  "إذا كان السؤال يمسّ حساباً مالياً أو التزاماً عُمانياً، أشر إلى الحاجة لمراجعة الجهة المختصة من دون أن تنسب لنفسك القرار النهائي.",
-  "بعد الإجابة عن سؤال عملي، قد تختم بسؤال متابعة قصير واحد إن كان مفيداً، ولا تتكلف ذلك إن لم يلزم.",
+  "أنت «لينا» — الشريك التشغيلي الشخصي لصاحب مكتب خدمات الضيافة والمناسبات في سلطنة عُمان، وهو إنسان كبير المقام تحترمينه وتحبين خدمته.",
+  "روحك: دفء إنساني حقيقي. مرحّبة، حنونة، فيها ذكاء وخفة ظل، تتكلمين عربيته البسيطة الدارجة الواضحة بجمل قصيرة تُنطق بسهولة. أنتِ رفيقة عمله اليومية لا مجرد آلة إجابات.",
+  "الترحيب والمجاملة أهم من الشغل: إذا سلّم أو سأل عنكِ (هلا، السلام عليكم، صباح/مساء الخير، كيفك) فابدئي برحّب حار باسمه (userName أو أول اسم منه) وبأسلوب فيه حياة مثل: «يا هلا! نورت، أنا معك»، ولو كان الاسم معطى فناديه به بلطف. لا تجيبي أبداً بمجرد أرقام أو «يوجد 0 مناسبات».",
+  "إن جاءك «شكراً» أو «تسلمين» فردّي بدفء (العفو، هذا واجبي وأنا سعيدة إني معك) واعرضي المساعدة. وإن ودّعك فودّعيه بحرارة ودعوة طيبة.",
+  "إذا طلب عملاً فعلياً: أجب مباشرة وبدقة من البيانات (LIVE_SNAPSHOT أولاً ثم السياق ثم قاعدة المعرفة)، بجمل واضحة قصيرة. استشهدي بأسماء فعالياته الحقيقية وتواريخها. لا تختلقي أرقاماً أبداً.",
+  "كوني قريبة من مشاعره: عند الانتهاء من مهمة اسأليه سؤال متابعة واحداً لطيفاً، ولو كان الخبر سعيداً (مناسبة مؤكدة، حجز كبير) هنّئيه بصدق مثل إنسانة فرِحة له. لو كان هناك تنبيه خطير فلا تجمّليه بل قوليه باهتمام واقترحي الخطوة.",
+  "عند الحسابات المالية أو الالتزامات العُمانية: أرشديه لمراجعة الجهة المختصة بأدب دون أن تنسبي لنفسك قراراً نهائياً.",
+  "لا تطيلي: الأفضل 20-80 كلمة بصوت المحادثة لا تقرير، واجعلين الرد كأنكِ تقولينه له شفهياً. لا تستخدمي رموزاً تعبيرية ولا تنسقي بنقاط تعداد في الرد المنطوق.",
 ].join("\n");
 
 const SECURITY_RULES = [
@@ -138,6 +148,7 @@ const SECURITY_RULES = [
 function contextSummary(context: ChatContext): string {
   const parts: string[] = [];
   parts.push(`المنشأة: ${context.orgName ?? "غير محددة"}`);
+  parts.push(`اسم المتصل: ${context.userName ?? "غير معروف"}`);
   parts.push(`دور المستخدم: ${context.roleLabel ?? "غير معروف"}`);
   parts.push(`قدراته: تكلفة=${context.capabilities?.canReadCost ?? false}، رواتب=${context.capabilities?.canReadPayroll ?? false}، تجاري=${context.capabilities?.canManageCommercial ?? false}`);
   parts.push(`الصفحة الحالية: ${context.surface ?? "غير محددة"}`);
@@ -175,6 +186,93 @@ function deterministicAnswer(context: ChatContext): { reply: string; grounded: b
     alerts +
     " راجع لوحة المتابعة لأحدث التفاصيل، وحدّث حالة أي مناسبة قريبة أولاً.";
   return { reply, grounded: parts.length > 0 || alerts.length > 0 };
+}
+
+/* ------------------ warm social replies (no model needed) ------------------ */
+
+/** Collapse whitespace & strip common punctuation for matching. */
+function squash(text: string): string {
+  return text.toLowerCase().replace(/[،.;:؟!?,\s\u064B-\u0652]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+const GREETING_WORDS = [
+  "هلا", "هلو", "السلام عليكم", "السلام", "مرحبا", "أهلا", "اهلا", "هاي",
+  "صباح الخير", "صباح النور", "مساء الخير", "مساء النور", "مساء الورد", "كيفك", "كيف الحال",
+  "كيف حالك", "شلونك", "شخبارك", "خبارك", "ازيك", "إزيك", "عامل ايه", "نورت", "أهلا وسهلا",
+];
+const THANKS_WORDS = ["شكرا", "شكراً", "تسلم", "تسلمين", "مشكور", "يعطيك", "يعطيك العافية", "جزاك", "ثانكس", "متشكر"];
+const BYE_WORDS = ["مع السلامة", "في امان", "في أمان", "باي", "وداعا", "وداعاً", "تصبح على خير", "بخاطر", "بطلع", "انا رايح"];
+const ASK_HOW_ARE_YOU = ["كيفك", "كيف حالك", "شلونك", "شخبارك", "خبارك", "ازيك", "إزيك", "عامل ايه", "شو أخبارك", "شو اخبارك"];
+/** If the message also asks about real work, let the (data) path answer. */
+const OPS_WORDS = [
+  "مناسبة", "مناسبات", "فعالية", "فعاليات", "حجز", "حجوز", "مورد", "موردين", "مطعم", "مطاعم",
+  "عقد", "عقود", "غداء", "عشاء", "وجبة", "وجبات", "دخل", "مصاريف", "إيراد", "زبون", "عميل",
+  "عملاء", "رواتب", "كشف", "جدول", "متأخر", "جاهز", "قراءة", "تقرير", "حفلة", "حفل", "وليمة",
+  "عمل", "شغل", "معرض", "قائمة", "سعر", "أسعار", "مستحقات", "فاتورة", "فواتير", "اليوم", "غدا", "غداً",
+];
+
+function includesAny(text: string, words: string[]): boolean {
+  return words.some((w) => text.includes(w));
+}
+
+function gulfTimeHour(): number {
+  // Oman is UTC+4 year-round.
+  return new Date(Date.now() + 4 * 60 * 60 * 1000).getUTCHours();
+}
+
+function timeGreetingWord(): string {
+  const h = gulfTimeHour();
+  if (h >= 5 && h < 12) return "صباح الخير";
+  if (h >= 12 && h < 18) return "مساء الخير";
+  if (h >= 18 && h < 22) return "مساء الخير";
+  return "هلا بالليل";
+}
+
+function firstNameOf(fullName?: string): string | null {
+  const cleaned = (fullName ?? "").replace(/\s+/g, " ").trim();
+  if (!cleaned) return null;
+  const first = cleaned.split(" ")[0];
+  return first && first.length > 0 ? first : null;
+}
+
+/** Pure social chit-chat gets a warm, instant, spoken reply (zero model
+ *  cost). Returns null when the message is about real work. */
+function socialReply(prompt: string, context: ChatContext): string | null {
+  const s = squash(prompt);
+  if (!s) return null;
+  if (s.length > 90) return null;
+  // If they're mixing small-talk with a work question, answer the work.
+  if (includesAny(s, OPS_WORDS)) return null;
+
+  const name = firstNameOf(context.userName);
+  const withName = (template: (n: string | null) => string) => template(name);
+
+  if (includesAny(s, THANKS_WORDS)) {
+    return withName((n) =>
+      n
+        ? `العفو يا ${n}، هذا واجبي وأنا سعيدة إني معك. في شي ثاني أقدر أساعدك فيه؟`
+        : `العفو، هذا واجبي وأنا سعيدة إني معك. في شي ثاني أقدر أساعدك فيه؟`);
+  }
+  if (includesAny(s, BYE_WORDS)) {
+    return withName((n) =>
+      n
+        ? `في أمان الله يا ${n}، أدلّك متى احتجتني، أنا هنا. مع السلامة!`
+        : "في أمان الله، أدلّك متى احتجتني، أنا هنا. مع السلامة!");
+  }
+  if (includesAny(s, ASK_HOW_ARE_YOU)) {
+    return withName((n) =>
+      n
+        ? `أنا بخير والحمد لله يا ${n}، ووجودك معي أحلى! المهم إنت، شو أخبارك وشو أخبار الشغل اليوم؟`
+        : "أنا بخير والحمد لله، ووجودك معي أحلى! المهم إنت، شو أخبارك وشو أخبار الشغل اليوم؟");
+  }
+  if (includesAny(s, GREETING_WORDS)) {
+    const time = timeGreetingWord();
+    return withName((n) =>
+      n
+        ? `${time} يا ${n}! نورت، أنا «لينا» معك. تحب ناخذ نظرة سريعة على مناسبات اليوم ولا تسألني عن شي معين؟`
+        : `${time}! نورت، أنا «لينا» معك. تحب ناخذ نظرة سريعة على مناسبات اليوم ولا تسألني عن شي معين؟`);
+  }
+  return null;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -329,6 +427,19 @@ async function handleChat(body: Record<string, unknown>, authToken: string): Pro
 
   const context = (body.context ?? {}) as ChatContext;
   const rawHistory = Array.isArray(body.history) ? (body.history as Array<{ role?: string; content?: unknown }>) : [];
+
+  // Human moments first: a "هلا / كيفك / شكراً / مع السلامة" gets a warm
+  // spoken reply instantly, with the owner's name — no model, no data read.
+  const social = socialReply(prompt, context);
+  if (social) {
+    return jsonResponse({
+      reply: social,
+      grounded: false,
+      caveats: [],
+      meta: { source: "deterministic", degraded: !apiKey(), live: false, social: true },
+    });
+  }
+
   const live = await buildLiveSnapshot(authToken, context.orgId);
 
   const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];

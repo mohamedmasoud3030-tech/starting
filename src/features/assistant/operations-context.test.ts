@@ -6,6 +6,7 @@ const base = {
   orgId: "org-1",
   orgName: "ركن الضيافة",
   roleLabel: "المالك",
+  userName: "يعقوب الخصيبي",
   capabilities: {
     canReadCost: true,
     canReadPayroll: true,

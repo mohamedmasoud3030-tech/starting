@@ -37,10 +37,10 @@
   html {
     direction: rtl;
     min-height: 100%;
-    /* Slightly larger root for a more legible interface everywhere (16px →
-       17px): every rem-based text size scales up by one comfortable step,
-       including the dense text-sm rows the owner reads all day. */
-    font-size: 106.25%;
+    /* Legibility-first base type (16px → 18px): the owner is senior and
+       reads small screens all day, so every rem-based text scales up by a
+       real, comfortable step — dense data rows stay readable without zoom. */
+    font-size: 112.5%;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
@@ -49,6 +49,9 @@
     min-height: 100dvh;
     overflow-x: clip;
     font-family: var(--font-sans);
+    /* Generous Arabic line rhythm — key to senior-eye reading comfort. */
+    line-height: 1.75;
+    text-rendering: optimizeLegibility;
     background-color: #f8fafc;
     /* Gentle layered tint keeps the app feeling crafted rather than flat,
        while remaining calm enough for day-long data work. */
@@ -464,4 +467,26 @@ input[type="number"] {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+}
+
+/* ---------------------------------------------------------------------------
+ * Senior-eye legibility (owner is elderly and reads small text all day).
+ * These unlayered rules beat Tailwind's @layer utilities, so the smallest
+ * text steps never render below a comfortable size (~14.5px real at the
+ * 18px base): labels, badges, table rows and helper text stay crisp.
+ * ------------------------------------------------------------------------- */
+.text-xs {
+  font-size: 0.8125rem;
+}
+.text-sm {
+  font-size: 0.9375rem;
+}
+.text-\[11px\] {
+  font-size: 0.8125rem;
+}
+.text-\[12px\] {
+  font-size: 0.8125rem;
+}
+.text-\[13px\] {
+  font-size: 0.875rem;
 }

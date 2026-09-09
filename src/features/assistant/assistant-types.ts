@@ -30,6 +30,9 @@ export interface AssistantContextPayload {
   orgId: string;
   orgName: string;
   roleLabel: string;
+  /** The caller's Arabic full name (profile.full_name) — lets «لينا» greet
+   *  and address the owner by name, spoken aloud in TTS. */
+  userName: string | null;
   capabilities: AssistantCapabilityProfile;
   /** Figures from management_metrics (may be partially hidden by RLS). */
   metrics: Record<string, unknown> | null;

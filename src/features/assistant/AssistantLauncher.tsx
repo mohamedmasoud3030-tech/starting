@@ -24,6 +24,23 @@ function base64ToAudioUrl(audioB64: string, mimeType: string): string {
   return URL.createObjectURL(new Blob([bytes], { type: mimeType }));
 }
 
+/** First word of the owner's name (e.g. "يعقوب الخصيبي" → "يعقوب"). */
+function friendlyFirstName(fullName: string | null | undefined): string | null {
+  const cleaned = (fullName ?? "").replace(/\s+/g, " ").trim();
+  if (!cleaned) return null;
+  const first = cleaned.split(" ")[0];
+  return first && first.length > 0 ? first : null;
+}
+
+/** Spoken + shown greeting when «لينا» is opened for the first time. */
+function buildWelcomeText(firstName: string | null): string {
+  const intro = "يا هلا! أنا «لينا»، مساعدتك الشخصية في نظام الضيافة والمناسبات.";
+  if (!firstName) {
+    return `${intro} اسألني عن المناسبات أو الحجوزات، أو كلّمني بصوتك، وأنا معك خطوة بخطوة.`;
+  }
+  return `يا هلا ${firstName}! أنا «لينا»، مساعدتك الشخصية. اسألني عن مناسباتك أو حجوزات المطاعم، أو كلّمني بصوتك، وأنا معك خطوة بخطوة.`;
+}
+
 /**
  * «لينا» — floating voice-enabled operations assistant.
  *
@@ -35,6 +52,7 @@ function base64ToAudioUrl(audioB64: string, mimeType: string): string {
 export function AssistantLauncher() {
   const {
     user,
+    profile,
     currentOrganization,
     currentRole,
     canReadCost,
@@ -49,10 +67,14 @@ export function AssistantLauncher() {
   const voice = useAssistantVoice();
   const voiceInput = useVoiceInput();
 
+  /** The owner's first name (profile.full_name) — «لينا» calls them by it. */
+  const ownerFirstName = friendlyFirstName(profile?.full_name);
+
   const assistant = useAssistant({
     orgId: currentOrganization?.id ?? "",
     orgName: currentOrganization?.name ?? "",
     roleLabel: currentRole ? ROLE_LABELS[currentRole] : "",
+    userName: profile?.full_name ?? null,
     capabilities: {
       canReadCost,
       canReadPayroll,
@@ -240,6 +262,20 @@ export function AssistantLauncher() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assistant.messages, open, autoSpeak]);
 
+  // Warm spoken welcome the first time the panel opens (the open tap is a
+  // user gesture, so audio is allowed on mobile). It addresses the owner by
+  // name and reads naturally — the assistant's very first "hello" is human.
+  const welcomeSaidRef = useRef(false);
+  useEffect(() => {
+    if (!open || !autoSpeak || assistant.messages.length !== 0) return;
+    if (welcomeSaidRef.current) return;
+    welcomeSaidRef.current = true;
+    const timer = window.setTimeout(() => {
+      void speakText(buildWelcomeText(ownerFirstName));
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [open, autoSpeak, assistant.messages.length, ownerFirstName, speakText]);
+
   // Silence everything when the panel closes.
   useEffect(() => {
     if (!open) {
@@ -283,6 +319,7 @@ export function AssistantLauncher() {
           speaking={speaking}
           onSend={assistant.sendPrompt}
           onClose={() => setOpen(false)}
+          welcomeText={buildWelcomeText(ownerFirstName)}
         />
       ) : null}
 
@@ -325,6 +362,7 @@ function AssistantPanel({
   speaking,
   onSend,
   onClose,
+  welcomeText,
 }: {
   messages: AssistantChatMessage[];
   loading: boolean;
@@ -339,6 +377,7 @@ function AssistantPanel({
   speaking: boolean;
   onSend: (prompt: string) => Promise<void>;
   onClose: () => void;
+  welcomeText: string;
 }) {
   const [draft, setDraft] = useState("");
   const micActive = micStatus !== "idle";
@@ -395,7 +434,10 @@ function AssistantPanel({
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {isEmpty ? (
           <div className="space-y-3">
-            <p className="text-sm leading-relaxed text-slate-700">{ASSISTANT_SCOPE}</p>
+            <p className="text-[15px] font-extrabold leading-relaxed text-brand-800">
+              {welcomeText}
+            </p>
+            <p className="text-sm leading-relaxed text-slate-600">{ASSISTANT_SCOPE}</p>
             <p className="flex items-center gap-1.5 text-xs text-slate-500">
               <Mic className="h-3.5 w-3.5" />
               اضغط الميكروفون وتكلم، أو اكتب سؤالك — سأجيبك بصوتي.

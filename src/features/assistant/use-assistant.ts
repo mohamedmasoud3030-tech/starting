@@ -13,6 +13,7 @@ export interface UseAssistantInput {
   orgId: string;
   orgName: string;
   roleLabel: string;
+  userName: string | null;
   capabilities: AssistantCapabilityProfile;
   surface: string | null;
   /** Injectable boundaries (tests) — default to the real client. */
@@ -60,6 +61,7 @@ export function useAssistant(input: UseAssistantInput): UseAssistantState {
           orgId: input.orgId,
           orgName: input.orgName,
           roleLabel: input.roleLabel,
+          userName: input.userName,
           capabilities: input.capabilities,
           surface: input.surface,
           callRpc: (name, args) => callRpc(name, args),
@@ -94,6 +96,7 @@ export function useAssistant(input: UseAssistantInput): UseAssistantState {
       input.orgId,
       input.orgName,
       input.roleLabel,
+      input.userName,
       input.surface,
       input.capabilities,
       messages,
