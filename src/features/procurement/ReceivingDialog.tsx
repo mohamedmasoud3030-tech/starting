@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { useStableIdempotencyKey } from "@/lib/useStableIdempotencyKey";
 import { CheckCircle2, PackageCheck } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -52,7 +51,6 @@ export function ReceivingDialog({
   // receivedAt is part of the authoritative command fingerprint. Capture it
   // once per operator intent so an ambiguous network retry remains identical.
   const [receivedAt] = useState(() => new Date().toISOString());
-  const createKey = useStableIdempotencyKey(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [stage, setStage] = useState<"edit" | "confirm" | "success">("edit");
   const [busy, setBusy] = useState(false);

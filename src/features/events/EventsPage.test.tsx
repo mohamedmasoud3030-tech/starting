@@ -31,6 +31,10 @@ vi.mock("@/features/ownerVoice/screenSummary", () => ({
   toArabicDigits: (x: string | number) => String(x),
 }));
 
+vi.mock("@/features/settings/settings.api", () => ({
+  useOrganizationSettings: () => ({ data: null, isLoading: false }),
+}));
+
 vi.mock("./events.api", () => ({
   useEventsPage: () => ({
     data: { rows: [], total: 0 },
