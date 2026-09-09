@@ -15,6 +15,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Field } from "@/components/ui/Field";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 import { authLoginErrorMessage } from "./authErrors";
 
@@ -78,7 +79,11 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-dvh bg-white lg:bg-transparent">
+    <div className="relative flex min-h-dvh bg-white lg:bg-transparent">
+      {/* Theme switch is available even before login. */}
+      <div className="absolute end-4 top-4 z-20">
+        <ThemeToggle />
+      </div>
       {/* Sign-in form — the single primary action. Sits on the leading side in
           RTL so the owner starts typing immediately, without hunting. */}
       <main className="relative flex flex-1 items-center justify-center overflow-hidden px-4 py-8 sm:px-8 lg:px-12">

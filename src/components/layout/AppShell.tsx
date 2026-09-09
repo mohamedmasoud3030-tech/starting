@@ -8,6 +8,7 @@ import { DesktopSidebar } from "./DesktopSidebar";
 import { MobileNav } from "./MobileNav";
 import { OfflineBanner } from "./OfflineBanner";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { visibleNavGroups } from "./navConfig";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -61,6 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* Multi-organization users only; renders nothing for a single org. */}
           <div className="ms-auto flex items-center gap-2">
             <OrganizationSwitcher />
+            <ThemeToggle />
             <button
               type="button"
               onClick={() => void logout()}

@@ -19,9 +19,25 @@
       content="نظام إدارة عمليات الضيافة والمناسبات في سلطنة عُمان"
     />
     <title>نظام إدارة الضيافة</title>
-    <!-- Cairo is self-hosted via @fontsource (see src/main.tsx): no font
-         requests leave the deployment, and the service worker caches the
-         font files for offline use. -->
+    <!-- Apply the saved/system theme before first paint so there is no
+         light→dark flash. Cairo is self-hosted via @fontsource (see
+         src/main.tsx): no font requests leave the deployment, and the
+         service worker caches the font files for offline use. -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("jiwdah-theme");
+          var dark =
+            saved === "dark" ||
+            (saved !== "light" &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) {
+          /* no-op: default light */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
