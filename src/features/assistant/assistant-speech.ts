@@ -38,19 +38,28 @@ export interface AssistantSynthLike {
   speak(utterance: AssistantUtteranceLike): void;
   cancel(): void;
   getVoices(): AssistantVoiceLike[];
+  addEventListener?(type: "voiceschanged", listener: () => void): void;
+  removeEventListener?(type: "voiceschanged", listener: () => void): void;
 }
 
 const ARABIC_LOCALE = "ar-OM";
 /** Slightly under 1: every word lands naturally, reads calm, not robotic. */
 const SPEECH_RATE = 0.96;
-/** Neutral pitch keeps a natural neural voice human-sounding. */
-const SPEECH_PITCH = 1.0;
+/**
+ * When no feminine Arabic voice exists on the device (common on Android with
+ * a single Omani/male voice), a small lift keeps the read lighter; the cloud
+ * feminine voice remains the primary, but we never let the fallback sound
+ * deeper/more masculine than the device allows.
+ */
+const NEUTRAL_PITCH = 1.02;
+const FEMALE_PITCH = 1.0;
 
 /** Known feminine Arabic catalogue names (Microsoft/Azure/Edge/Apple/Google). */
 const FEMALE_ARABIC_VOICE_NAMES: ReadonlyArray<string> = [
   "zariyah",
   "hala",
   "hoda",
+  "huda",
   "amira",
   "laysa",
   "lina",
@@ -59,20 +68,76 @@ const FEMALE_ARABIC_VOICE_NAMES: ReadonlyArray<string> = [
   "layla",
   "salma",
   "fatima",
+  "fatemah",
   "mariam",
   "maryam",
   "noura",
   "nora",
+  "noora",
   "amal",
-  "raheel",
+  "asma",
+  "asmaa",
+  "aisha",
+  "aiesha",
+  "nadia",
+  "rana",
+  "rania",
+  "dina",
+  "ghada",
+  "heba",
+  "huda",
+  "lubna",
+  "manal",
+  "muna",
+  "munira",
+  "nesma",
+  "rawan",
   "reem",
   "sana",
+  "shatha",
+  "samira",
+  "yasmin",
+  "yasmeen",
   "آمنة",
   "لينا",
   "نورة",
   "مريم",
   "سلمى",
   "ليلى",
+  "هدى",
+  "لمى",
+];
+
+/** Known masculine Arabic catalogue names — never chosen when a female or an
+ *  ungendered default exists. */
+const MALE_ARABIC_VOICE_NAMES: ReadonlyArray<string> = [
+  "hamdan",
+  "bilal",
+  "omar",
+  "umair",
+  "khaled",
+  "khalid",
+  "mohamed",
+  "mohammad",
+  "mazen",
+  "hassan",
+  "hussein",
+  "husain",
+  "tarek",
+  "tarik",
+  "fahad",
+  "fahd",
+  "abdullah",
+  "majed",
+  "youssef",
+  "yousef",
+  "zein",
+  "raouf",
+  "مازن",
+  "حمدان",
+  "محمد",
+  "خالد",
+  "حسن",
 ];
 
 /** Deterministic language preference: Omani Arabic > Gulf > any Arabic. */
@@ -92,21 +157,30 @@ function isLikelyFeminine(name: string): boolean {
   );
 }
 
-/** Pick the best Arabic voice, preferring a known-feminine one. */
+function isLikelyMasculine(name: string): boolean {
+  const candidate = (name ?? "").toLowerCase();
+  return MALE_ARABIC_VOICE_NAMES.some((n) => candidate.includes(n));
+}
+
+/** Pick the best Arabic voice: feminine first, ungendered default second,
+ *  masculine only as a last resort. */
 export function pickAssistantArabicVoice(
   voices: AssistantVoiceLike[],
 ): AssistantVoiceLike | null {
   const arabic = voices
-    .map((voice) => ({ voice, tier: arabicTier(voice.lang) }))
+    .map((voice) => ({
+      voice,
+      tier: arabicTier(voice.lang),
+      female: isLikelyFeminine(voice.name),
+      male: isLikelyMasculine(voice.name),
+    }))
     .filter((c) => c.tier > 0);
   if (arabic.length === 0) return null;
   const sorted = [...arabic].sort((a, b) => {
-    // Feminine wins over locale on purpose: a feminine ar-EG must beat a
-    // masculine ar-OM, otherwise a device with only a male Omani voice would
-    // silently speak as a man.
-    const aF = isLikelyFeminine(a.voice.name) ? 1 : 0;
-    const bF = isLikelyFeminine(b.voice.name) ? 1 : 0;
-    if (aF !== bF) return bF - aF;
+    // Feminine beats locale; masculine never beats feminine or an ungendered
+    // default. Only when every Arabic voice is explicitly male do we use one.
+    if (a.female !== b.female) return a.female ? -1 : 1;
+    if (a.male !== b.male) return a.male ? 1 : -1;
     if (b.tier !== a.tier) return b.tier - a.tier;
     return a.voice.name.localeCompare(b.voice.name);
   });
@@ -138,11 +212,36 @@ export class AssistantSpeechEngine {
   private state: AssistantSpeechState;
   private current: AssistantUtteranceLike | null = null;
   private listeners = new Set<() => void>();
+  private voiceCache: AssistantVoiceLike[] = [];
+  private readonly onVoicesChanged: () => void;
 
   constructor(options: AssistantSpeechEngineOptions = {}) {
     this.synth = resolveSynth(options.synth);
     this.utteranceFactory = options.utteranceFactory ?? defaultUtteranceFactory;
     this.state = { supported: this.synth !== null, status: "idle", lastText: null };
+    this.onVoicesChanged = () => {
+      this.refreshVoices();
+    };
+    // Voices load asynchronously on many engines (voiceschanged) — listen so a
+    // feminine Arabic voice is used the moment it becomes available.
+    this.synth?.addEventListener?.("voiceschanged", this.onVoicesChanged);
+    this.refreshVoices();
+  }
+
+  private refreshVoices(): void {
+    if (!this.synth) return;
+    try {
+      const voices = this.synth.getVoices() ?? [];
+      const changed =
+        voices.length !== this.voiceCache.length ||
+        voices.some((v, i) => this.voiceCache[i]?.name !== v.name);
+      this.voiceCache = voices;
+      if (changed) {
+        for (const listener of [...this.listeners]) listener();
+      }
+    } catch {
+      this.voiceCache = [];
+    }
   }
 
   private update(patch: Partial<AssistantSpeechState>): void {
@@ -169,12 +268,17 @@ export class AssistantSpeechEngine {
     if (!this.synth || !trimmed) return false;
 
     this.cancel();
-    const voice = pickAssistantArabicVoice(this.synth.getVoices());
+    this.refreshVoices();
+    const voice = pickAssistantArabicVoice(this.voiceCache);
+    const feminine = voice ? isLikelyFeminine(voice.name) : false;
+    const masculine = voice ? isLikelyMasculine(voice.name) : false;
     const utterance = this.utteranceFactory(trimmed);
-    utterance.lang = ARABIC_LOCALE;
+    utterance.lang = voice?.lang ?? ARABIC_LOCALE;
     utterance.voice = voice;
     utterance.rate = SPEECH_RATE;
-    utterance.pitch = SPEECH_PITCH;
+    // Keep the read light: neutral pitch when a female voice is present, a
+    // touch higher when only a male/ungendered device voice exists.
+    utterance.pitch = feminine ? FEMALE_PITCH : NEUTRAL_PITCH;
     utterance.onstart = () => this.update({ status: "speaking" });
     utterance.onend = () => this.update({ status: "idle" });
     utterance.onerror = () => this.update({ status: "idle" });
@@ -183,6 +287,13 @@ export class AssistantSpeechEngine {
 
     try {
       this.synth.speak(utterance);
+      if (this.state.status === "speaking") {
+        // eslint-disable-next-line no-console
+        console.info(
+          `[لينا] device voice="${voice?.name ?? "browser default"}" lang="${voice?.lang ?? ""}" ` +
+            `feminine=${feminine} male=${masculine} pitch=${utterance.pitch}`,
+        );
+      }
       return true;
     } catch {
       this.update({ status: "idle" });
@@ -210,6 +321,7 @@ export class AssistantSpeechEngine {
   }
 
   dispose(): void {
+    this.synth?.removeEventListener?.("voiceschanged", this.onVoicesChanged);
     this.cancel();
     this.listeners.clear();
   }

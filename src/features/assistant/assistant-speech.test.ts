@@ -42,6 +42,23 @@ describe("pickAssistantArabicVoice", () => {
       pickAssistantArabicVoice([{ name: "Google US English", lang: "en-US", localService: true }]),
     ).toBeNull();
   });
+
+  it("never picks a known male voice while an ungendered Arabic default exists", () => {
+    const chosen = pickAssistantArabicVoice([
+      { name: "Microsoft Hamdan - Arabic (Oman)", lang: "ar-OM", localService: true },
+      { name: "Google العربية", lang: "ar", localService: false },
+    ]);
+    // Google العربية is ungendered by name — it must win over the male Hamdan.
+    expect(chosen?.name).toBe("Google العربية");
+  });
+
+  it("uses a male Arabic voice only when it is the only option", () => {
+    const chosen = pickAssistantArabicVoice([
+      { name: "Microsoft Hamdan - Arabic (Oman)", lang: "ar-OM", localService: true },
+      { name: "Microsoft Salem - Arabic (Egypt)", lang: "ar-EG", localService: false },
+    ]);
+    expect(chosen).not.toBeNull();
+  });
 });
 
 describe("AssistantSpeechEngine", () => {
@@ -68,7 +85,8 @@ describe("AssistantSpeechEngine", () => {
     const utterance = spoken[0] as AssistantUtteranceLike;
     expect(utterance.lang).toBe("ar-OM");
     expect(utterance.rate).toBe(0.96);
-    expect(utterance.pitch).toBe(1);
+    // Ungendered device voice → gentle neutral lift, not a deep male read.
+    expect(utterance.pitch).toBe(1.02);
   });
 
   it("does not speak empty text and reports supported only with a synthesis", () => {
