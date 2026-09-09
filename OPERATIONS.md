@@ -134,8 +134,9 @@ DB_URL=… npm run db:backup-restore-proof                       # local-only gu
   `f1b53ac`).
 - **Offline banner visible:** informational only; writes remain idempotent and
   the database is authoritative.
-- **List warning "أول 1000 …":** PostgREST `max_rows` cap reached; pagination
-  is planned (defect D21).
+- **List warning "أول 1000 …":** PostgREST `max_rows` cap reached on the
+  procurement lists (they keep an explicit warning by design); the main lists
+  (events/customers/catalog) use real pagination (defect D21).
 
 ## 9. Production migration runbook (releases with migrations 0056–0060)
 
@@ -177,3 +178,31 @@ repair migration.
   shows the "not configured" state).
 - No `VITE_PUBLIC_DEMO_MODE` variable exists (it was deleted from code).
 - Managed backups are enabled with a defined retention.
+
+## 10. Production parity checkbook (never executed from any working session)
+
+The production Supabase project and Vercel deployment have **never been
+verified against the migrations in git**. Run this before any launch claim:
+
+```bash
+# 1) Auth contexts (requires an owner-held access token + CLI login)
+supabase login
+supabase link --project-ref <PROJECT_REF>
+
+# 2) Compare applied migrations vs git (expect one row per file in
+#    supabase/migrations/, currently 99)
+supabase migration list --local   # 99 local
+supabase migration list --linked  # must equal the local list
+
+# 3) Spot-check security-critical markers on production (read-only)
+select count(*) from supabase_migrations.schema_migrations;              -- 99
+select not exists (select 1 from pg_roles where rolname='public_demo_admin'); -- t
+select count(*)::int from information_schema.role_routine_grants
+  where grantee='anon' and routine_name='create_organization';            -- 0
+select to_regprocedure('public.purge_old_audit_events(uuid,timestamptz)') is not null; -- t
+
+# 4) Vercel: confirm the deployment's commit SHA matches the merged commit
+vercel inspect <deployment-url>          # or via the Vercel dashboard
+```
+
+Never run pgTAP or seed files on production — they insert test data.
