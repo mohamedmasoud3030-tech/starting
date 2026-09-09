@@ -151,7 +151,14 @@ per (event, staff, date, shift MORNING/EVENING) with live statuses
 PRESENT/LATE/PARTIAL/ABSENT and non-destructive VOIDED; earned amount computed
 from hours/rate (PER_HOUR) or fixed rate (PER_DAY/PER_EVENT/MANUAL) in exact
 3-decimal OMR; host-level advances and payouts ledgers with void; per-event and
-global payroll summaries; dashboard attendance-gap alerts.
+global payroll summaries; dashboard attendance-gap alerts. HR directory
+fields (hire/birth dates, nationality, job title, department, emergency contact,
+IBAN, contract status ACTIVE/PROBATION/ENDED, civil-ID and health-card expiries,
+migration 0100) extend each roster row into a full per-member file, and a
+lightweight leaves/absence register (`staff_leaves`, 0100/0101 — annual, sick,
+emergency, unpaid, or event absence, each PENDING/APPROVED/REJECTED/CANCELLED
+with reviewer audit) documents notices without implying any fixed-duty
+schedule — attendance itself stays event-driven.
 
 ### 3.12 Owner voice ("اسمع الصفحة") **[V]**
 One-button Arabic narration of page summaries via browser `speechSynthesis`.
@@ -185,7 +192,7 @@ writes.
 | `/packages` | Package templates | commercial roles (nav-gated) | |
 | `/consumables` | Consumable stock | all members (adjust = OWNER/MANAGER) | |
 | `/procurement` | Suppliers & orders | cost roles only | non-cost roles see a clear message |
-| `/staff` | Hosts, attendance, payroll | all members (payroll = cost roles) | |
+| `/staff` | الموارد البشرية — one full HR file per member (identity, employment/contract + document expiries, leaves/absence register), attendance, payroll | all members (payroll + HR file = cost/payroll roles) | |
 
 All routes are lazy-loaded (`src/routes.lazy.tsx`). **[V]**
 
