@@ -140,6 +140,12 @@ export function AssistantLauncher() {
   const speakLocally = useCallback(
     (trimmed: string): boolean => {
       // Browser-local feminine Arabic voice (unlimited, works offline).
+      // Diagnostics: the owner reports silence on some devices — knowing
+      // whether the reply fell back to the device engine is the first clue.
+      console.info(
+        "[لينا] cloud voice unavailable → device speech engine. supported=",
+        voice.supported,
+      );
       const started = voice.speak(trimmed);
       if (!started) {
         // Autoplay/lock or no speech engine yet — retry on the next tap
