@@ -23,6 +23,7 @@ import {
   OperationsBoard,
   PackagesPage,
   ProcurementPage,
+  ContractedRestaurantsPage,
   QuotePage,
   QuotesPage,
   ReportsPage,
@@ -150,6 +151,12 @@ const procurementRoute = createRoute({
   component: ProcurementPage,
 });
 
+const contractedRestaurantsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/procurement/restaurants",
+  component: ContractedRestaurantsPage,
+});
+
 const staffRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/staff",
@@ -224,6 +231,7 @@ const routeTree = rootRoute.addChildren([
     quoteNewRoute,
     quoteDetailRoute,
     procurementRoute,
+    contractedRestaurantsRoute,
     consumablesRoute,
     catalogRoute,
     packagesRoute,

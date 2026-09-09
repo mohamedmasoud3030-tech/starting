@@ -6,6 +6,7 @@ export type NavTarget =
   | "/operations"
   | "/quotes"
   | "/procurement"
+  | "/procurement/restaurants"
   | "/consumables"
   | "/catalog"
   | "/packages"
@@ -71,6 +72,11 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
       // Every procurement read model is hidden from non-cost roles and every
       // S5 command requires OWNER/MANAGER, so this surface is cost-role-only.
       { to: "/procurement", label: "الموردون وأوامر الشراء", financial: true },
+      {
+        to: "/procurement/restaurants",
+        label: "المطاعم المتعاقدة",
+        financial: true,
+      },
     ],
   },
   {
@@ -99,10 +105,26 @@ export const MOBILE_PRIMARY_TARGETS: ReadonlyArray<NavTarget> = [
   "/customers",
 ];
 
+/** All navigation targets (flat) — used to resolve nested active states. */
+const ALL_NAV_TARGETS: ReadonlyArray<NavTarget> = NAV_GROUPS.flatMap((group) =>
+  group.items.map((item) => item.to),
+);
+
+/**
+ * True when this target should read as the active page. When the app lives on
+ * a child page that is itself in the navigation (e.g. /procurement/restaurants
+ * under /procurement), only the deepest matching item lights up.
+ */
 export function isActivePath(pathname: string, target: NavTarget): boolean {
-  return target === "/home"
-    ? pathname === target
-    : pathname === target || pathname.startsWith(`${target}/`);
+  const matchesExactly = pathname === target;
+  const matchesDeeperTarget = ALL_NAV_TARGETS.some(
+    (other) =>
+      other !== target &&
+      other.startsWith(`${target}/`) &&
+      (pathname === other || pathname.startsWith(`${other}/`)),
+  );
+  if (matchesDeeperTarget) return matchesExactly;
+  return target === "/home" ? matchesExactly : matchesExactly || pathname.startsWith(`${target}/`);
 }
 
 /**

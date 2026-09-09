@@ -40,6 +40,11 @@ export const ProcurementPage = lazy(async () => ({
   default: (await import("@/features/procurement/ProcurementPage")).ProcurementPage,
 }));
 
+export const ContractedRestaurantsPage = lazy(async () => ({
+  default: (await import("@/features/restaurants/ContractedRestaurantsPage"))
+    .ContractedRestaurantsPage,
+}));
+
 export const StaffPage = lazy(async () => ({
   default: (await import("@/features/staff/StaffPage")).StaffPage,
 }));
