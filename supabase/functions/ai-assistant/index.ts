@@ -249,7 +249,78 @@ async function buildLiveSnapshot(
     const active = contracts.rows.filter((c) => c.status === "ACTIVE");
     lines.push(`عقود مطاعم سارية: ${active.length} (${active.map((c) => c.supplier_name).slice(0, 4).join("، ")})`);
   }
-  return { text: lines.join("\n"), readable: events.ok || bookings.ok || contracts.ok };
+  return {
+    text: lines.join("\n"),
+    readable: events.ok || bookings.ok || contracts.ok,
+    events: events.ok ? events.rows : null,
+    bookings: bookings.ok ? bookings.rows : null,
+    contracts: contracts.ok ? contracts.rows : null,
+  };
+}
+
+interface LiveSnapshot {
+  text: string;
+  readable: boolean;
+  events: Array<Record<string, unknown>> | null;
+  bookings: Array<Record<string, unknown>> | null;
+  contracts: Array<Record<string, unknown>> | null;
+}
+
+const BOOKING_STATUS_AR: Record<string, string> = {
+  PENDING: "قيد الانتظار",
+  REQUESTED: "قيد الطلب",
+  CONFIRMED: "مؤكد",
+  PREPARING: "قيد التجهيز",
+  SERVED: "تم التقديم",
+  CANCELLED: "ملغى",
+};
+
+/** When the model is unavailable (daily quota etc.) answer concrete "what's
+ *  in the system" questions straight from the live snapshot rows so the
+ *  assistant still speaks with real data, never generalities. */
+function snapshotFallback(
+  live: LiveSnapshot,
+  prompt: string,
+): { reply: string; grounded: boolean } | null {
+  const p = prompt.toLowerCase();
+  const asksBookings = /حجز|حجوز|غداء|عشاء|وجبة|وجبات|مطعم|مطاعم|مورد|موردين|تغذية|ولائم|سمو/.test(p);
+  const asksEvents = /مناسبة|مناسبات|فعالية|فعاليات|جدول|قادمة|اليوم|غدا|غداً|أسبوع/.test(p);
+  const asksContracts = /عقد|عقود|ساري|سارية|مطاعم متعاقدة|المتعاقد/.test(p);
+
+  if (asksBookings && live.bookings && live.bookings.length > 0) {
+    const mealName = (m: unknown) => (String(m) === "LUNCH" ? "غداء" : "عشاء");
+    const lines = live.bookings.slice(0, 3).map((b) => {
+      const when = String(b.service_date ?? "").slice(0, 10);
+      const status = BOOKING_STATUS_AR[String(b.status)] ?? String(b.status);
+      return `«${b.supplier_name ?? ""}» — ${mealName(b.meal_type)} لفعالية «${b.event_title ?? ""}» بتاريخ ${when}، ${b.guest_count ?? 0} ضيف، الحالة ${status}.`;
+    });
+    const total = live.bookings.reduce((acc, b) => acc + Number(b.total_amount ?? 0), 0);
+    return {
+      reply: `حسب أحدث قراءة مباشرة: ${live.bookings.length === 1 ? "حجز واحد" : `${live.bookings.length} حجوزات`}:\n${lines.join("\n")}${total ? `\nإجمالي مرئي: ${total} ريال.` : ""}\n\nأُعيد العرض من بيانات النظام مباشرة؛ أكمل بالتفاصيل من صفحة المطاعم المتعاقدة.`,
+      grounded: true,
+    };
+  }
+  if (asksEvents && live.events && live.events.length > 0) {
+    const lines = live.events.slice(0, 3).map((e) => {
+      const when = String(e.start_at ?? "").slice(0, 10);
+      return `«${e.event_number ?? ""} ${e.title ?? ""}» بتاريخ ${when} — ${e.status ?? ""}، ${e.guest_count ?? 0} ضيف.`;
+    });
+    return {
+      reply: `أقرب مناسبات أمامك من القراءة المباشرة:\n${lines.join("\n")}\n\nتابع حالتها من لوحة المتابعة أو حدثني إن أردت تفاصيل أي مناسبة.`,
+      grounded: true,
+    };
+  }
+  if (asksContracts && live.contracts && live.contracts.length > 0) {
+    const active = live.contracts.filter((c) => c.status === "ACTIVE");
+    const names = active.map((c) => c.supplier_name).slice(0, 5).join("، ");
+    return {
+      reply: names
+        ? `لديك ${active.length} عقد ساري مع: ${names}.`
+        : "لا توجد عقود سارية تظهر لدورك حالياً.",
+      grounded: true,
+    };
+  }
+  return null;
 }
 
 async function handleChat(body: Record<string, unknown>, authToken: string): Promise<Response> {
@@ -300,10 +371,12 @@ async function handleChat(body: Record<string, unknown>, authToken: string): Pro
     });
   }
 
-  const fallback = deterministicAnswer(context);
+  // Model unavailable → answer concrete questions from the live snapshot if
+  // possible, otherwise fall back to the compact metrics summary.
+  const fallback = snapshotFallback(live, prompt) ?? deterministicAnswer(context);
   return jsonResponse({
     ...fallback,
-    caveats: ["هذه قراءة موجزة من المقاييس المتاحة، وليست إحالة على قرار نهائي."],
+    caveats: ["هذه قراءة مباشرة من بيانات النظام، وليست إحالة على قرار نهائي."],
     meta: { source: "deterministic", degraded: !apiKey(), live: live.readable },
   });
 }
