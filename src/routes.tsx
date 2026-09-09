@@ -163,7 +163,7 @@ const staffRoute = createRoute({
   component: StaffPage,
 });
 
-/** ملف المضيف — the staff profile page (identity, enrollment, finances). */
+/** الملف الشخصي — the full HR profile page (identity, employment, leaves, attendance, finances). */
 const staffProfileRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/staff/$staffId",

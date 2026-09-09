@@ -119,6 +119,8 @@ export interface PayrollRow {
 }
 
 
+export type ContractStatus = "ACTIVE" | "PROBATION" | "ENDED";
+
 export interface StaffMemberRow {
   id: string;
   name: string;
@@ -130,6 +132,17 @@ export interface StaffMemberRow {
   whatsapp: string | null;
   idNumber: string | null;
   notes: string | null;
+  /** HR directory fields (migration 0100) — optional, additive. */
+  hireDate?: string | null;
+  birthDate?: string | null;
+  nationality?: string | null;
+  jobTitle?: string | null;
+  department?: string | null;
+  emergencyPhone?: string | null;
+  iban?: string | null;
+  contractStatus?: ContractStatus;
+  civilIdExpiresOn?: string | null;
+  healthCardExpiresOn?: string | null;
 }
 
 /**
@@ -717,7 +730,7 @@ export function useVoidPayout(orgId: string | null) {
 }
 
 // ---------------------------------------------------------------------------
-// Staff profile (ملف المضيف) — server-side rollup + chronological ledger.
+// Staff profile (الملف الشخصي) — server-side rollup + chronological ledger.
 // ---------------------------------------------------------------------------
 
 export interface HostPayrollSummaryRow {
@@ -813,6 +826,56 @@ export function useStaffLedgerHistory(orgId: string | null, staffMemberId: strin
 
 /** Full staff_members row for the EDIT dialog only (staff.manage; the table's
  * RLS already restricts this read to privileged roles). */
+/** Map a raw staff_members row (incl. migration-0100 HR columns) to UI row. */
+export function mapStaffMemberRow(data: {
+  id: string;
+  name: string;
+  staff_type: StaffType;
+  is_active: boolean;
+  default_compensation_method: CompensationMethod;
+  default_rate: number;
+  phone: string | null;
+  whatsapp: string | null;
+  id_number: string | null;
+  notes: string | null;
+  hire_date: string | null;
+  birth_date: string | null;
+  nationality: string | null;
+  job_title: string | null;
+  department: string | null;
+  emergency_phone: string | null;
+  iban: string | null;
+  contract_status: string;
+  civil_id_expires_on: string | null;
+  health_card_expires_on: string | null;
+}): StaffMemberRow {
+  return {
+    id: data.id,
+    name: data.name,
+    staffType: data.staff_type,
+    isActive: data.is_active,
+    defaultCompensationMethod: data.default_compensation_method,
+    defaultRateMilli: fromDbAmount(data.default_rate),
+    phone: data.phone,
+    whatsapp: data.whatsapp,
+    idNumber: data.id_number,
+    notes: data.notes,
+    hireDate: data.hire_date,
+    birthDate: data.birth_date,
+    nationality: data.nationality,
+    jobTitle: data.job_title,
+    department: data.department,
+    emergencyPhone: data.emergency_phone,
+    iban: data.iban,
+    contractStatus:
+      data.contract_status === "PROBATION" || data.contract_status === "ENDED"
+        ? data.contract_status
+        : "ACTIVE",
+    civilIdExpiresOn: data.civil_id_expires_on,
+    healthCardExpiresOn: data.health_card_expires_on,
+  };
+}
+
 export function useStaffMemberForEdit(orgId: string | null, staffMemberId: string, enabled: boolean) {
   return useQuery({
     queryKey: ["staff-member-edit", orgId, staffMemberId],
@@ -826,18 +889,31 @@ export function useStaffMemberForEdit(orgId: string | null, staffMemberId: strin
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
-      return {
-        id: data.id,
-        name: data.name,
-        staffType: data.staff_type,
-        isActive: data.is_active,
-        defaultCompensationMethod: data.default_compensation_method,
-        defaultRateMilli: fromDbAmount(data.default_rate),
-        phone: data.phone,
-        whatsapp: data.whatsapp,
-        idNumber: data.id_number,
-        notes: data.notes,
-      } satisfies StaffMemberRow;
+      return mapStaffMemberRow(data);
+    },
+  });
+}
+
+/** Full staff_members record (payroll.read-gated server-side via 0016). Used by
+ * the HR profile so the file can show directory + contract + document expiries
+ * without widening any read gate — the page never fetches it without payroll.read. */
+export function useStaffMemberRecord(
+  orgId: string | null,
+  staffMemberId: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ["staff-member-record", orgId, staffMemberId],
+    enabled: !!orgId && !!staffMemberId && enabled,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("staff_members")
+        .select("*")
+        .eq("organization_id", orgId!)
+        .eq("id", staffMemberId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? mapStaffMemberRow(data) : null;
     },
   });
 }
@@ -899,18 +975,7 @@ export function useOrgStaffMembers(orgId: string | null) {
         .eq("organization_id", orgId!)
         .order("name", { ascending: true });
       if (error) throw error;
-      return (data ?? []).map((row): StaffMemberRow => ({
-        id: row.id,
-        name: row.name,
-        staffType: row.staff_type,
-        isActive: row.is_active,
-        defaultCompensationMethod: row.default_compensation_method,
-        defaultRateMilli: fromDbAmount(row.default_rate),
-        phone: row.phone,
-        whatsapp: row.whatsapp,
-        idNumber: row.id_number,
-        notes: row.notes,
-      }));
+      return (data ?? []).map(mapStaffMemberRow);
     },
   });
 }
@@ -932,6 +997,16 @@ export interface StaffMemberFormValues {
   rateMilli: MilliOMR;
   isActive: boolean;
   notes: string;
+  hireDate?: string | null;
+  birthDate?: string | null;
+  nationality?: string | null;
+  jobTitle?: string | null;
+  department?: string | null;
+  emergencyPhone?: string | null;
+  iban?: string | null;
+  contractStatus?: string | null;
+  civilIdExpiresOn?: string | null;
+  healthCardExpiresOn?: string | null;
 }
 
 export function useSaveStaffMember(orgId: string | null) {
@@ -956,6 +1031,16 @@ export function useSaveStaffMember(orgId: string | null) {
         default_compensation_method: values.compensationMethod,
         default_rate: toDbNumeric(values.rateMilli),
         notes: values.notes.trim() || null,
+        hire_date: values.hireDate || null,
+        birth_date: values.birthDate || null,
+        nationality: values.nationality?.trim() || null,
+        job_title: values.jobTitle?.trim() || null,
+        department: values.department?.trim() || null,
+        emergency_phone: values.emergencyPhone?.trim() || null,
+        iban: values.iban?.trim() || null,
+        contract_status: values.contractStatus || "ACTIVE",
+        civil_id_expires_on: values.civilIdExpiresOn || null,
+        health_card_expires_on: values.healthCardExpiresOn || null,
       };
       if (id) {
         const { error } = await db
@@ -1065,4 +1150,129 @@ export function attendanceError(error: unknown): string {
   if (message.includes("FACE_ENROLLMENT_CAPTURES_INVALID")) return "عدد صور التسجيل غير صالح";
   if (message.includes("FACE_ENROLLMENT_ALREADY_ACTIVE")) return "يوجد تسجيل وجه نشط — ألغِه أولاً ثم أعد التسجيل";
   return message;
+}
+
+// ---------------------------------------------------------------------------
+// HR: leaves / absence register (migration 0100). Attendance stays event-driven;
+// this register holds the lightweight records/notices only (no daily schedule).
+// ---------------------------------------------------------------------------
+
+export type LeaveType = "ANNUAL" | "SICK" | "EMERGENCY" | "UNPAID" | "EVENT_ABSENCE";
+export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+
+export interface LeaveRow {
+  id: string;
+  organizationId: string;
+  staffMemberId: string;
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string | null;
+  daysCount: number;
+  reason: string | null;
+  status: LeaveStatus;
+  recordedBy: string | null;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeaveFormValues {
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string | null;
+  daysCount: number;
+  reason: string;
+  status: LeaveStatus;
+}
+
+export function useOrgLeaves(orgId: string | null) {
+  return useQuery({
+    queryKey: ["staff-leaves", orgId],
+    enabled: !!orgId,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("staff_leaves")
+        .select("*")
+        .eq("organization_id", orgId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((row): LeaveRow => ({
+        id: row.id,
+        organizationId: row.organization_id,
+        staffMemberId: row.staff_member_id,
+        leaveType: row.leave_type as LeaveType,
+        startDate: row.start_date,
+        endDate: row.end_date,
+        daysCount: Number(row.days_count ?? 0),
+        reason: row.reason,
+        status: row.status as LeaveStatus,
+        recordedBy: row.recorded_by,
+        decidedBy: row.decided_by,
+        decidedAt: row.decided_at,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      }));
+    },
+  });
+}
+
+export function useMemberLeaves(orgId: string | null, staffMemberId: string | null) {
+  const q = useOrgLeaves(orgId);
+  const rows = (q.data ?? []).filter((r) => r.staffMemberId === staffMemberId);
+  return { ...q, data: rows };
+}
+
+export function useSaveLeave(orgId: string | null) {
+  const q = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { staffMemberId: string; values: LeaveFormValues }) => {
+      if (!orgId) throw new Error("org missing");
+      const { staffMemberId, values } = input;
+      const payload = {
+        organization_id: orgId,
+        staff_member_id: staffMemberId,
+        leave_type: values.leaveType,
+        start_date: values.startDate,
+        end_date: values.endDate || null,
+        days_count: values.daysCount,
+        reason: values.reason.trim() || null,
+        status: values.status,
+      };
+      const { error } = await db.from("staff_leaves").insert(payload);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      q.invalidateQueries({ queryKey: ["staff-leaves", orgId] });
+    },
+  });
+}
+
+export function useUpdateLeaveStatus(orgId: string | null) {
+  const q = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      leaveId: string;
+      status: LeaveStatus;
+      decidedBy: string | null;
+    }) => {
+      if (!orgId) throw new Error("org missing");
+      const { leaveId, status, decidedBy } = input;
+      const { error } = await db
+        .from("staff_leaves")
+        .update({
+          status,
+          // Reviewer audit trail (migration 0100): every decision records who
+          // decided and when, so the register stays a trustworthy HR record.
+          decided_by: decidedBy,
+          decided_at: new Date().toISOString(),
+        })
+        .eq("organization_id", orgId)
+        .eq("id", leaveId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      q.invalidateQueries({ queryKey: ["staff-leaves", orgId] });
+    },
+  });
 }

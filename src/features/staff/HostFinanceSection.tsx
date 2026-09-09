@@ -32,7 +32,7 @@ function useCanMutate(): boolean {
 
 /**
  * Advances & payouts operations for ONE host — shared by the staff list and
- * the staff profile page (ملف المضيف) so there is exactly one mutation UI for
+ * the staff profile page (الملف الشخصي) so there is exactly one mutation UI for
  * these financial operations. Every write goes through the canonical payroll
  * commands; the printed sheets (payroll period / host statement) are OUTPUTS
  * of the same ledgers, never a source of truth.

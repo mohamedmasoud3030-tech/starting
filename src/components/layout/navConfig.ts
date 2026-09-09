@@ -81,8 +81,10 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   },
   {
     label: "الفريق",
-    // The staff page is a payroll surface (server-gated by payroll.read).
-    items: [{ to: "/staff", label: "المضيفون والحضور", payroll: true }],
+    // The staff page is a payroll + HR surface (server-gated by payroll.read).
+    // The label reads as الموارد البشرية: one full file per member (identity,
+    // contract & document expiries, leaves register, attendance and payroll).
+    items: [{ to: "/staff", label: "الموارد البشرية", payroll: true }],
   },
   {
     label: "الإدارة والتحليل",

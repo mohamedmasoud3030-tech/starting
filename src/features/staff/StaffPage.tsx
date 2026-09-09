@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Printer, ScrollText } from "lucide-react";
+import { CalendarDays, Plus, Printer, ScrollText } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -33,7 +33,8 @@ import {
   type PayrollRow,
   type StaffMemberRow,
 } from "./staff.api";
-import { STAFF_TYPE_LABELS } from "./labels";
+import { CONTRACT_STATUS_LABELS, STAFF_TYPE_LABELS } from "./labels";
+import { LeavesPanel } from "./LeavesPanel";
 import { StaffMemberDialog } from "./StaffMemberDialog";
 
 /**
@@ -173,7 +174,19 @@ function StaffSummaryCard({
           >
             <div>
               <p className="text-lg font-black">{staff.name}</p>
-              <p className="text-sm text-slate-500">{STAFF_TYPE_LABELS[staff.staffType] ?? staff.staffType}</p>
+              <p className="flex flex-wrap items-center gap-1.5 text-sm text-slate-500">
+                <span>{STAFF_TYPE_LABELS[staff.staffType] ?? staff.staffType}</span>
+                {staff.contractStatus && staff.contractStatus !== "ACTIVE" && (
+                  <Badge tone={staff.contractStatus === "ENDED" ? "warning" : "neutral"}>
+                    {CONTRACT_STATUS_LABELS[staff.contractStatus] ?? staff.contractStatus}
+                  </Badge>
+                )}
+                {staff.jobTitle || staff.department ? (
+                  <span className="text-slate-600">
+                    {[staff.jobTitle, staff.department].filter(Boolean).join(" · ")}
+                  </span>
+                ) : null}
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 text-sm">
               <span>مستحق <b dir="ltr">{formatOMR(dueMilli)}</b></span>
@@ -199,7 +212,7 @@ function StaffSummaryCard({
               params={{ staffId: staff.id }}
               className="inline-flex min-h-11 items-center rounded-xl border border-brand-200 px-3 text-sm font-bold text-brand-700 hover:bg-brand-50"
             >
-              ملف المضيف
+              الملف الكامل
             </Link>
             <Button
               variant="ghost"
@@ -291,11 +304,28 @@ export function StaffPage() {
     return map;
   }, [archive.data]);
 
+  // HR roster filter (kept client-side; the whole surface is payroll.read-gated).
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">(
+    "ALL",
+  );
+  const allMembers = staff.data ?? [];
+  const members =
+    statusFilter === "ALL"
+      ? allMembers
+      : allMembers.filter((m) => m.isActive === (statusFilter === "ACTIVE"));
+  const names = new Map(allMembers.map((m) => [m.id, m.name]));
+
   if (!canReadPayroll) {
     return (
       <div className="space-y-4">
-        <PageHeader title="المضيفون والأجور" description="سجل أجور المضيفين والسلف والصرف." />
-        <EmptyState title="الأجور غير متاحة لدورك" description="تظهر أجور المضيفين لمن يملك صلاحية قراءة الأجور، وهي تُمنح لكل عضو من شاشة «المستخدمون والصلاحيات»." />
+        <PageHeader
+          title="الموارد البشرية"
+          description="ملفات الفريق والإجازات وسجل الأجور — تفتح لمن يملك صلاحية قراءة الأجور."
+        />
+        <EmptyState
+          title="الموارد البشرية غير متاحة لدورك"
+          description="ملفات الفريق والأجور تظهر لمن يملك صلاحية قراءة الأجور، وهي تُمنح لكل عضو من شاشة «المستخدمون والصلاحيات»."
+        />
       </div>
     );
   }
@@ -303,8 +333,8 @@ export function StaffPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="المضيفون والأجور"
-        description="هنا الأجور والسلف والصرف. تسجيل الشغل يتم من داخل المناسبة بزر دخول الآن / خروج الآن."
+        title="الموارد البشرية"
+        description="ملف كل عضو من الفريق في مكان واحد: بياناته وعقده وتواريخه، إجازاته وغيابه، حضوره ومستحقاته. تسجيل الحضور يتم من داخل المناسبة — لا يوجد دوام بمواعيد أو أيام محددة."
         actions={
           canManageStaff ? (
             <Button
@@ -314,18 +344,17 @@ export function StaffPage() {
               }}
             >
               <Plus className="h-5 w-5" />
-              مضيف جديد
+              إضافة عضو
             </Button>
           ) : undefined
         }
       />
-      <PayrollPeriodCard orgId={orgId} />
       {staff.isLoading || archive.isLoading ? (
         <LoadingState label="جارٍ تحميل بيانات الفريق…" />
       ) : staff.error || archive.error ? (
         <ErrorState
           title="تعذّر تحميل بيانات الفريق"
-          message="حدث خطأ أثناء تحميل المضيفين والأجور. أعد المحاولة."
+          message="حدث خطأ أثناء تحميل بيانات الفريق وسجل الإجازات والأجور. أعد المحاولة."
           onRetry={() => {
             void staff.refetch();
             void archive.refetch();
@@ -333,28 +362,83 @@ export function StaffPage() {
         />
       ) : (staff.data ?? []).length === 0 ? (
         <EmptyState
-          title="لا يوجد مضيفون"
-          description="أضف أول مضيف لبدء إسناد الفريق وحساب الحضور والأجور."
+          title="لا يوجد أعضاء بعد"
+          description="أضف أول عضو في الفريق لبدء إسناد المناسبات، وتسجيل الحضور، ومتابعة الملفات والإجازات."
         />
       ) : (
-        <ul className="space-y-2">
-          {(staff.data ?? []).map((member) => (
-            <li key={member.id}>
-              <StaffSummaryCard
-                orgId={orgId}
-                staff={member}
-                rows={byStaff.get(member.id) ?? []}
-                open={expanded === member.id}
-                onToggle={() => setExpanded(expanded === member.id ? null : member.id)}
-                onEdit={(target) => {
-                  setEditing(target);
-                  setRosterOpen(true);
-                }}
-              />
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-3">
+          <div
+            className="flex flex-wrap items-center gap-2"
+            role="group"
+            aria-label="تصفية أعضاء الفريق"
+          >
+            <span className="text-sm font-bold text-slate-600">عرض:</span>
+            {(
+              [
+                ["ALL", "الكل"],
+                ["ACTIVE", "النشطون"],
+                ["INACTIVE", "الموقوفون"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setStatusFilter(value)}
+                aria-pressed={statusFilter === value}
+                className={`rounded-full px-4 py-1.5 text-sm font-bold transition-colors ${
+                  statusFilter === value
+                    ? "bg-brand-700 text-white"
+                    : "border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {members.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-slate-600">
+              لا يوجد أعضاء ضمن هذا التصنيف.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {members.map((member) => (
+                <li key={member.id}>
+                  <StaffSummaryCard
+                    orgId={orgId}
+                    staff={member}
+                    rows={byStaff.get(member.id) ?? []}
+                    open={expanded === member.id}
+                    onToggle={() => setExpanded(expanded === member.id ? null : member.id)}
+                    onEdit={(target) => {
+                      setEditing(target);
+                      setRosterOpen(true);
+                    }}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
+
+      <Card>
+        <CardBody className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-brand-700" />
+              <h2 className="font-black">سجل الإجازات والغياب</h2>
+            </div>
+          </div>
+          <LeavesPanel
+            orgId={orgId}
+            names={names}
+            canManage={canManageStaff}
+          />
+        </CardBody>
+      </Card>
+
+      <PayrollPeriodCard orgId={orgId} />
+
       <StaffMemberDialog
         open={rosterOpen}
         onOpenChange={setRosterOpen}

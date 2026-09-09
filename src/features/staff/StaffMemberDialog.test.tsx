@@ -36,7 +36,7 @@ describe("StaffMemberDialog — roster provisioning (F11)", () => {
   beforeEach(() => {
     mutateAsync.mockClear();
   });
-  it("creates a staff member with the role-checked insert payload", async () => {
+  it("creates a team member with the role-checked insert payload", async () => {
     render(
       <StaffMemberDialog open onOpenChange={() => {}} orgId="org-1" member={null} />,
     );
@@ -48,7 +48,7 @@ describe("StaffMemberDialog — roster provisioning (F11)", () => {
       "PER_HOUR",
     );
     await userEvent.type(screen.getByLabelText("الأجر الافتراضي"), "3.500");
-    await userEvent.click(screen.getByRole("button", { name: "إضافة المضيف" }));
+    await userEvent.click(screen.getByRole("button", { name: "إضافة العضو" }));
 
     expect(mutateAsync).toHaveBeenCalledWith({
       id: null,
@@ -93,7 +93,7 @@ describe("StaffMemberDialog — roster provisioning (F11)", () => {
 
     await userEvent.type(screen.getByLabelText(/الاسم/), "فاطمة");
     await userEvent.type(screen.getByLabelText("الأجر الافتراضي"), "-5");
-    await userEvent.click(screen.getByRole("button", { name: "إضافة المضيف" }));
+    await userEvent.click(screen.getByRole("button", { name: "إضافة العضو" }));
 
     expect(mutateAsync).not.toHaveBeenCalled();
     expect(

@@ -7,6 +7,36 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       attachment_evidence: {
@@ -1134,6 +1164,123 @@ export type Database = {
             columns: ["organization_id", "event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      event_meal_bookings: {
+        Row: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          contract_id: string
+          created_at: string
+          created_by: string
+          event_id: string
+          guest_count: number
+          id: string
+          meal_type: Database["public"]["Enums"]["meal_service_type"]
+          menu_summary: string | null
+          notes: string | null
+          organization_id: string
+          served_at: string | null
+          served_by: string | null
+          service_date: string
+          status: Database["public"]["Enums"]["meal_booking_status"]
+          supplier_id: string
+          total_amount: number
+          unit_price: number
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          contract_id: string
+          created_at?: string
+          created_by: string
+          event_id: string
+          guest_count: number
+          id?: string
+          meal_type: Database["public"]["Enums"]["meal_service_type"]
+          menu_summary?: string | null
+          notes?: string | null
+          organization_id: string
+          served_at?: string | null
+          served_by?: string | null
+          service_date: string
+          status?: Database["public"]["Enums"]["meal_booking_status"]
+          supplier_id: string
+          total_amount: number
+          unit_price: number
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          contract_id?: string
+          created_at?: string
+          created_by?: string
+          event_id?: string
+          guest_count?: number
+          id?: string
+          meal_type?: Database["public"]["Enums"]["meal_service_type"]
+          menu_summary?: string | null
+          notes?: string | null
+          organization_id?: string
+          served_at?: string | null
+          served_by?: string | null
+          service_date?: string
+          status?: Database["public"]["Enums"]["meal_booking_status"]
+          supplier_id?: string
+          total_amount?: number
+          unit_price?: number
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_meal_bookings_contract_fk"
+            columns: ["organization_id", "contract_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_contract_summaries"
+            referencedColumns: ["organization_id", "contract_id"]
+          },
+          {
+            foreignKeyName: "event_meal_bookings_contract_fk"
+            columns: ["organization_id", "contract_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_contracts"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_meal_bookings_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_meal_bookings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_meal_bookings_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["organization_id", "id"]
           },
         ]
@@ -3164,15 +3311,91 @@ export type Database = {
           },
         ]
       }
+      staff_leaves: {
+        Row: {
+          created_at: string
+          days_count: number
+          decided_at: string | null
+          decided_by: string | null
+          end_date: string | null
+          id: string
+          leave_type: string
+          organization_id: string
+          reason: string | null
+          recorded_by: string
+          staff_member_id: string
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          days_count?: number
+          decided_at?: string | null
+          decided_by?: string | null
+          end_date?: string | null
+          id?: string
+          leave_type: string
+          organization_id: string
+          reason?: string | null
+          recorded_by?: string
+          staff_member_id: string
+          start_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          days_count?: number
+          decided_at?: string | null
+          decided_by?: string | null
+          end_date?: string | null
+          id?: string
+          leave_type?: string
+          organization_id?: string
+          reason?: string | null
+          recorded_by?: string
+          staff_member_id?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_leaves_org_staff_fk"
+            columns: ["organization_id", "staff_member_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "staff_leaves_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_members: {
         Row: {
+          birth_date: string | null
+          civil_id_expires_on: string | null
+          contract_status: string
           created_at: string
           default_compensation_method: Database["public"]["Enums"]["compensation_method"]
           default_rate: number
+          department: string | null
+          emergency_phone: string | null
+          health_card_expires_on: string | null
+          hire_date: string | null
+          iban: string | null
           id: string
           id_number: string | null
           is_active: boolean
+          job_title: string | null
           name: string
+          nationality: string | null
           notes: string | null
           organization_id: string
           phone: string | null
@@ -3181,13 +3404,23 @@ export type Database = {
           whatsapp: string | null
         }
         Insert: {
+          birth_date?: string | null
+          civil_id_expires_on?: string | null
+          contract_status?: string
           created_at?: string
           default_compensation_method: Database["public"]["Enums"]["compensation_method"]
           default_rate: number
+          department?: string | null
+          emergency_phone?: string | null
+          health_card_expires_on?: string | null
+          hire_date?: string | null
+          iban?: string | null
           id?: string
           id_number?: string | null
           is_active?: boolean
+          job_title?: string | null
           name: string
+          nationality?: string | null
           notes?: string | null
           organization_id: string
           phone?: string | null
@@ -3196,13 +3429,23 @@ export type Database = {
           whatsapp?: string | null
         }
         Update: {
+          birth_date?: string | null
+          civil_id_expires_on?: string | null
+          contract_status?: string
           created_at?: string
           default_compensation_method?: Database["public"]["Enums"]["compensation_method"]
           default_rate?: number
+          department?: string | null
+          emergency_phone?: string | null
+          health_card_expires_on?: string | null
+          hire_date?: string | null
+          iban?: string | null
           id?: string
           id_number?: string | null
           is_active?: boolean
+          job_title?: string | null
           name?: string
+          nationality?: string | null
           notes?: string | null
           organization_id?: string
           phone?: string | null
@@ -3217,6 +3460,87 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_contracts: {
+        Row: {
+          contract_number: string
+          created_at: string
+          created_by: string
+          cut_off_hours: number
+          dinner_unit_price: number
+          ended_at: string | null
+          ended_by: string | null
+          ends_on: string
+          id: string
+          lunch_unit_price: number
+          minimum_guests: number
+          notes: string | null
+          organization_id: string
+          payment_terms: string | null
+          starts_on: string
+          status: Database["public"]["Enums"]["supplier_contract_status"]
+          supplier_id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          contract_number: string
+          created_at?: string
+          created_by: string
+          cut_off_hours?: number
+          dinner_unit_price?: number
+          ended_at?: string | null
+          ended_by?: string | null
+          ends_on: string
+          id?: string
+          lunch_unit_price?: number
+          minimum_guests?: number
+          notes?: string | null
+          organization_id: string
+          payment_terms?: string | null
+          starts_on: string
+          status?: Database["public"]["Enums"]["supplier_contract_status"]
+          supplier_id: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          contract_number?: string
+          created_at?: string
+          created_by?: string
+          cut_off_hours?: number
+          dinner_unit_price?: number
+          ended_at?: string | null
+          ended_by?: string | null
+          ends_on?: string
+          id?: string
+          lunch_unit_price?: number
+          minimum_guests?: number
+          notes?: string | null
+          organization_id?: string
+          payment_terms?: string | null
+          starts_on?: string
+          status?: Database["public"]["Enums"]["supplier_contract_status"]
+          supplier_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_contracts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_contracts_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["organization_id", "id"]
           },
         ]
       }
@@ -3994,6 +4318,130 @@ export type Database = {
           },
         ]
       }
+      meal_booking_operational: {
+        Row: {
+          booking_id: string | null
+          contract_id: string | null
+          contract_number: string | null
+          created_at: string | null
+          event_id: string | null
+          event_number: string | null
+          event_title: string | null
+          guest_count: number | null
+          meal_type: Database["public"]["Enums"]["meal_service_type"] | null
+          menu_summary: string | null
+          organization_id: string | null
+          service_date: string | null
+          status: Database["public"]["Enums"]["meal_booking_status"] | null
+          supplier_id: string | null
+          supplier_name: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_meal_bookings_contract_fk"
+            columns: ["organization_id", "contract_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_contract_summaries"
+            referencedColumns: ["organization_id", "contract_id"]
+          },
+          {
+            foreignKeyName: "event_meal_bookings_contract_fk"
+            columns: ["organization_id", "contract_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_contracts"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_meal_bookings_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_meal_bookings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_meal_bookings_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      meal_booking_summaries: {
+        Row: {
+          booking_id: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          contract_id: string | null
+          contract_number: string | null
+          created_at: string | null
+          event_id: string | null
+          event_number: string | null
+          event_title: string | null
+          guest_count: number | null
+          meal_type: Database["public"]["Enums"]["meal_service_type"] | null
+          menu_summary: string | null
+          notes: string | null
+          organization_id: string | null
+          served_at: string | null
+          served_by: string | null
+          service_date: string | null
+          status: Database["public"]["Enums"]["meal_booking_status"] | null
+          supplier_id: string | null
+          supplier_name: string | null
+          total_amount: number | null
+          unit_price: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_meal_bookings_contract_fk"
+            columns: ["organization_id", "contract_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_contract_summaries"
+            referencedColumns: ["organization_id", "contract_id"]
+          },
+          {
+            foreignKeyName: "event_meal_bookings_contract_fk"
+            columns: ["organization_id", "contract_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_contracts"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_meal_bookings_event_fk"
+            columns: ["organization_id", "event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "event_meal_bookings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_meal_bookings_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       payments_command_idempotency: {
         Row: {
           actor_id: string | null
@@ -4415,6 +4863,47 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_contract_summaries: {
+        Row: {
+          category: Database["public"]["Enums"]["supplier_category"] | null
+          contract_id: string | null
+          contract_number: string | null
+          created_at: string | null
+          currently_valid: boolean | null
+          cut_off_hours: number | null
+          dinner_unit_price: number | null
+          ended_at: string | null
+          ends_on: string | null
+          lunch_unit_price: number | null
+          minimum_guests: number | null
+          notes: string | null
+          organization_id: string | null
+          payment_terms: string | null
+          phone: string | null
+          starts_on: string | null
+          status: Database["public"]["Enums"]["supplier_contract_status"] | null
+          supplier_id: string | null
+          supplier_name: string | null
+          updated_at: string | null
+          whatsapp: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_contracts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_contracts_supplier_fk"
+            columns: ["organization_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["organization_id", "id"]
           },
         ]
       }
@@ -5838,6 +6327,46 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cancel_meal_booking: {
+        Args: {
+          p_booking_id: string
+          p_idempotency_key: string
+          p_org_id: string
+          p_reason: string
+        }
+        Returns: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          contract_id: string
+          created_at: string
+          created_by: string
+          event_id: string
+          guest_count: number
+          id: string
+          meal_type: Database["public"]["Enums"]["meal_service_type"]
+          menu_summary: string | null
+          notes: string | null
+          organization_id: string
+          served_at: string | null
+          served_by: string | null
+          service_date: string
+          status: Database["public"]["Enums"]["meal_booking_status"]
+          supplier_id: string
+          total_amount: number
+          unit_price: number
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_meal_bookings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cancel_procurement_order: {
         Args: {
           p_idempotency_key: string
@@ -6149,6 +6678,45 @@ export type Database = {
         }
         Returns: number
       }
+      confirm_meal_booking: {
+        Args: {
+          p_booking_id: string
+          p_idempotency_key: string
+          p_org_id: string
+        }
+        Returns: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          contract_id: string
+          created_at: string
+          created_by: string
+          event_id: string
+          guest_count: number
+          id: string
+          meal_type: Database["public"]["Enums"]["meal_service_type"]
+          menu_summary: string | null
+          notes: string | null
+          organization_id: string
+          served_at: string | null
+          served_by: string | null
+          service_date: string
+          status: Database["public"]["Enums"]["meal_booking_status"]
+          supplier_id: string
+          total_amount: number
+          unit_price: number
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_meal_bookings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       confirm_procurement_order: {
         Args: {
           p_idempotency_key: string
@@ -6366,6 +6934,51 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_meal_booking: {
+        Args: {
+          p_event_id: string
+          p_guest_count: number
+          p_idempotency_key: string
+          p_meal_type: Database["public"]["Enums"]["meal_service_type"]
+          p_menu_summary: string
+          p_notes: string
+          p_org_id: string
+          p_service_date: string
+          p_supplier_id: string
+        }
+        Returns: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          contract_id: string
+          created_at: string
+          created_by: string
+          event_id: string
+          guest_count: number
+          id: string
+          meal_type: Database["public"]["Enums"]["meal_service_type"]
+          menu_summary: string | null
+          notes: string | null
+          organization_id: string
+          served_at: string | null
+          served_by: string | null
+          service_date: string
+          status: Database["public"]["Enums"]["meal_booking_status"]
+          supplier_id: string
+          total_amount: number
+          unit_price: number
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_meal_bookings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_org_invitation: {
         Args: {
           p_email: string
@@ -6561,6 +7174,49 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_supplier_contract: {
+        Args: {
+          p_contract_number: string
+          p_cut_off_hours: number
+          p_dinner_unit_price: number
+          p_ends_on: string
+          p_idempotency_key: string
+          p_lunch_unit_price: number
+          p_minimum_guests: number
+          p_notes: string
+          p_org_id: string
+          p_payment_terms: string
+          p_starts_on: string
+          p_supplier_id: string
+        }
+        Returns: {
+          contract_number: string
+          created_at: string
+          created_by: string
+          cut_off_hours: number
+          dinner_unit_price: number
+          ended_at: string | null
+          ended_by: string | null
+          ends_on: string
+          id: string
+          lunch_unit_price: number
+          minimum_guests: number
+          notes: string | null
+          organization_id: string
+          payment_terms: string | null
+          starts_on: string
+          status: Database["public"]["Enums"]["supplier_contract_status"]
+          supplier_id: string
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supplier_contracts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_treasury_account: {
         Args: {
           p_account_tail?: string
@@ -6701,6 +7357,40 @@ export type Database = {
       document_number_prefix: {
         Args: { p_kind: string; p_org_id: string }
         Returns: string
+      }
+      end_supplier_contract: {
+        Args: {
+          p_contract_id: string
+          p_idempotency_key: string
+          p_org_id: string
+        }
+        Returns: {
+          contract_number: string
+          created_at: string
+          created_by: string
+          cut_off_hours: number
+          dinner_unit_price: number
+          ended_at: string | null
+          ended_by: string | null
+          ends_on: string
+          id: string
+          lunch_unit_price: number
+          minimum_guests: number
+          notes: string | null
+          organization_id: string
+          payment_terms: string | null
+          starts_on: string
+          status: Database["public"]["Enums"]["supplier_contract_status"]
+          supplier_id: string
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "supplier_contracts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       enroll_staff_face: {
         Args: {
@@ -7382,6 +8072,45 @@ export type Database = {
           revenue: number
           top_packages: Json
         }[]
+      }
+      mark_meal_booking_served: {
+        Args: {
+          p_booking_id: string
+          p_idempotency_key: string
+          p_org_id: string
+        }
+        Returns: {
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          contract_id: string
+          created_at: string
+          created_by: string
+          event_id: string
+          guest_count: number
+          id: string
+          meal_type: Database["public"]["Enums"]["meal_service_type"]
+          menu_summary: string | null
+          notes: string | null
+          organization_id: string
+          served_at: string | null
+          served_by: string | null
+          service_date: string
+          status: Database["public"]["Enums"]["meal_booking_status"]
+          supplier_id: string
+          total_amount: number
+          unit_price: number
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "event_meal_bookings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       member_capability_list: {
         Args: { p_org_id: string; p_user_id: string }
@@ -9792,6 +10521,8 @@ export type Database = {
         | "TREASURY_TRANSFER"
         | "JOURNAL_REVERSAL"
         | "ADJUSTMENT"
+      meal_booking_status: "PENDING" | "CONFIRMED" | "CANCELLED" | "SERVED"
+      meal_service_type: "LUNCH" | "DINNER"
       membership_status: "ACTIVE" | "INACTIVE" | "INVITED"
       normal_balance: "DEBIT" | "CREDIT"
       package_status: "ACTIVE" | "INACTIVE"
@@ -9843,6 +10574,7 @@ export type Database = {
         | "CONSUMABLES"
         | "EQUIPMENT_RENTAL"
         | "GENERAL"
+      supplier_contract_status: "ACTIVE" | "ENDED"
       supplier_status: "ACTIVE" | "INACTIVE"
       treasury_account_type: "CASH" | "BANK" | "OTHER"
       warehouse_movement_kind: "DISPATCH" | "RETURN"
@@ -9862,12 +10594,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -9891,11 +10623,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -9916,11 +10648,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -9941,11 +10673,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -9958,11 +10690,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -9972,6 +10704,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       account_type: ["ASSET", "LIABILITY", "EQUITY", "REVENUE", "EXPENSE"],
@@ -10069,6 +10804,8 @@ export const Constants = {
         "JOURNAL_REVERSAL",
         "ADJUSTMENT",
       ],
+      meal_booking_status: ["PENDING", "CONFIRMED", "CANCELLED", "SERVED"],
+      meal_service_type: ["LUNCH", "DINNER"],
       membership_status: ["ACTIVE", "INACTIVE", "INVITED"],
       normal_balance: ["DEBIT", "CREDIT"],
       package_status: ["ACTIVE", "INACTIVE"],
@@ -10126,6 +10863,7 @@ export const Constants = {
         "EQUIPMENT_RENTAL",
         "GENERAL",
       ],
+      supplier_contract_status: ["ACTIVE", "ENDED"],
       supplier_status: ["ACTIVE", "INACTIVE"],
       treasury_account_type: ["CASH", "BANK", "OTHER"],
       warehouse_movement_kind: ["DISPATCH", "RETURN"],
@@ -10133,4 +10871,3 @@ export const Constants = {
     },
   },
 } as const
-

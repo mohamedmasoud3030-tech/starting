@@ -1,4 +1,5 @@
 import type { AttendanceStatus, StaffShift } from "./staff.api";
+import type { LeaveStatus, LeaveType } from "./staff.api";
 import type { CompensationMethod } from "@/lib/dbTypes";
 
 export const SHIFT_LABELS: Record<StaffShift, string> = {
@@ -48,4 +49,42 @@ export const ATTENDANCE_STATUS_TONE: Record<
   PARTIAL: "warning",
   ABSENT: "danger",
   VOIDED: "neutral",
+};
+
+// HR directory (migration 0100) — contract life-cycle and leave register.
+export const CONTRACT_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: "العقد سارٍ",
+  PROBATION: "فترة تجربة",
+  ENDED: "العقد منتهي",
+};
+
+export const CONTRACT_STATUS_TONE: Record<string, "success" | "warning" | "danger"> = {
+  ACTIVE: "success",
+  PROBATION: "warning",
+  ENDED: "danger",
+};
+
+export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
+  ANNUAL: "إجازة سنوية",
+  SICK: "إجازة مرضية",
+  EMERGENCY: "ظرف طارئ",
+  UNPAID: "إجازة بدون راتب",
+  EVENT_ABSENCE: "غياب عن مناسبة",
+};
+
+export const LEAVE_STATUS_LABELS: Record<LeaveStatus, string> = {
+  PENDING: "بانتظار الموافقة",
+  APPROVED: "موافق عليها",
+  REJECTED: "مرفوضة",
+  CANCELLED: "ملغاة",
+};
+
+export const LEAVE_STATUS_TONE: Record<
+  LeaveStatus,
+  "neutral" | "success" | "warning" | "danger"
+> = {
+  PENDING: "neutral",
+  APPROVED: "success",
+  REJECTED: "danger",
+  CANCELLED: "warning",
 };

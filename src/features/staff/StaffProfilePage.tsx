@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
-import { ArrowRight, UserRound } from "lucide-react";
+import {
+  ArrowRight,
+  Briefcase,
+  CalendarDays,
+  ScanFace,
+  UserRound,
+} from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardBody } from "@/components/ui/Card";
@@ -9,33 +15,86 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { formatOMR, type MilliOMR } from "@/lib/money";
 import { useAuth } from "@/app/authContext";
 import { STAFF_MANAGE_ROLES } from "@/lib/domain";
-import { STAFF_TYPE_LABELS } from "./labels";
+import { todayInMuscat } from "@/lib/dates";
+import {
+  CONTRACT_STATUS_LABELS,
+  CONTRACT_STATUS_TONE,
+  STAFF_TYPE_LABELS,
+} from "./labels";
 import { HostFinanceSection } from "./HostFinanceSection";
 import { FaceEnrollmentPanel } from "./face/FaceEnrollmentPanel";
+import { LeavesPanel } from "./LeavesPanel";
 import { StaffMemberDialog } from "./StaffMemberDialog";
 import {
   useHostPayrollSummary,
   useOrgPayrollArchive,
   useStaffLedgerHistory,
   useStaffMemberForEdit,
+  useStaffMemberRecord,
   useStaffOperationalProfile,
   type StaffMemberRow,
 } from "./staff.api";
 
 /**
- * ملف المضيف — the staff profile page.
+ * الملف الشخصي — one central HR file per team member.
  *
- * One page answering the three office questions about a host: WHO is this
- * (identity + contact + status), WHAT does the engagement cost (wage method
- * and rate, ONLY for payroll-authorized viewers — this page never widens the
- * wage-visibility boundary of the list), and WHERE is the money (canonical
- * payroll rollup and the chronological ledger, with advances/payouts as real
- * financial operations). Attendance enrolment (assisted face) lives here
- * because enrollment is about the person, not a shift.
+ * Opening a specific person opens their whole file: identity and status,
+ * employment/contract data with document expiries, leaves & absence register,
+ * biometric (face) enrollment, and — for payroll readers only — the financial
+ * rollup, ledger and worked events. Attendance stays event-driven; nothing on
+ * this page implies a fixed duty schedule.
  *
- * Every figure below comes from the server payroll model — the page renders,
- * it does not calculate.
+ * Every figure comes from the server payroll model — the page renders, it does
+ * not calculate. Wage data is never widened beyond the existing payroll.read
+ * gate (this page shows it only inside the canReadPayroll region).
  */
+
+/** Calendar days from today (Muscat) until the given date; negative = past. */
+function daysUntil(dateValue: string): number {
+  const today = todayInMuscat();
+  const dayMs = 86_400_000;
+  const a = Date.parse(`${today}T00:00:00`);
+  const b = Date.parse(`${dateValue.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(a) || Number.isNaN(b)) return Number.NaN;
+  return Math.round((b - a) / dayMs);
+}
+
+function humanDate(value: string): string {
+  const parsed = new Date(`${value.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString("ar-OM", {
+    timeZone: "Asia/Muscat",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function ExpiryNote({ label, value }: { label: string; value: string | null | undefined }) {
+  if (!value) {
+    return (
+      <p className="text-sm leading-7 text-slate-500">
+        {label}: <span className="text-slate-400">غير مسجل</span>
+      </p>
+    );
+  }
+  const left = daysUntil(value);
+  let note = "";
+  let cls = "text-slate-700";
+  if (Number.isFinite(left) && left < 0) {
+    note = "— منتهية، جدّدها";
+    cls = "font-black text-red-700";
+  } else if (Number.isFinite(left) && left <= 60) {
+    note = `— تنتهي خلال ${left} يوم`;
+    cls = "font-black text-amber-700";
+  }
+  return (
+    <p className="text-sm leading-7 text-slate-600">
+      {label}: <b>{humanDate(value)}</b> <span className={cls}>{note}</span>
+    </p>
+  );
+}
+
 export function StaffProfilePage() {
   const { staffId } = useParams({ from: "/app/staff/$staffId" });
   const { currentOrganization, capabilities, currentRole } = useAuth();
@@ -49,34 +108,37 @@ export function StaffProfilePage() {
       : !!currentRole && STAFF_MANAGE_ROLES.includes(currentRole);
 
   const staffQuery = useStaffOperationalProfile(orgId, staffId);
+  const fullQuery = useStaffMemberRecord(orgId, staffId, canReadPayroll);
   const [editOpen, setEditOpen] = useState(false);
   const editRow = useStaffMemberForEdit(orgId, staffId, canManage);
   const summaryQuery = useHostPayrollSummary(canReadPayroll ? orgId : null, staffId);
   const ledgerQuery = useStaffLedgerHistory(canReadPayroll ? orgId : null, staffId);
   // The worked-events list reuses the SAME org payroll projection the staff
-  // list reads, filtered to this host — no per-host variant of the SQL.
+  // list reads, filtered to this member — no per-member variant of the SQL.
   const rowsQuery = useOrgPayrollArchive(canReadPayroll ? orgId : null);
   const staffRows = (rowsQuery.data ?? []).filter((r) => r.staffMemberId === staffId);
-  const staffForFinance: StaffMemberRow | null = staffQuery.data
-    ? {
-        id: staffQuery.data.id,
-        name: staffQuery.data.name,
-        staffType: staffQuery.data.staff_type,
-        isActive: staffQuery.data.is_active,
-        defaultCompensationMethod: null,
-        defaultRateMilli: 0 as MilliOMR,
-        phone: staffQuery.data.phone,
-        whatsapp: staffQuery.data.whatsapp,
-        idNumber: null,
-        notes: staffQuery.data.notes,
-      }
-    : null;
+  const staffForFinance: StaffMemberRow | null = fullQuery.data
+    ? fullQuery.data
+    : staffQuery.data
+      ? {
+          id: staffQuery.data.id,
+          name: staffQuery.data.name,
+          staffType: staffQuery.data.staff_type,
+          isActive: staffQuery.data.is_active,
+          defaultCompensationMethod: null,
+          defaultRateMilli: 0 as MilliOMR,
+          phone: staffQuery.data.phone,
+          whatsapp: staffQuery.data.whatsapp,
+          idNumber: null,
+          notes: staffQuery.data.notes,
+        }
+      : null;
 
   if (staffQuery.isError) {
     return (
       <div className="space-y-6">
         <BackLink />
-        <ErrorState message="تعذر تحميل ملف المضيف." />
+        <ErrorState message="تعذر تحميل الملف الشخصي." />
       </div>
     );
   }
@@ -89,17 +151,20 @@ export function StaffProfilePage() {
     );
   }
   const member = staffQuery.data;
+  const full = fullQuery.data;
+  const hr = full?.hireDate || full?.birthDate || full?.nationality
+    || full?.jobTitle || full?.department || full?.emergencyPhone || full?.iban;
 
   return (
     <div className="space-y-6">
       <BackLink />
       <PageHeader
-        title={`ملف المضيف — ${member.name}`}
-        description="الهوية، حالة التسجيل البيومتري، والمستحقات المالية حسب الصلاحيات."
+        title={`الملف الشخصي — ${member.name}`}
+        description="كل ما يخص العضو في هذا الملف: الهوية والعقد وتواريخ المستندات، الإجازات والغياب، الحضور والمستحقات — حسب صلاحياتك."
         actions={
           canManage && editRow.data ? (
             <>
-              <Button onClick={() => setEditOpen(true)}>تعديل بيانات المضيف</Button>
+              <Button onClick={() => setEditOpen(true)}>تعديل بيانات العضو</Button>
               <StaffMemberDialog
                 open={editOpen}
                 onOpenChange={setEditOpen}
@@ -120,27 +185,34 @@ export function StaffProfilePage() {
             </p>
             <p>الجوال: <span dir="ltr">{member.phone ?? "—"}</span></p>
             <p>الواتساب: <span dir="ltr">{member.whatsapp ?? "—"}</span></p>
-            <p>
-              النوع: <Badge tone="neutral">{STAFF_TYPE_LABELS[member.staff_type] ?? member.staff_type}</Badge>
+            <p className="flex flex-wrap items-center gap-2">
+              الدور:
+              <Badge tone="neutral">
+                {STAFF_TYPE_LABELS[member.staff_type] ?? member.staff_type}
+              </Badge>
+              {full?.contractStatus && (
+                <Badge tone={CONTRACT_STATUS_TONE[full.contractStatus]}>
+                  {CONTRACT_STATUS_LABELS[full.contractStatus] ?? full.contractStatus}
+                </Badge>
+              )}
             </p>
             <p>
               الحالة: {member.is_active ? "نشط" : "موقوف"}
               {member.notes ? ` — ${member.notes}` : ""}
             </p>
-            {canReadPayroll && summaryQuery.data && (
-              <p className="pt-2 text-slate-500">
-                أجر هذا الملف يظهر في قسم المستحقات؛ تعديل طريقة الأجر وسعرها من زر «تعديل»
-                {canManage ? "" : " (يتطلب صلاحية إدارة الفريق)"} عبر صفحة الفريق.
-              </p>
-            )}
           </CardBody>
         </Card>
 
         <Card>
           <CardBody>
-            <h2 className="mb-2 text-lg font-black text-slate-900">
+            <h2 className="mb-2 flex items-center gap-2 text-lg font-black text-slate-900">
+              <ScanFace className="h-5 w-5 text-brand-700" />
               التسجيل البيومتري (الحضور بمطابقة الوجه)
             </h2>
+            <p className="mb-3 text-sm leading-6 text-slate-500">
+              يُستعمل لمطابقة الحضور في المناسبات فقط — لا يرتبط التسجيل بأي
+              دوام بمواعيد ثابتة.
+            </p>
             <FaceEnrollmentPanel
               orgId={orgId}
               staffMemberId={staffId}
@@ -152,9 +224,94 @@ export function StaffProfilePage() {
 
       {canReadPayroll ? (
         <>
+          {full && (
+            <Card>
+              <CardBody className="space-y-4">
+                <h2 className="flex items-center gap-2 text-lg font-black text-slate-900">
+                  <Briefcase className="h-5 w-5 text-brand-700" />
+                  بيانات التوظيف والعقد
+                </h2>
+                {hr ? (
+                  <>
+                    <div className="grid gap-x-8 gap-y-1 text-sm leading-8 text-slate-700 sm:grid-cols-2">
+                      <p>
+                        المسمى الوظيفي:{" "}
+                        <b>{full.jobTitle ?? "غير مسجل"}</b>
+                      </p>
+                      <p>
+                        القسم: <b>{full.department ?? "غير مسجل"}</b>
+                      </p>
+                      <p>
+                        تاريخ الالتحاق:{" "}
+                        <b>{full.hireDate ? humanDate(full.hireDate) : "غير مسجل"}</b>
+                      </p>
+                      <p>
+                        حالة العقد:{" "}
+                        <b>
+                          {full.contractStatus
+                            ? (CONTRACT_STATUS_LABELS[full.contractStatus] ??
+                              full.contractStatus)
+                            : "غير مسجل"}
+                        </b>
+                      </p>
+                      <p>
+                        الجنسية: <b>{full.nationality ?? "غير مسجلة"}</b>
+                      </p>
+                      <p>
+                        تاريخ الميلاد:{" "}
+                        <b>{full.birthDate ? humanDate(full.birthDate) : "غير مسجل"}</b>
+                      </p>
+                      <p>
+                        هاتف الطوارئ:{" "}
+                        <b dir="ltr">{full.emergencyPhone ?? "غير مسجل"}</b>
+                      </p>
+                      <p>
+                        الآيبان:{" "}
+                        <b dir="ltr" className="break-all">
+                          {full.iban ?? "غير مسجل"}
+                        </b>
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-8">
+                      <p className="mb-1 font-black text-slate-800">
+                        تواريخ المستندات (جدّد قبل الانتهاء)
+                      </p>
+                      <ExpiryNote
+                        label="البطاقة المدنية"
+                        value={full.civilIdExpiresOn}
+                      />
+                      <ExpiryNote
+                        label="بطاقة التأمين الصحي"
+                        value={full.healthCardExpiresOn}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-slate-500">
+                    لم تُسجَّل بيانات توظيف إضافية بعد — استخدم «تعديل بيانات
+                    العضو» لإضافتها.
+                  </p>
+                )}
+              </CardBody>
+            </Card>
+          )}
+
+          <Card>
+            <CardBody className="space-y-3">
+              <h2 className="flex items-center gap-2 text-lg font-black text-slate-900">
+                <CalendarDays className="h-5 w-5 text-brand-700" />
+                سجل الإجازات والغياب
+              </h2>
+              <LeavesPanel
+                orgId={orgId}
+                memberId={staffId}
+                canManage={canManage}
+              />
+            </CardBody>
+          </Card>
+
           <Card>
             <CardBody>
-              <h2 className="mb-2 text-lg font-black text-slate-900">الملخص المالي</h2>
               <h2 className="mb-2 text-lg font-black text-slate-900">الملخص المالي</h2>
               {!summaryQuery.data ? (
                 <p className="text-sm text-slate-500">
@@ -175,7 +332,6 @@ export function StaffProfilePage() {
 
           <Card>
             <CardBody>
-              <h2 className="mb-2 text-lg font-black text-slate-900">سجل العمليات المالية</h2>
               <h2 className="mb-2 text-lg font-black text-slate-900">سجل العمليات المالية</h2>
               {staffForFinance && (
                 <HostFinanceSection orgId={orgId} staff={staffForFinance} rows={staffRows} />
@@ -234,12 +390,11 @@ export function StaffProfilePage() {
 
           <Card>
             <CardBody>
-              <h2 className="mb-2 text-lg font-black text-slate-900">المناسبات المسجلة (مستحقات الحضور)</h2>
               <h2 className="mb-2 text-lg font-black text-slate-900">
                 المناسبات المسجلة (مستحقات الحضور)
               </h2>
               {staffRows.length === 0 ? (
-                <p className="text-sm text-slate-500">لا مناسبات مسجلة لهذا المضيف بعد.</p>
+                <p className="text-sm text-slate-500">لا مناسبات مسجلة لهذا العضو بعد.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[640px] text-sm">
@@ -282,9 +437,9 @@ export function StaffProfilePage() {
           </Card>
         </>
       ) : (
-        <Card className="bg-slate-50 p-5 text-sm text-slate-600">
-          البيانات المالية (المستحقات، السلف، الصرف) تظهر لحسابات الرواتب فقط. هذا الملف يعرض
-          الهوية وحالة التسجيل فقط لحسابك.
+        <Card className="bg-slate-50 p-5 text-sm leading-7 text-slate-600">
+          البيانات المالية وملف التوظيف الكامل (العقد، المستندات، الإجازات) تظهر
+          لحسابات الرواتب فقط. هذا الملف يعرض الهوية وحالة التسجيل فقط لحسابك.
         </Card>
       )}
     </div>
@@ -323,7 +478,7 @@ function BackLink() {
       className="inline-flex items-center gap-1 text-sm font-bold text-brand-700 hover:text-brand-900"
     >
       <ArrowRight className="h-4 w-4" />
-      رجوع إلى الفريق
+      رجوع إلى الموارد البشرية
     </Link>
   );
 }
