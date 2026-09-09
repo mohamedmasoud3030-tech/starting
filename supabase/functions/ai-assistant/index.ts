@@ -145,7 +145,7 @@ function contextSummary(context: ChatContext): string {
   return parts.join("\n");
 }
 
-function systemPrompt(context: ChatContext): string {
+function systemPrompt(): string {
   return [
     `KB version: ${HOSPITALITY_KB_VERSION}.`,
     PERSONA,
@@ -198,7 +198,7 @@ async function handleChat(body: Record<string, unknown>): Promise<Response> {
   });
 
   const out = await fetchGemini(CHAT_MODEL, {
-    systemInstruction: { parts: [{ text: systemPrompt(context) }] },
+    systemInstruction: { parts: [{ text: systemPrompt() }] },
     contents,
     generationConfig: { temperature: 0.4, maxOutputTokens: 500 },
   });

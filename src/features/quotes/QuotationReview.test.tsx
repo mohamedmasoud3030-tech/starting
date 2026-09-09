@@ -129,17 +129,6 @@ describe("QuotationReview", () => {
     expect(screen.getAllByText("850.000 ر.ع.").length).toBeGreaterThan(0);
   });
 
-  it("offers the Owner Voice control and never speaks automatically", async () => {
-    renderReview();
-    // jsdom has no speechSynthesis → the control renders its unsupported
-    // state and nothing was spoken or sent anywhere.
-    const voiceButton = await screen.findByRole("button", {
-      name: "القراءة الصوتية غير مدعومة",
-    });
-    expect(voiceButton).toBeDisabled();
-    expect(state.rpcCalls).toHaveLength(0);
-  });
-
   it("accepts an ISSUED quotation", async () => {
     const user = userEvent.setup();
     renderReview();

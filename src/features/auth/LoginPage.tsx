@@ -1,6 +1,15 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { CheckCircle2, Eye, EyeOff } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  Mail,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { Button } from "@/components/ui/Button";
@@ -33,6 +42,18 @@ const CAPABILITIES: ReadonlyArray<{ title: string; detail: string }> = [
   },
 ];
 
+/** Small brand mark used on both sides of the split screen. */
+function BrandMark({ className }: { className?: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`flex flex-none items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-brand-900 text-white shadow-card-lg ring-1 ring-white/20 ${className ?? ""}`}
+    >
+      <Sparkles className="h-1/2 w-1/2" />
+    </div>
+  );
+}
+
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -57,53 +78,49 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-slate-50 px-4 py-8 sm:py-10">
-      <div className="w-full max-w-5xl">
-        <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
-          {/* Product introduction: what it is, who it serves, how access works. */}
-          <section aria-label="عن النظام" className="text-center lg:text-right">
-            <div
-              aria-hidden="true"
-              className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-700 text-xl font-bold text-white sm:h-16 sm:w-16 sm:text-2xl lg:mx-0"
-            >
-              ض
+    <div className="flex min-h-dvh bg-white lg:bg-transparent">
+      {/* Sign-in form — the single primary action. Sits on the leading side in
+          RTL so the owner starts typing immediately, without hunting. */}
+      <main className="relative flex flex-1 items-center justify-center overflow-hidden px-4 py-8 sm:px-8 lg:px-12">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-32 -start-32 h-96 w-96 rounded-full bg-brand-100/60 blur-3xl lg:bg-brand-100/80"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-40 -end-24 h-[26rem] w-[26rem] rounded-full bg-sky-100/70 blur-3xl"
+        />
+
+        <div className="relative w-full max-w-md">
+          {/* Logo + product name — always visible. */}
+          <div className="mb-6 flex items-center gap-3 lg:mb-8">
+            <BrandMark className="h-12 w-12" />
+            <div className="leading-tight">
+              <p className="text-lg font-black text-slate-900">
+                نظام إدارة الضيافة
+              </p>
+              <p className="text-sm text-slate-500">
+                عملياتك من عرض السعر حتى الربح الفعلي
+              </p>
             </div>
-            <h1 className="text-2xl font-black leading-tight text-slate-900 sm:text-3xl">
-              نظام إدارة الضيافة
-            </h1>
-            <p className="mx-auto mt-3 max-w-md text-base leading-7 text-slate-600 sm:text-lg lg:mx-0">
-              حوّل طلب العميل إلى مناسبة منفَّذة ومغلقة وربحية — من عرض السعر
-              حتى الإغلاق وحساب الربح الفعلي.
-            </p>
+          </div>
 
-            <ul className="mx-auto mt-6 hidden max-w-md space-y-3 text-right sm:block lg:mx-0">
-              {CAPABILITIES.map((capability) => (
-                <li key={capability.title} className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
-                  <div>
-                    <p className="font-bold text-slate-800">{capability.title}</p>
-                    <p className="text-base text-slate-500">{capability.detail}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
+          <div className="overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-card-lg">
+            <div className="h-1.5 bg-gradient-to-l from-brand-900 via-brand-600 to-gold-400" />
 
-            <p className="mx-auto mt-6 max-w-md text-base leading-7 text-slate-500 lg:mx-0">
-              مصمَّم لمكاتب خدمات الضيافة والمناسبات في سلطنة عُمان — أعراس،
-              عزاء، مجالس، فعاليات.
-            </p>
+            <div className="p-6 sm:p-8">
+              <h1 className="text-2xl font-black leading-tight text-slate-900 sm:text-[1.7rem]">
+                مرحباً بعودتك
+              </h1>
+              <p className="mt-2 text-base leading-7 text-slate-600">
+                سجّل الدخول لتدير مناسباتك وعملياتك اليوم من مكان واحد.
+              </p>
 
-            <p className="mx-auto mt-3 max-w-md rounded-xl border border-slate-200 bg-white px-4 py-3 text-base leading-7 text-slate-600 lg:mx-0">
-              لديك حساب؟ سجّل الدخول. مستخدم جديد؟ أنشئ حسابك ثم منشأتك الأولى.
-            </p>
-          </section>
-
-          {/* Sign-in form — the single primary action. */}
-          <div className="mx-auto w-full max-w-md lg:max-w-none">
-            <h2 className="sr-only">تسجيل الدخول</h2>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
               {!isSupabaseConfigured && (
-                <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-base leading-7 text-amber-800">
+                <div
+                  role="alert"
+                  className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-base leading-7 text-amber-800"
+                >
                   النظام غير مهيأ بعد. يرجى ضبط إعدادات الاتصال في ملف البيئة (
                   <span dir="ltr" className="font-mono">
                     .env
@@ -112,24 +129,35 @@ export function LoginPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="mt-6 space-y-5">
                 <Field label="البريد الإلكتروني" htmlFor="email" required>
-                  <Input
-                    id="email"
-                    type="email"
-                    dir="ltr"
-                    autoComplete="email"
-                    inputMode="email"
-                    placeholder="name@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoFocus
-                  />
+                  <div className="relative">
+                    <Mail
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+                    />
+                    <Input
+                      id="email"
+                      type="email"
+                      dir="ltr"
+                      autoComplete="email"
+                      inputMode="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      autoFocus
+                      className="ps-12"
+                    />
+                  </div>
                 </Field>
 
                 <Field label="كلمة المرور" htmlFor="password" required>
                   <div className="relative">
+                    <LockKeyhole
+                      aria-hidden="true"
+                      className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+                    />
                     <Input
                       id="password"
                       dir="ltr"
@@ -139,13 +167,15 @@ export function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="ps-14"
+                      className="ps-12 pe-14"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
-                      className="absolute start-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100"
+                      aria-label={
+                        showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"
+                      }
+                      className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
                     >
                       {showPassword ? (
                         <EyeOff className="h-5 w-5" aria-hidden="true" />
@@ -159,7 +189,7 @@ export function LoginPage() {
                 {error && (
                   <div
                     role="alert"
-                    className="rounded-xl border border-red-200 bg-red-50 p-3 text-base font-semibold leading-7 text-red-700"
+                    className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-base font-semibold leading-7 text-red-700"
                   >
                     {error}
                   </div>
@@ -171,26 +201,111 @@ export function LoginPage() {
                   disabled={submitting || !isSupabaseConfigured}
                   className="w-full"
                 >
-                  {submitting ? "جارٍ الدخول..." : "دخول"}
+                  {submitting ? (
+                    "جارٍ الدخول..."
+                  ) : (
+                    <>
+                      دخول
+                      <ArrowLeft className="h-5 w-5 rotate-180" aria-hidden="true" />
+                    </>
+                  )}
                 </Button>
               </form>
-            </div>
-            <div className="mt-4 space-y-2 text-center text-base">
-              <p className="text-slate-500">
-                ليس لديك حساب؟{" "}
-                <Link to="/signup" className="font-bold text-brand-700">
-                  أنشئ حساباً الآن
-                </Link>
-              </p>
-              <p>
-                <Link to="/forgot-password" className="font-bold text-slate-500 hover:text-slate-700">
+
+              <div className="mt-6 space-y-3 border-t border-slate-100 pt-5 text-center text-base">
+                <p className="text-slate-500">
+                  ليس لديك حساب؟{" "}
+                  <Link
+                    to="/signup"
+                    className="font-bold text-brand-700 underline-offset-4 hover:underline"
+                  >
+                    أنشئ حساباً الآن
+                  </Link>
+                </p>
+                <Link
+                  to="/forgot-password"
+                  className="inline-flex items-center gap-1.5 font-bold text-slate-500 transition-colors hover:text-slate-800"
+                >
                   نسيت كلمة المرور؟
                 </Link>
-              </p>
+              </div>
             </div>
           </div>
+
+          <p className="mt-5 flex items-center justify-center gap-1.5 text-sm text-slate-400">
+            <ShieldCheck className="h-4 w-4 text-brand-500" aria-hidden="true" />
+            اتصال مشفّر وبيانات كل منشأة معزولة تماماً
+          </p>
         </div>
-      </div>
+      </main>
+
+      {/* Product introduction: what it is, who it serves (desktop panel). */}
+      <aside
+        aria-label="عن النظام"
+        className="relative hidden w-[44%] flex-none flex-col justify-between overflow-hidden bg-gradient-to-br from-brand-950 via-brand-900 to-brand-700 p-10 text-white xl:p-14 lg:flex"
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-24 -end-24 h-80 w-80 rounded-full bg-gold-400/10 blur-2xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-32 -start-20 h-96 w-96 rounded-full bg-brand-400/15 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0)",
+            backgroundSize: "26px 26px",
+          }}
+        />
+
+        <div className="relative flex items-center gap-3">
+          <BrandMark className="h-12 w-12 bg-white/10 ring-white/15" />
+          <p className="text-lg font-black tracking-tight text-white">
+            الضيافة والمناسبات
+          </p>
+        </div>
+
+        <div className="relative">
+          <h2 className="text-3xl font-black leading-[1.35] xl:text-[2.6rem] xl:leading-[1.3]">
+            من طلب العميل
+            <br />
+            إلى مناسبة رابحة <span className="text-gold-300">منفَّذة ومغلقة</span>
+          </h2>
+          <p className="mt-5 max-w-md text-lg leading-8 text-brand-50/85">
+            حوّل طلب العميل إلى مناسبة منفَّذة ومغلقة وربحية — من عرض السعر
+            حتى الإغلاق وحساب الربح الفعلي.
+          </p>
+
+          <ul className="mt-8 grid grid-cols-2 gap-3">
+            {CAPABILITIES.map((capability) => (
+              <li
+                key={capability.title}
+                className="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur-sm"
+              >
+                <CheckCircle2
+                  className="h-5 w-5 text-gold-300"
+                  aria-hidden="true"
+                />
+                <p className="mt-2.5 font-bold leading-6 text-white">
+                  {capability.title}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-brand-100/80">
+                  {capability.detail}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="relative border-t border-white/10 pt-5 text-base leading-7 text-brand-100/80">
+          مصمَّم لمكاتب خدمات الضيافة والمناسبات في سلطنة عُمان — أعراس، عزاء،
+          مجالس، وفعاليات.
+        </p>
+      </aside>
     </div>
   );
 }
