@@ -70,7 +70,9 @@ describe("AssistantLauncher", () => {
 
     await user.click(screen.getByRole("button", { name: /فتح مساعد/ }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText(/الشريك التشغيلي/)).toBeInTheDocument();
+    expect(screen.getByText(/مساعدتك في عمليات/)).toBeInTheDocument();
+    // The empty state greets warmly instead of a dry "scope" paragraph.
+    expect(screen.getByText(/أنا لينا/)).toBeInTheDocument();
 
     const input = screen.getByRole("textbox", { name: "الرسالة" });
     await user.type(input, "ما أهم شيء اليوم؟");

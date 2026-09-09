@@ -1,5 +1,6 @@
 {
-  "name": "نظام إدارة الضيافة",
+  "id": "/",
+  "name": "نظام إدارة الضيافة والمناسبات",
   "short_name": "الضيافة",
   "description": "إدارة عمليات الضيافة والمناسبات في سلطنة عُمان",
   "lang": "ar",
@@ -7,8 +8,15 @@
   "start_url": "/home",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#f8fafc",
   "theme_color": "#0f766e",
+  "categories": ["business", "productivity"],
+  "prefer_related_applications": false,
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
   "icons": [
     {
       "src": "/pwa-192.png",
@@ -20,7 +28,13 @@
       "src": "/pwa-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
@@ -28,6 +42,11 @@
       "name": "المناسبات",
       "short_name": "المناسبات",
       "url": "/events"
+    },
+    {
+      "name": "المطاعم المتعاقدة",
+      "short_name": "المطاعم",
+      "url": "/procurement/restaurants"
     },
     {
       "name": "العملاء",

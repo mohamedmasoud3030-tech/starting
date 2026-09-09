@@ -32,13 +32,33 @@ function friendlyFirstName(fullName: string | null | undefined): string | null {
   return first && first.length > 0 ? first : null;
 }
 
+/** Polite salutation: «يا أستاذ يعقوب» — once, not repeated. */
+function buildSalutation(firstName: string | null): string {
+  return firstName ? `أستاذ ${firstName}` : "أستاذ";
+}
+
 /** Spoken + shown greeting when «لينا» is opened for the first time. */
 function buildWelcomeText(firstName: string | null): string {
-  const intro = "يا هلا! أنا «لينا»، مساعدتك الشخصية في نظام الضيافة والمناسبات.";
   if (!firstName) {
-    return `${intro} اسألني عن المناسبات أو الحجوزات، أو كلّمني بصوتك، وأنا معك خطوة بخطوة.`;
+    return "يا هلا! أنا لينا، جاهزة أساعدك في مناسباتك وحجوزاتك.";
   }
-  return `يا هلا ${firstName}! أنا «لينا»، مساعدتك الشخصية. اسألني عن مناسباتك أو حجوزات المطاعم، أو كلّمني بصوتك، وأنا معك خطوة بخطوة.`;
+  return `يا هلا ${buildSalutation(firstName)}! أنا لينا، جاهزة أساعدك في مناسباتك وحجوزاتك.`;
+}
+
+/** Make a reply read naturally when spoken aloud: strip markdown/list marks,
+ *  guillemets, Latin event codes and stray punctuation that make TTS pause
+ *  oddly or "cut" mid-sentence. */
+function toSpokenText(text: string): string {
+  return text
+    .replace(/[«»"“”‘’*_`#]/g, "")
+    .replace(/EV-\d{4}-\d+/gi, "")
+    .replace(/^[\s]*[-•▪]\s*/gm, "")
+    .replace(/^\s*\d+[\.\)]\s*/gm, "")
+    .replace(/—/g, "، ")
+    .replace(/\.{2,}/g, ".")
+    .replace(/\s*\n+\s*/g, ". ")
+    .replace(/[ ]{2,}/g, " ")
+    .trim();
 }
 
 /**
@@ -183,6 +203,10 @@ export function AssistantLauncher() {
     async (text: string) => {
       const trimmed = text?.trim();
       if (!trimmed) return;
+      // Speak a cleaned, natural-sounding version (no bullets/guillemets/
+      // event codes that make TTS stumble), while the panel still shows the
+      // original formatted text.
+      const spoken = toSpokenText(trimmed) || trimmed;
       const el = audioElRef.current;
       el?.pause();
       voice.stop();
@@ -199,14 +223,14 @@ export function AssistantLauncher() {
           return;
         }
         // Cached clip failed to decode/play → local voice.
-        speakLocally(trimmed);
+        speakLocally(spoken);
         return;
       }
 
       // 2) Feminine cloud voice — unless today's provider quota is spent.
       const cloudAllowed = Date.now() >= cloudBlockedUntilRef.current;
       if (cloudAllowed) {
-        const outcome = await synthesizeSpeech(trimmed);
+        const outcome = await synthesizeSpeech(spoken);
         if (outcome.kind === "ok") {
           cache.set(trimmed, { audioB64: outcome.audioB64, mimeType: outcome.mimeType });
           if (cache.size > 5) {
@@ -218,7 +242,7 @@ export function AssistantLauncher() {
             pendingSpeakRef.current = null;
             return;
           }
-          speakLocally(trimmed);
+          speakLocally(spoken);
           return;
         }
         if (outcome.kind === "quota") {
@@ -229,7 +253,7 @@ export function AssistantLauncher() {
       }
 
       // 3) Browser-local feminine Arabic voice as the resilient fallback.
-      speakLocally(trimmed);
+      speakLocally(spoken);
     },
     [voice, playCloudClip, speakLocally],
   );

@@ -6,7 +6,7 @@
   "description": "Arabic-first hospitality operations platform for event-service businesses in the Sultanate of Oman.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/write-version.mjs",
     "preview": "vite preview",
     "smoke:production": "node scripts/production_smoke.mjs",
     "typecheck": "tsc --noEmit",

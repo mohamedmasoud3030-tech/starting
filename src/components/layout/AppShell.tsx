@@ -7,6 +7,7 @@ import { AssistantLauncher } from "@/features/assistant/AssistantLauncher";
 import { DesktopSidebar } from "./DesktopSidebar";
 import { MobileNav } from "./MobileNav";
 import { OfflineBanner } from "./OfflineBanner";
+import { UpdateBanner } from "@/pwa/UpdateBanner";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { visibleNavGroups } from "./navConfig";
@@ -42,6 +43,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         تجاوز إلى المحتوى
       </a>
       <OfflineBanner />
+      {/* إشعار «يتوفر تحديث جديد» — يظهر على أي صفحة مفتوحة عند نشر إصدار أحدث. */}
+      <UpdateBanner />
 
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
         <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 md:px-6">

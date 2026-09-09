@@ -51,6 +51,9 @@
     font-family: var(--font-sans);
     /* Generous Arabic line rhythm — key to senior-eye reading comfort. */
     line-height: 1.75;
+    /* Cairo Medium for body copy: noticeably clearer to older eyes on
+       backlit screens than the hairline Regular, without redesigning UI. */
+    font-weight: 500;
     text-rendering: optimizeLegibility;
     background-color: #f8fafc;
     /* Gentle layered tint keeps the app feeling crafted rather than flat,
