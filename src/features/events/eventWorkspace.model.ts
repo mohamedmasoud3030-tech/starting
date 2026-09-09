@@ -149,16 +149,6 @@ export function eventPermissions(
   };
 }
 
-export interface VoiceSummaries {
-  overview: string;
-  pricing: string;
-  payments: string;
-  invoices: string;
-  attendance: string;
-  payroll: string;
-}
-
-/** The tab-specific voice summary used by the Owner Voice button. */
 /**
  * After convert, the quotation keeps `converted_event_id` and does NOT write
  * `event_id` (that column is for quotes issued from an existing event).
@@ -211,22 +201,3 @@ export function jobPathForQuoteStatus(status: string): JobPathStepId {
   return "quote";
 }
 
-export function voiceSummaryForTab(
-  tab: WorkspaceTab,
-  summaries: VoiceSummaries,
-): string {
-  switch (tab) {
-    case "التسعير":
-      return summaries.pricing;
-    case "المدفوعات":
-      return summaries.payments;
-    case "الفواتير":
-      return summaries.invoices;
-    case "الحضور":
-      return summaries.attendance;
-    case "الأجور":
-      return summaries.payroll;
-    default:
-      return summaries.overview;
-  }
-}

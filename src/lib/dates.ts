@@ -85,3 +85,26 @@ export function isoToMuscatWallClock(iso: string): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 }
+
+/** Alias for callers that referred to the operational zone by this name. */
+export const DEFAULT_TIME_ZONE = OPERATIONAL_TIME_ZONE;
+
+/**
+ * True when two ISO instants share the same calendar day in the given zone.
+ * Standalone helper (no speech dependency); used to bucket an event's start
+ * time as "today" in the Oman operational time zone.
+ */
+export function isSameLocalDay(
+  iso: string,
+  reference: Date,
+  timeZone: string = OPERATIONAL_TIME_ZONE,
+): boolean {
+  const dayKey = (value: string | Date) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(typeof value === "string" ? new Date(value) : value);
+  return dayKey(iso) === dayKey(reference);
+}

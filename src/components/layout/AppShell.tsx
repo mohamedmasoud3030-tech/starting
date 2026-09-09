@@ -3,6 +3,7 @@ import { LogOut } from "lucide-react";
 import { useRouterState } from "@tanstack/react-router";
 import { useAuth } from "@/app/authContext";
 import { ToastProvider } from "@/components/ui/Toast";
+import { AssistantLauncher } from "@/features/assistant/AssistantLauncher";
 import { DesktopSidebar } from "./DesktopSidebar";
 import { MobileNav } from "./MobileNav";
 import { OfflineBanner } from "./OfflineBanner";
@@ -89,6 +90,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <MobileNav groups={groups} pathname={pathname} orgName={orgName} />
+
+      {/* لينا — المساعد التشغيلي الصوتي للمدير (يُفتح بضغطة، لا يتحدث من تلقاء نفسه). */}
+      <AssistantLauncher />
     </div>
   );
 }

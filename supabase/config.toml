@@ -66,3 +66,7 @@ password_requirements = "letters_digits"
 [auth.email]
 enable_signup = true
 enable_confirmations = false
+
+[functions.ai-assistant]
+enabled = true
+verify_jwt = true

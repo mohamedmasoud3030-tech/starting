@@ -11,8 +11,6 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
-import { buildQuotationVoiceSummary } from "@/features/ownerVoice/screenSummary";
 import { buildDocumentIdentity } from "@/components/documents/documentIdentity";
 import { printDocument } from "@/components/documents/printDocument";
 import { useOrganizationSettings } from "@/features/settings/settings.api";
@@ -188,12 +186,6 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
     return <p>تعذر العثور على عرض السعر.</p>;
   }
 
-  const voiceSummary = buildQuotationVoiceSummary({
-    totalSellingOmr: q.total_selling,
-    guestCount: q.guest_count_snapshot,
-    status: q.status,
-  });
-
   return (
     <div className="space-y-5">
       <Link to="/quotes" className="font-bold text-brand-700">
@@ -205,7 +197,6 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
         description={`${q.quotation_number ?? ""} · مراجعة ${q.revision}`}
         actions={
           <>
-            <OwnerVoiceButton summary={voiceSummary} />
             <Button variant="outline" onClick={() => setPreviewOpen((v) => !v)}>
               <Eye className="h-5 w-5" />
               {previewOpen ? "إخفاء المعاينة" : "معاينة المستند"}

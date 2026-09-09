@@ -96,7 +96,6 @@ export function EventWorkspace() {
     <div className="space-y-5">
       <EventWorkspaceHeader
         event={ev}
-        voiceSummary={ws.voiceSummary}
         canEdit={canEdit}
         onEdit={() => setEditOpen(true)}
       />

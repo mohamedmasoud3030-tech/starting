@@ -2,19 +2,16 @@ import { Link } from "@tanstack/react-router";
 import { Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
 import { EVENT_STATUS_LABELS } from "../eventWorkspace.model";
 import type { EventRow } from "../events.api";
 
-/** Workspace header: back link, event identity, status badge, edit and voice. */
+/** Workspace header: back link, event identity, status badge and edit. */
 export function EventWorkspaceHeader({
   event,
-  voiceSummary,
   canEdit,
   onEdit,
 }: {
   event: EventRow;
-  voiceSummary: string;
   canEdit: boolean;
   onEdit: () => void;
 }) {
@@ -46,7 +43,6 @@ export function EventWorkspaceHeader({
               تعديل البيانات
             </Button>
           )}
-          <OwnerVoiceButton summary={voiceSummary} />
         </div>
       </div>
     </>

@@ -9,13 +9,9 @@ import { useConsumableStock } from "@/features/consumables/consumables.api";
 import { useCustomers } from "@/features/customers/customers.api";
 import { useEvents } from "@/features/events/events.api";
 import { usePackages } from "@/features/packages/packages.api";
-import {
-  DEFAULT_TIME_ZONE,
-  isSameLocalDay,
-} from "@/features/ownerVoice/screenSummary";
+import { DEFAULT_TIME_ZONE, isSameLocalDay } from "@/lib/dates";
 import { useAttendanceGaps } from "@/features/staff/staff.api";
 import {
-  attentionSummaryWhenLoaded,
   buildOperationalDashboard,
   isNewWorkspace,
   settledCount,
@@ -167,15 +163,6 @@ export function useOperationalDashboard() {
     now.toISOString(),
   );
 
-  // Spoken facts only when the facts exist; null hides the voice button
-  // while any source is still loading (see attentionSummaryWhenLoaded).
-  const attentionSummary = attentionSummaryWhenLoaded({
-    loaded: dashboardLoaded,
-    dashboard,
-    attendanceGapCount,
-    canReadFinance,
-  });
-
   /**
    * True only once the events and customers reads have both settled to empty —
    * the exact "first minutes" state a new office starts in. Gated by settled
@@ -200,7 +187,6 @@ export function useOperationalDashboard() {
     readinessFailed,
     attendanceGaps: gaps.data ?? [],
     attendanceGapCount,
-    attentionSummary,
     isNewOrganization,
     canReadFinance,
     canRecordPayment,

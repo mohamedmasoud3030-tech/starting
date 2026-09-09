@@ -15,8 +15,6 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { useCustomers } from "@/features/customers/customers.api";
-import { OwnerVoiceButton } from "@/features/ownerVoice/OwnerVoiceButton";
-import { buildEventsListVoiceSummary } from "@/features/ownerVoice/screenSummary";
 import { muscatWallClockToIso } from "@/lib/dates";
 import { useStableIdempotencyKey } from "@/lib/useStableIdempotencyKey";
 import { orderEvents, type EventListSortMode } from "./eventsListOrder";
@@ -111,9 +109,6 @@ export function EventsPage() {
     }
   }
 
-  const voiceSummary = events.isSuccess
-    ? buildEventsListVoiceSummary({ events: events.data?.rows ?? [] })
-    : null;
   const paginationBar = (
     <PaginationBar
       page={events.page}
@@ -134,7 +129,7 @@ export function EventsPage() {
       <PageHeader
         title="المناسبات"
         description="بعد اعتماد العرض تُنفَّذ المناسبة هنا حتى الإغلاق والتحصيل والربح"
-        actions={<><OwnerVoiceButton summary={voiceSummary} /><Button onClick={() => setOpen(true)}><Plus className="h-5 w-5" />مناسبة جديدة</Button></>}
+        actions={<Button onClick={() => setOpen(true)}><Plus className="h-5 w-5" />مناسبة جديدة</Button>}
       />
 
       <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center">
