@@ -18,18 +18,8 @@ import { useCustomers } from "@/features/customers/customers.api";
 import { muscatWallClockToIso } from "@/lib/dates";
 import { useStableIdempotencyKey } from "@/lib/useStableIdempotencyKey";
 import { orderEvents, type EventListSortMode } from "./eventsListOrder";
-import { arabicError, useCreateEvent, useEventsPage, type EventStatus } from "./events.api";
-
-const labels: Record<EventStatus, string> = {
-  DRAFT: "مسودة", QUOTED: "تم التسعير", CONFIRMED: "مؤكدة", PREPARING: "قيد التجهيز",
-  DISPATCHED: "تم الإرسال", IN_PROGRESS: "جارية", RETURNING: "قيد الإرجاع",
-  CLOSED: "مغلقة", CANCELLED: "ملغاة",
-};
-
-const tones: Record<EventStatus, "neutral" | "brand" | "success" | "warning" | "danger"> = {
-  DRAFT: "neutral", QUOTED: "brand", CONFIRMED: "success", PREPARING: "warning",
-  DISPATCHED: "brand", IN_PROGRESS: "success", RETURNING: "warning", CLOSED: "neutral", CANCELLED: "danger",
-};
+import { arabicError, useCreateEvent, useEventsPage } from "./events.api";
+import { EVENT_STATUS_ARABIC, EVENT_STATUS_TONES } from "@/lib/arabic";
 
 type EventFilter = "ACTIVE" | "UPCOMING" | "CLOSED" | "ALL";
 
@@ -176,7 +166,7 @@ export function EventsPage() {
                   <div >
                     <div className="flex flex-col sm:flex-row items-center gap-3">
                       <p className="truncate text-base font-black text-slate-900">{event.title}</p>
-                      <Badge tone={tones[event.status]} className="md:hidden">{labels[event.status]}</Badge>
+                      <Badge tone={EVENT_STATUS_TONES[event.status]} className="md:hidden">{EVENT_STATUS_ARABIC[event.status]}</Badge>
                     </div>
                     <p className="mt-1 truncate text-sm text-slate-500"><span dir="ltr">{event.event_number}</span> · {customerNames.get(event.customer_id) ?? "عميل"}</p>
                   </div>
@@ -185,7 +175,7 @@ export function EventsPage() {
                     <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-slate-400" />{event.venue_name}</p>
                     <p className="mt-1 flex items-center gap-2"><Users className="h-4 w-4 text-slate-400" />{event.guest_count} ضيف</p>
                   </div>
-                  <Badge tone={tones[event.status]} className="hidden justify-self-end md:inline-flex">{labels[event.status]}</Badge>
+                  <Badge tone={EVENT_STATUS_TONES[event.status]} className="hidden justify-self-end md:inline-flex">{EVENT_STATUS_ARABIC[event.status]}</Badge>
                 </button>
               </li>
             ))}

@@ -384,12 +384,12 @@ export function StaffProfilePage() {
                   <table className="w-full min-w-[640px] text-sm">
                     <thead className="bg-slate-50 text-slate-600">
                       <tr>
-                        <th className="p-2 text-right">المناسبة</th>
-                        <th className="p-2 text-right">عدد الجلسات</th>
-                        <th className="p-2 text-right">المستحق</th>
-                        <th className="p-2 text-right">السلف</th>
-                        <th className="p-2 text-right">المصروف</th>
-                        <th className="p-2 text-right">المتبقي للدفع</th>
+                        <th scope="col" className="p-2 text-right">المناسبة</th>
+                        <th scope="col" className="p-2 text-right">عدد الجلسات</th>
+                        <th scope="col" className="p-2 text-right">المستحق</th>
+                        <th scope="col" className="p-2 text-right">السلف</th>
+                        <th scope="col" className="p-2 text-right">المصروف</th>
+                        <th scope="col" className="p-2 text-right">المتبقي للدفع</th>
                       </tr>
                     </thead>
                     <tbody>

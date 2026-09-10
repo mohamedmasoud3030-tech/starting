@@ -62,7 +62,7 @@ export function OperationsBoard() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="لوحة التشغيل" description="نظرة يومية: اليوم، غداً، ما غير الجاهز، وما ينتظر الإرسال أو الإرجاع" />
+      <PageHeader title="جدول التشغيل" description="نظرة يومية: اليوم، غداً، ما غير الجاهز، وما ينتظر الإرسال أو الإرجاع" />
 
       <div className="grid gap-4 md:grid-cols-2">
         <BoardSection title="مناسبات اليوم" events={today} readinessByEvent={readinessByEvent} emptyText="لا توجد مناسبات اليوم." />

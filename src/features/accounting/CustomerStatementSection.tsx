@@ -102,10 +102,10 @@ export function CustomerStatementSection() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-right">
-                  <th className="p-3 font-bold">التاريخ</th>
-                  <th className="p-3 font-bold">البيان</th>
-                  <th className="p-3 font-bold">التأثير (ر.ع.)</th>
-                  <th className="p-3 font-bold">الرصيد الجاري</th>
+                  <th scope="col" className="p-3 font-bold">التاريخ</th>
+                  <th scope="col" className="p-3 font-bold">البيان</th>
+                  <th scope="col" className="p-3 font-bold">التأثير (ر.ع.)</th>
+                  <th scope="col" className="p-3 font-bold">الرصيد الجاري</th>
                 </tr>
               </thead>
               <tbody>

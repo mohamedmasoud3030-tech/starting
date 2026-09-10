@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { MoneyInput } from "@/components/MoneyInput";
 import { formatOMR, fromDbAmount, parseOMR, parseOptionalOMR, parseQuantityMilli, toOMRString } from "@/lib/money";
+import { QUOTATION_STATUS_ARABIC, QUOTATION_STATUS_TONES } from "@/lib/arabic";
 import type { EventRow, CommercialLine, Quote } from "../events.api";
 import { CommercialLineForm } from "./CommercialLineForm";
 import { pricingTotals } from "./pricingTotals";
@@ -250,7 +251,9 @@ export function PricingTab({
                 <p>{formatOMR(fromDbAmount(q.total_selling))}</p>
               </div>
               <div className="flex items-center gap-2">
-                <Badge>{q.status}</Badge>
+                <Badge tone={QUOTATION_STATUS_TONES[q.status]}>
+                  {QUOTATION_STATUS_ARABIC[q.status] ?? q.status}
+                </Badge>
                 {q.status === "ISSUED" && canCommercial && (
                   <Button
                     onClick={() =>

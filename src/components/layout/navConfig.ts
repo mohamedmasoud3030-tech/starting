@@ -34,21 +34,37 @@ export type NavGroup = {
   items: ReadonlyArray<NavItem>;
 };
 
+/**
+ * Primary navigation, ordered for the office owner's mental model and grouped
+ * to avoid page clutter:
+ *
+ * 1. اليوم            — the daily landing alone, so it is never lost among
+ *                       management screens.
+ * 2. المناسبات         — the operational core (browse / schedule / operations).
+ * 3. المبيعات والعملاء  — sales pipeline and contacts.
+ * 4. المخزون والتوريد   — what the office stocks and buys (catalog, stock,
+ *                       suppliers/orders, contracted restaurants).
+ * 5. الفريق            — team & HR.
+ * 6. الإدارة والتحليل   — management/financial dashboards, reports and search.
+ * 7. النظام           — organization settings.
+ *
+ * The "لوحة" naming clash (المتابعة/الإدارة/التشغيل) was removed so a 50+
+ * operator can tell the daily landing (اليوم) from the management dashboard
+ * (لوحة الإدارة) at a glance. Every target and capability flag is unchanged —
+ * only labels and grouping differ, so active-state detection, mobile primaries
+ * and role filtering all keep working.
+ */
 export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
-    label: "الرئيسية",
-    items: [
-      { to: "/home", label: "لوحة المتابعة" },
-      { to: "/dashboard", label: "لوحة الإدارة", financial: true },
-      { to: "/search", label: "البحث" },
-    ],
+    label: "اليوم",
+    items: [{ to: "/home", label: "لوحة اليوم" }],
   },
   {
     label: "المناسبات",
     items: [
-      { to: "/events", label: "كل المناسبات" },
+      { to: "/events", label: "المناسبات" },
       { to: "/calendar", label: "التقويم" },
-      { to: "/operations", label: "لوحة التشغيل" },
+      { to: "/operations", label: "جدول التشغيل" },
     ],
   },
   {
@@ -60,17 +76,13 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     ],
   },
   {
-    label: "التشغيل والمخزن",
+    label: "المخزون والتوريد",
     items: [
       { to: "/catalog", label: "دليل الخدمات والمواد" },
       { to: "/consumables", label: "مخزون المواد" },
-    ],
-  },
-  {
-    label: "المشتريات",
-    items: [
       // Every procurement read model is hidden from non-cost roles and every
-      // S5 command requires OWNER/MANAGER, so this surface is cost-role-only.
+      // S5 command requires OWNER/MANAGER, so these are cost-role-only items
+      // shown inside the supply group.
       { to: "/procurement", label: "الموردون وأوامر الشراء", financial: true },
       {
         to: "/procurement/restaurants",
@@ -90,9 +102,11 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     label: "الإدارة والتحليل",
     items: [
+      { to: "/dashboard", label: "لوحة الإدارة", financial: true },
       { to: "/reports", label: "التقارير", financial: true },
       { to: "/accounting", label: "المحاسبة", financial: true },
       { to: "/integrity", label: "مركز السلامة", financial: true },
+      { to: "/search", label: "البحث" },
     ],
   },
   {

@@ -16,6 +16,7 @@ import { printDocument } from "@/components/documents/printDocument";
 import { useOrganizationSettings } from "@/features/settings/settings.api";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import { PRICING_METHOD_LABELS } from "@/lib/domain";
+import { QUOTATION_STATUS_ARABIC, QUOTATION_STATUS_TONES } from "@/lib/arabic";
 import { InlineError } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { QuotationDocument } from "./QuotationDocument";
@@ -160,25 +161,6 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
     }
   }
 
-  const statusLabel: Record<string, string> = {
-    DRAFT: "مسودة",
-    ISSUED: "مُرسل",
-    EXPIRED: "منتهي الصلاحية",
-    ACCEPTED: "معتمد",
-    REJECTED: "مرفوض",
-    CONVERTED: "محوّل لمناسبة",
-    CANCELLED: "ملغي",
-    SUPERSEDED: "مستبدل",
-  };
-
-  function statusTone(): "neutral" | "success" | "warning" | "danger" | "brand" {
-    if (q?.status === "ACCEPTED") return "success";
-    if (q?.status === "CONVERTED") return "brand";
-    if (q?.status === "REJECTED" || q?.status === "CANCELLED") return "danger";
-    if (q?.status === "DRAFT" || q?.status === "EXPIRED" || q?.status === "SUPERSEDED") return "neutral";
-    return "warning";
-  }
-
   if (quote.isLoading || lines.isLoading) {
     return <LoadingState label="جارٍ التحميل…" />;
   }
@@ -205,8 +187,8 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
               <Printer className="h-5 w-5" />
               طباعة / حفظ PDF
             </Button>
-            <Badge tone={statusTone()}>
-              {statusLabel[q.status] ?? q.status}
+            <Badge tone={QUOTATION_STATUS_TONES[q.status] ?? "neutral"}>
+              {QUOTATION_STATUS_ARABIC[q.status] ?? q.status}
             </Badge>
           </>
         }

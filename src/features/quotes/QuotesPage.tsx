@@ -13,37 +13,17 @@ import { Input } from "@/components/ui/Input";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { PermissionState } from "@/components/ui/PermissionState";
 import { JobPath } from "@/components/ui/JobPath";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { QUOTATION_STATUS_ARABIC, QUOTATION_STATUS_TONES } from "@/lib/arabic";
 import {
   arabicQuotationError,
   useCancelQuotationDraft,
   useQuotations,
   type QuotationStatus,
 } from "./quotes.api";
-
-const STATUS_LABELS: Record<QuotationStatus, string> = {
-  DRAFT: "مسودة",
-  ISSUED: "مُرسل",
-  EXPIRED: "منتهي الصلاحية",
-  ACCEPTED: "معتمد",
-  REJECTED: "مرفوض",
-  CONVERTED: "محوّل لمناسبة",
-  CANCELLED: "ملغي",
-  SUPERSEDED: "مستبدل",
-};
-
-const STATUS_TONES: Record<QuotationStatus, "neutral" | "success" | "warning" | "danger" | "brand"> = {
-  DRAFT: "neutral",
-  ISSUED: "warning",
-  EXPIRED: "neutral",
-  ACCEPTED: "success",
-  REJECTED: "danger",
-  CONVERTED: "brand",
-  CANCELLED: "danger",
-  SUPERSEDED: "neutral",
-};
 
 export function QuotesPage() {
   const {
@@ -72,9 +52,7 @@ export function QuotesPage() {
   // Entry: managing (drafts) or issuing (accept/convert) both have work here.
   if (!canManageCommercial && !canIssueQuotation) {
     return (
-      <p className="rounded-xl bg-amber-50 p-4 font-bold text-amber-800">
-        عروض الأسعار متاحة للمالك والمدير فقط.
-      </p>
+      <PermissionState title="عروض الأسعار متاحة للمالك والمدير فقط." />
     );
   }
 
@@ -188,7 +166,7 @@ export function QuotesPage() {
                         <p className="text-sm text-slate-500">{q.prospect_company}</p>
                       )}
                     </div>
-                    <Badge tone={STATUS_TONES[q.status]}>{STATUS_LABELS[q.status]}</Badge>
+                    <Badge tone={QUOTATION_STATUS_TONES[q.status]}>{QUOTATION_STATUS_ARABIC[q.status] ?? q.status}</Badge>
                   </div>
                   <div className="mt-4 space-y-1 text-sm text-slate-600">
                     {q.venue_snapshot && <p>📍 {q.venue_snapshot}</p>}

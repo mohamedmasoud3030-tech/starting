@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardBody } from "@/components/ui/Card";
+import {
+  INVOICE_STATUS_ARABIC,
+  QUOTATION_STATUS_ARABIC,
+} from "@/lib/arabic";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import {
   NEXT_ACTION_TAB,
@@ -230,9 +234,9 @@ export function EventCommandCenter({
             )}
             {center.documents.quotation_status && (
               <p className="text-sm text-slate-500">
-                عرض السعر: {center.documents.quotation_status === "ACCEPTED" || center.documents.quotation_status === "CONVERTED" ? "معتمد" : center.documents.quotation_status}
+                عرض السعر: {QUOTATION_STATUS_ARABIC[center.documents.quotation_status] ?? center.documents.quotation_status}
                 {center.documents.invoice_status && (
-                  <> · الفاتورة: {center.documents.invoice_status === "PAID" ? "مدفوعة" : "صادرة"}</>
+                  <> · الفاتورة: {INVOICE_STATUS_ARABIC[center.documents.invoice_status] ?? center.documents.invoice_status}</>
                 )}
                 {center.documents.warehouse_sheet_lines > 0 && (
                   <> · أمر تجهيز المخزن: {center.documents.warehouse_sheet_lines} بنداً</>

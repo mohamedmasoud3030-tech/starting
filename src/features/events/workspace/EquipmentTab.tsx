@@ -6,7 +6,27 @@ import { Select } from "@/components/ui/Select";
 import { useAuth } from "@/app/authContext";
 import { useCatalogItems } from "@/features/catalog/catalog.api";
 import { useSaveEquipmentCapacity } from "@/features/warehouse/warehouse.api";
+import { Badge } from "@/components/ui/Badge";
 import type { Capacity, Reservation } from "../events.api";
+
+/**
+ * Arabic labels + tone for the equipment reservation lifecycle. The raw DB
+ * enum (ACTIVE/RELEASED/CANCELLED) must never reach the operator's Arabic UI.
+ */
+const RESERVATION_STATUS_ARABIC: Record<string, string> = {
+  ACTIVE: "محجوز",
+  RELEASED: "مُعاد",
+  CANCELLED: "ملغى",
+};
+
+const RESERVATION_STATUS_TONE: Record<
+  string,
+  "neutral" | "brand" | "success" | "warning" | "danger"
+> = {
+  ACTIVE: "brand",
+  RELEASED: "neutral",
+  CANCELLED: "danger",
+};
 
 /**
  * Equipment tab: reservation form + reservations list, plus (defect F11) the
@@ -159,8 +179,11 @@ export function EquipmentTab({
             {capacities.find((c) => c.id === r.equipment_capacity_id)?.catalog_items?.name ??
               capacities.find((c) => c.id === r.equipment_capacity_id)?.catalog_item_id}
           </p>
-          <p>
-            {r.quantity} · {r.status}
+          <p className="flex flex-wrap items-center gap-2">
+            {r.quantity}
+            <Badge tone={RESERVATION_STATUS_TONE[r.status] ?? "neutral"}>
+              {RESERVATION_STATUS_ARABIC[r.status] ?? r.status}
+            </Badge>
           </p>
         </Card>
       ))}

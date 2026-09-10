@@ -111,11 +111,11 @@ export function SupplierStatementSection() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-right">
-                  <th className="p-3 font-bold">التاريخ</th>
-                  <th className="p-3 font-bold">البيان</th>
-                  <th className="p-3 font-bold">مدين (ر.ع.)</th>
-                  <th className="p-3 font-bold">دائن (ر.ع.)</th>
-                  <th className="p-3 font-bold">الرصيد المستحق</th>
+                  <th scope="col" className="p-3 font-bold">التاريخ</th>
+                  <th scope="col" className="p-3 font-bold">البيان</th>
+                  <th scope="col" className="p-3 font-bold">مدين (ر.ع.)</th>
+                  <th scope="col" className="p-3 font-bold">دائن (ر.ع.)</th>
+                  <th scope="col" className="p-3 font-bold">الرصيد المستحق</th>
                 </tr>
               </thead>
               <tbody>

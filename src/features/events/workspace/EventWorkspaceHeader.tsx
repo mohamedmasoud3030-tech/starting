@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { EVENT_STATUS_LABELS } from "../eventWorkspace.model";
+import { EVENT_STATUS_ARABIC, EVENT_STATUS_TONES } from "@/lib/arabic";
 import type { EventRow } from "../events.api";
 
 /** Workspace header: back link, event identity, status badge and edit. */
@@ -34,8 +34,8 @@ export function EventWorkspaceHeader({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Badge tone={event.status === "CANCELLED" ? "danger" : "brand"}>
-            {EVENT_STATUS_LABELS[event.status]}
+          <Badge tone={EVENT_STATUS_TONES[event.status] ?? "neutral"}>
+            {EVENT_STATUS_ARABIC[event.status] ?? event.status}
           </Badge>
           {canEdit && (
             <Button variant="outline" size="sm" onClick={onEdit}>

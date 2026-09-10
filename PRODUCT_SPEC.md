@@ -82,12 +82,15 @@ Failed readiness is surfaced as "readiness unavailable", never treated as ready.
 - Lifecycle `DRAFT → QUOTED → CONFIRMED → PREPARING → DISPATCHED →
   IN_PROGRESS → RETURNING → CLOSED`, plus `CANCELLED`; transitions are explicit
   server commands with audit trail (`event_status_history`).
-- Event workspace with 12 tabs: ملخص (overview), التسعير (pricing), الفريق
+- Event workspace with 13 tabs: ملخص (overview), التسعير (pricing), الفريق
   (team), المعدات (equipment), المخزن (warehouse), المواد (consumables),
   المشتريات (procurement), المدفوعات (payments), الفواتير (invoices),
-  الحضور (attendance), الأجور (payroll), السجل (history).
-- Tab visibility: المدفوعات/الفواتير/المشتريات require cost-reading roles;
-  الأجور requires payroll roles. **[V]**
+  المالية (finance), الحضور (attendance), الأجور (payroll), السجل (history).
+  Visually grouped into التشغيل والتحضير / المالية / السجل buckets with ملخص
+  pinned (presentation only — tab identities, deep links `?tab=` and role
+  gating unchanged).
+- Tab visibility: المدفوعات/الفواتير/المالية/المشتريات require cost-reading
+  roles; الأجور requires payroll roles. **[V]**
 - Create-event dialog: customer (active only), title, type, guests ≥ 1, start,
   end, venue — all required. **[I]**
 
@@ -181,18 +184,31 @@ writes.
 | --- | --- | --- | --- |
 | `/` | redirect → `/home` | — | |
 | `/login` | Sign in | public | "not configured" state without `.env`; Arabic errors |
-| `/home` | Operational dashboard | all members | truncation warning when event list hits cap |
-| `/events` | Events list | all members | search + status filter + create dialog |
-| `/events/$eventId` | Event workspace | all members (tabs per role) | 12 tabs, readiness banner, history |
+| `/signup` | Create account | public (self-service policy = owner) | provisioning is operational today |
+| `/forgot-password` | Reset password | public | |
+| `/home` | لوحة اليوم (daily ops triage) | all members | today events + readiness + alerts + collection/closure (role) |
+| `/dashboard` | لوحة الإدارة (management) | cost roles (financial) | attention queue + KPIs + grouped metrics |
+| `/events` | المناسبات (events list) | all members | search + status filter + sort + pagination + create dialog |
+| `/events/$eventId` | Event workspace | all members (tabs per role) | **13 tabs**, grouped visually into التشغيل/المالية/السجل buckets + pinned ملخص; readiness banner; `?tab=` deep links |
 | `/quotes` | Quotations list | commercial roles | draft + issued states |
 | `/quotes/new` | New quotation editor | commercial roles | 3 steps + unsaved-edit guard |
 | `/quotes/$quoteId` | Editor (DRAFT) / Review (ISSUED+) | commercial roles | accept → convert flow |
 | `/customers` | Customers | all members | write per customer-write roles |
+| `/customers/$customerId` | Customer detail | all members | relationship + commercial + financial (cost-gated) |
 | `/catalog` | Catalog | all members (write = commercial roles) | cost fields only for cost roles |
-| `/packages` | Package templates | commercial roles (nav-gated) | |
+| `/packages` | Package templates | all members read (write = commercial) | nav shows for all; write gated |
 | `/consumables` | Consumable stock | all members (adjust = OWNER/MANAGER) | |
-| `/procurement` | Suppliers & orders | cost roles only | non-cost roles see a clear message |
-| `/staff` | الفريق والموارد البشرية — one full per-member file (identity, engagement/contract + document expiries), attendance and payroll inside the events lifecycle | all members (payroll + member file = cost/payroll roles) | |
+| `/procurement` | Suppliers & orders | cost roles only | non-cost roles see a clear permission message |
+| `/procurement/restaurants` | Contracted restaurants | cost roles only | contracts + meal bookings |
+| `/staff` | الفريق والموارد البشرية | all members (HR/payroll = payroll.read) | per-member files; attendance/payroll inside the event lifecycle |
+| `/staff/$staffId` | Member HR file | payroll/HR read | full per-member file |
+| `/calendar` | Calendar | all members | month/day view |
+| `/operations` | جدول التشغيل (ops board) | all members | today/tomorrow/not-ready/dispatch-return grouped |
+| `/reports` | Reports | cost roles (financial) | revenue/profit tables |
+| `/accounting` | Accounting | cost roles (financial) | aging + statements |
+| `/integrity` | Center of integrity | cost roles (financial) | read-only anomaly list |
+| `/search` | Global search | all members | grouped results |
+| `/settings` | Organization settings | all members (actions per role) | org identity/settings + team (OWNER) |
 
 All routes are lazy-loaded (`src/routes.lazy.tsx`). **[V]**
 

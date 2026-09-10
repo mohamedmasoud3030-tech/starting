@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { FunctionArgs } from "@/lib/dbTypes";
 import { supabase } from "@/lib/supabase";
 import { callRpc } from "@/lib/rpc";
-import { fromDbAmount } from "@/lib/money";
+import { fromDbAmount, type MilliOMR } from "@/lib/money";
 
 /**
  * Intelligence data layer. Every management figure comes from the canonical
@@ -10,6 +10,19 @@ import { fromDbAmount } from "@/lib/money";
  * Query. No aggregation, no finance math, and no organization scoping is done
  * client-side.
  */
+
+/**
+ * Money that the RPC actually returned, or `null` when it returned nothing.
+ *
+ * `management_metrics` (0071) leaves every financial column NULL unless the
+ * caller holds `cost.visibility` — an absent value therefore means "not
+ * readable", NOT "zero". Coercing it with `fromDbAmount` would render a
+ * fabricated «0.000 ر.ع.» as if it were a verified figure, so the null is
+ * preserved and the surface shows «—» instead.
+ */
+function moneyOrNull(value: unknown): MilliOMR | null {
+  return value == null ? null : fromDbAmount(value as number);
+}
 
 // ---------------------------------------------------------------------------
 // Alerts (E2/E3)
@@ -106,19 +119,20 @@ export function useManagementMetrics(
         quotes_expired: row.quotes_expired as number,
         quotes_rejected: row.quotes_rejected as number,
         quote_conversion_rate: row.quote_conversion_rate as number | null,
-        avg_quote_value: fromDbAmount(row.avg_quote_value as number),
+        avg_quote_value: moneyOrNull(row.avg_quote_value),
         // The SQL aggregates by string `count` (jsonb); sort numerically here
         // so multi-digit usage counts order correctly.
         top_packages: ((row.top_packages ?? []) as Array<{ name: string; count: number }>)
           .sort((a, b) => b.count - a.count),
-        revenue: fromDbAmount(row.revenue as number),
-        collected: fromDbAmount(row.collected as number),
-        outstanding: fromDbAmount(row.outstanding as number),
-        actual_cost: fromDbAmount(row.actual_cost as number),
-        gross_profit: fromDbAmount(row.gross_profit as number),
+        // Null-preserving: an absent figure means "not readable", never zero.
+        revenue: moneyOrNull(row.revenue),
+        collected: moneyOrNull(row.collected),
+        outstanding: moneyOrNull(row.outstanding),
+        actual_cost: moneyOrNull(row.actual_cost),
+        gross_profit: moneyOrNull(row.gross_profit),
         margin_percent: row.margin_percent as number | null,
         financially_open_completed: row.financially_open_completed as number,
-        overdue_balance: fromDbAmount(row.overdue_balance as number),
+        overdue_balance: moneyOrNull(row.overdue_balance),
         ready_to_close: row.ready_to_close as number,
         close_blocked: row.close_blocked as number,
       } satisfies ManagementMetrics;

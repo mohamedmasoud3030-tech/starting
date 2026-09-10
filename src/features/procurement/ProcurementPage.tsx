@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useAuth } from "@/app/authContext";
+import { PermissionState } from "@/components/ui/PermissionState";
 import { useEvents } from "@/features/events/events.api";
 import { useProcurementDataSource } from "./useProcurementDataSource";
 import { ProcurementWorkspace } from "./ProcurementWorkspace";
@@ -30,14 +31,10 @@ export function ProcurementPage() {
 
   if (!canReadCost) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
-        <p className="text-lg font-bold text-slate-600">
-          المشتريات والموردون متاحة للصلاحيات المالية فقط.
-        </p>
-        <p className="mt-2 text-sm text-slate-500">
-          دورك الحالي لا يشمل الاطلاع على بيانات المشتريات.
-        </p>
-      </div>
+      <PermissionState
+        title="المشتريات والموردون متاحة للصلاحيات المالية فقط."
+        description="دورك الحالي لا يشمل الاطلاع على بيانات المشتريات."
+      />
     );
   }
 

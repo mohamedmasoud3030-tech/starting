@@ -105,8 +105,8 @@ export function ManagementDashboard() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi icon={CalendarDays} label="مناسبات اليوم" value={m?.events_today ?? "—"} to="/operations" />
         <Kpi icon={AlertTriangle} label="جاهزية منخفضة" value={m?.events_low_readiness ?? "—"} to="/operations" tone="warning" />
-        <Kpi icon={Wallet} label="متبقٍ (ذمم)" value={m ? formatOMR(m.outstanding ?? 0) : "—"} to="/reports" tone="brand" />
-        <Kpi icon={TrendingUp} label="ربح الفترة" value={m ? formatOMR(m.gross_profit ?? 0) : "—"} to="/reports" tone="brand" />
+        <Kpi icon={Wallet} label="متبقٍ (ذمم)" value={m?.outstanding != null ? formatOMR(m.outstanding) : "—"} to="/reports" tone="brand" />
+        <Kpi icon={TrendingUp} label="ربح الفترة" value={m?.gross_profit != null ? formatOMR(m.gross_profit) : "—"} to="/reports" tone="brand" />
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -152,14 +152,14 @@ export function ManagementDashboard() {
           <Card className="p-4">
             <h3 className="font-black">المالية</h3>
             <dl className="mt-2 space-y-1 text-sm">
-              <Metric label="الإيراد (متجدد)" value={m ? formatOMR(m.revenue ?? 0) : "—"} to="/reports" />
-              <Metric label="المحصل" value={m ? formatOMR(m.collected ?? 0) : "—"} to="/reports" />
-              <Metric label="الذمم" value={m ? formatOMR(m.outstanding ?? 0) : "—"} to="/reports" />
-              <Metric label="التكاليف" value={m ? formatOMR(m.actual_cost ?? 0) : "—"} to="/reports" />
-              <Metric label="الربح" value={m ? formatOMR(m.gross_profit ?? 0) : "—"} to="/reports" />
+              <Metric label="الإيراد (متجدد)" value={m?.revenue != null ? formatOMR(m.revenue) : "—"} to="/reports" />
+              <Metric label="المحصل" value={m?.collected != null ? formatOMR(m.collected) : "—"} to="/reports" />
+              <Metric label="الذمم" value={m?.outstanding != null ? formatOMR(m.outstanding) : "—"} to="/reports" />
+              <Metric label="التكاليف" value={m?.actual_cost != null ? formatOMR(m.actual_cost) : "—"} to="/reports" />
+              <Metric label="الربح" value={m?.gross_profit != null ? formatOMR(m.gross_profit) : "—"} to="/reports" />
               <Metric label="الهامش" value={m?.margin_percent != null ? `${m.margin_percent.toFixed(1)}%` : "—"} to="/reports" />
               <Metric label="مكتملة مفتوحة مالياً" value={m?.financially_open_completed} to="/integrity" tone="warning" />
-              <Metric label="متأخرات" value={m ? formatOMR(m.overdue_balance ?? 0) : "—"} to="/reports" tone="danger" />
+              <Metric label="متأخرات" value={m?.overdue_balance != null ? formatOMR(m.overdue_balance) : "—"} to="/reports" tone="danger" />
             </dl>
           </Card>
         )}

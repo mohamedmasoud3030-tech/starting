@@ -1,5 +1,6 @@
 import type { AppRole } from "@/lib/dbTypes";
 import { ROLE_DEFAULT_CAPABILITIES, type Capability } from "@/lib/capabilities";
+import { EVENT_STATUS_ARABIC } from "@/lib/arabic";
 
 /**
  * Pure domain layer for the Event workspace: tab vocabulary, status/readiness
@@ -54,6 +55,65 @@ const TAB_REQUIREMENT: Partial<Record<WorkspaceTab, keyof EventPermissions>> = {
   المشتريات: "canCost",
 };
 
+/**
+ * A visual grouping of the event tabs, purely for orientation (IA), NOT a
+ * change to any tab identity, role gate, route or deep-link. The workspace's
+ * canonical single tab strip is a long wall of 13 peers — hard for the owner
+ * persona to scan. Grouping keeps the same one-active-tab model but labels
+ * related tabs so the operator reads the tab area as: summary (pinned),
+ * then تشغيل / مالية / سجل buckets.
+ *
+ * `ملخص` is deliberately NOT in any bucket — it is pinned first and always
+ * available. The order of members here is presentation order within a bucket
+ * and may differ from the canonical `WORKSPACE_TABS` lifecycle order.
+ */
+export type WorkspaceTabGroup = {
+  /** Stable machine id (used for testing only). */
+  id: "operations" | "finance" | "history";
+  /** Arabic label shown above/in front of the bucket. */
+  label: string;
+  tabs: ReadonlyArray<WorkspaceTab>;
+};
+
+export const WORKSPACE_TAB_GROUPS: ReadonlyArray<WorkspaceTabGroup> = [
+  {
+    id: "operations",
+    label: "التشغيل والتحضير",
+    tabs: ["التسعير", "الفريق", "المعدات", "المخزن", "المواد", "المشتريات", "الحضور"],
+  },
+  {
+    id: "finance",
+    label: "المالية",
+    tabs: ["المدفوعات", "الفواتير", "الأجور", "المالية"],
+  },
+  {
+    id: "history",
+    label: "السجل",
+    tabs: ["السجل"],
+  },
+];
+
+/** Every non-summary tab must belong to exactly one bucket. */
+export const WORKSPACE_GROUP_TABS: readonly WorkspaceTab[] = WORKSPACE_TAB_GROUPS.flatMap(
+  (g) => g.tabs,
+);
+
+/**
+ * Split the tabs a role can actually use into non-empty labeled buckets,
+ * preserving each group's member order. Empty buckets (e.g. a warehouse role
+ * sees no financial tabs) are dropped so no empty header ever renders.
+ * `ملخص` is handled separately by the view (always pinned when visible).
+ */
+export function groupWorkspaceTabs(
+  visible: readonly WorkspaceTab[],
+): WorkspaceTabGroup[] {
+  const visibleSet = new Set(visible);
+  return WORKSPACE_TAB_GROUPS.map((group) => ({
+    ...group,
+    tabs: group.tabs.filter((t) => visibleSet.has(t)),
+  })).filter((group) => group.tabs.length > 0);
+}
+
 /** The tabs a role can actually use, in canonical order. */
 export function visibleWorkspaceTabs(
   permissions: EventPermissions,
@@ -76,17 +136,13 @@ export function resolveActiveTab(
   return visibleWorkspaceTabs(permissions).includes(tab) ? tab : "ملخص";
 }
 
-export const EVENT_STATUS_LABELS: Record<string, string> = {
-  DRAFT: "مسودة",
-  QUOTED: "تم التسعير",
-  CONFIRMED: "مؤكدة",
-  PREPARING: "قيد التجهيز",
-  DISPATCHED: "تم الإرسال",
-  IN_PROGRESS: "جارية",
-  RETURNING: "قيد الإرجاع",
-  CLOSED: "مغلقة",
-  CANCELLED: "ملغاة",
-};
+/**
+ * Canonical Arabic event-status labels (single source of truth in
+ * `@/lib/arabic`), re-exported under the legacy workspace name so existing
+ * consumers (workspace header, timeline, calendar) keep their import without
+ * duplicating the vocabulary.
+ */
+export const EVENT_STATUS_LABELS: Record<string, string> = EVENT_STATUS_ARABIC;
 
 export interface EventPermissions {
   /** cost.visibility — cost figures, rates, financial statements. */

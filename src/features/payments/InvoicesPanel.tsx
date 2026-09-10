@@ -18,6 +18,7 @@ import { MoneyInput } from "@/components/MoneyInput";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { useToast } from "@/components/ui/toastContext";
 import { formatOMR, type MilliOMR } from "@/lib/money";
+import { INSTALLMENT_STATUS_ARABIC, INSTALLMENT_STATUS_TONES } from "@/lib/arabic";
 import { todayInMuscat } from "@/lib/dates";
 import {
   buildInstallmentSchedule,
@@ -281,8 +282,8 @@ export function InvoicesPanel({
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-black">{KIND_LABELS[r.kind]}</p>
-                        <Badge tone={r.effectiveStatus === "PAID" ? "success" : "warning"}>
-                          {r.effectiveStatus === "PAID" ? "مدفوع" : "مستحق"}
+                        <Badge tone={INSTALLMENT_STATUS_TONES[r.effectiveStatus] ?? "warning"}>
+                          {INSTALLMENT_STATUS_ARABIC[r.effectiveStatus] ?? r.effectiveStatus}
                         </Badge>
                       </div>
                       <p className="mt-1 text-sm text-slate-500">استحقاق {r.dueDate}</p>

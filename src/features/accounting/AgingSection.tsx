@@ -162,12 +162,12 @@ function AgingCard({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-right">
-                <th className="p-3 font-bold">{hasSecondary ? "المناسبة" : "الجهة"}</th>
-                {hasSecondary && <th className="p-3 font-bold">العميل</th>}
-                <th className="p-3 font-bold">المبلغ (ر.ع.)</th>
-                <th className="p-3 font-bold">تاريخ النشأة</th>
-                <th className="p-3 font-bold">العمر</th>
-                <th className="p-3 font-bold">الفئة</th>
+                <th scope="col" className="p-3 font-bold">{hasSecondary ? "المناسبة" : "الجهة"}</th>
+                {hasSecondary && <th scope="col" className="p-3 font-bold">العميل</th>}
+                <th scope="col" className="p-3 font-bold">المبلغ (ر.ع.)</th>
+                <th scope="col" className="p-3 font-bold">تاريخ النشأة</th>
+                <th scope="col" className="p-3 font-bold">العمر</th>
+                <th scope="col" className="p-3 font-bold">الفئة</th>
               </tr>
             </thead>
             <tbody>

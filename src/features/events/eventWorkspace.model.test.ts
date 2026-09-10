@@ -4,12 +4,15 @@ import {
   EVENT_STATUS_LABELS,
   eventPermissions,
   eventQuotesOrFilter,
+  groupWorkspaceTabs,
   jobPathForEventStatus,
   jobPathForQuoteStatus,
   pickLinkedQuote,
   resolveActiveTab,
   visibleWorkspaceTabs,
+  WORKSPACE_GROUP_TABS,
   WORKSPACE_TABS,
+  WORKSPACE_TAB_GROUPS,
 } from "./eventWorkspace.model";
 
 describe("eventWorkspace.model", () => {
@@ -272,5 +275,62 @@ describe("capability contract — one capability without its neighbor", () => {
     // No commercial (quotation) authority leaks in from catalog authority.
     expect(p.canCommercial).toBe(false);
     expect(p.canCost).toBe(false);
+  });
+});
+
+
+describe("event workspace tab grouping (M-04)", () => {
+  it("partitions every non-summary tab into exactly one labeled bucket", () => {
+    const nonSummary = WORKSPACE_TABS.filter((t) => t !== "ملخص");
+    expect(WORKSPACE_GROUP_TABS.length).toBe(nonSummary.length);
+    // no duplicate tab across buckets
+    expect(new Set(WORKSPACE_GROUP_TABS).size).toBe(nonSummary.length);
+    for (const t of nonSummary) {
+      expect(WORKSPACE_GROUP_TABS).toContain(t);
+    }
+    // buckets have stable ids and Arabic labels
+    expect(WORKSPACE_TAB_GROUPS.map((g) => g.id)).toEqual([
+      "operations",
+      "finance",
+      "history",
+    ]);
+    for (const g of WORKSPACE_TAB_GROUPS) {
+      expect(g.label.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("an owner sees all tabs under the three buckets, nothing lost", () => {
+    const visible = visibleWorkspaceTabs(eventPermissions("OWNER", null));
+    const buckets = groupWorkspaceTabs(visible.filter((t) => t !== "ملخص"));
+    expect(buckets.map((b) => b.id)).toEqual(["operations", "finance", "history"]);
+    const flat = buckets.flatMap((b) => b.tabs);
+    expect(new Set(flat)).toEqual(new Set(WORKSPACE_TABS.filter((t) => t !== "ملخص")));
+  });
+
+  it("drops buckets a limited role cannot see (no empty headers)", () => {
+    // WAREHOUSE preset has no cost/payroll visibility, so the money bucket's
+    // tabs (المدفوعات/الفواتير/الأجور/المالية) all drop and its header must
+    // not render. Operations and history buckets stay (its operational work +
+    // the ungated السجل log).
+    const visible = visibleWorkspaceTabs(eventPermissions("WAREHOUSE", null));
+    const buckets = groupWorkspaceTabs(visible.filter((t) => t !== "ملخص"));
+    const ids = buckets.map((b) => b.id);
+    expect(ids).not.toContain("finance");
+    expect(ids).toContain("operations");
+    expect(ids).toContain("history");
+    // every shown tab really is one the role can use
+    const shown = new Set(buckets.flatMap((b) => b.tabs));
+    for (const t of shown) {
+      expect(visible).toContain(t);
+    }
+  });
+
+  it("groups are purely presentational and never rename a tab", () => {
+    for (const g of WORKSPACE_TAB_GROUPS) {
+      for (const t of g.tabs) {
+        // tab identity is the canonical Arabic name, used by deep links & panels
+        expect(WORKSPACE_TABS).toContain(t);
+      }
+    }
   });
 });

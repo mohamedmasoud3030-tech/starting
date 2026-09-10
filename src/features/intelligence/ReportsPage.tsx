@@ -6,6 +6,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { EVENT_STATUS_ARABIC } from "@/lib/arabic";
 import { formatOMR, fromDbAmount } from "@/lib/money";
 import {
   rangeForFilter,
@@ -70,14 +71,14 @@ export function ReportsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-right">
-                <th className="p-3 font-bold">المناسبة</th>
-                <th className="p-3 font-bold">الحالة</th>
-                <th className="p-3 font-bold">الإيراد</th>
-                <th className="p-3 font-bold">المحصل</th>
-                <th className="p-3 font-bold">المتبقي</th>
-                <th className="p-3 font-bold">التكاليف</th>
-                <th className="p-3 font-bold">الربح</th>
-                <th className="p-3 font-bold">الهامش</th>
+                <th scope="col" className="p-3 font-bold">المناسبة</th>
+                <th scope="col" className="p-3 font-bold">الحالة</th>
+                <th scope="col" className="p-3 font-bold">الإيراد</th>
+                <th scope="col" className="p-3 font-bold">المحصل</th>
+                <th scope="col" className="p-3 font-bold">المتبقي</th>
+                <th scope="col" className="p-3 font-bold">التكاليف</th>
+                <th scope="col" className="p-3 font-bold">الربح</th>
+                <th scope="col" className="p-3 font-bold">الهامش</th>
               </tr>
             </thead>
             <tbody>
@@ -91,7 +92,7 @@ export function ReportsPage() {
                         {e.title}
                       </Link>
                     </td>
-                    <td className="p-3 text-slate-500">{e.status}</td>
+                    <td className="p-3 text-slate-500">{EVENT_STATUS_ARABIC[e.status] ?? e.status}</td>
                     <td className="p-3 font-bold">{formatOMR(fromDbAmount(e.revenue))}</td>
                     <td className="p-3">{formatOMR(fromDbAmount(e.collected))}</td>
                     <td className="p-3">{formatOMR(fromDbAmount(e.outstanding))}</td>
@@ -113,11 +114,11 @@ export function ReportsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-right">
-                  <th className="p-3 font-bold">الباقة</th>
-                  <th className="p-3 font-bold">الاستخدام</th>
-                  <th className="p-3 font-bold">القيمة</th>
-                  <th className="p-3 font-bold">الربح</th>
-                  <th className="p-3 font-bold">الهامش</th>
+                  <th scope="col" className="p-3 font-bold">الباقة</th>
+                  <th scope="col" className="p-3 font-bold">الاستخدام</th>
+                  <th scope="col" className="p-3 font-bold">القيمة</th>
+                  <th scope="col" className="p-3 font-bold">الربح</th>
+                  <th scope="col" className="p-3 font-bold">الهامش</th>
                 </tr>
               </thead>
               <tbody>
@@ -145,11 +146,11 @@ export function ReportsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-right">
-                  <th className="p-3 font-bold">العميل</th>
-                  <th className="p-3 font-bold">المناسبات</th>
-                  <th className="p-3 font-bold">القيمة</th>
-                  <th className="p-3 font-bold">المتبقي</th>
-                  <th className="p-3 font-bold">الربح</th>
+                  <th scope="col" className="p-3 font-bold">العميل</th>
+                  <th scope="col" className="p-3 font-bold">المناسبات</th>
+                  <th scope="col" className="p-3 font-bold">القيمة</th>
+                  <th scope="col" className="p-3 font-bold">المتبقي</th>
+                  <th scope="col" className="p-3 font-bold">الربح</th>
                 </tr>
               </thead>
               <tbody>
