@@ -16,6 +16,7 @@ import {
   useSaveOrganizationSettings,
 } from "./settings.api";
 import { TeamPanel } from "./TeamPanel";
+import { SystemHealthPanel } from "./SystemHealthPanel";
 
 type FormState = Record<
   Exclude<
@@ -179,7 +180,8 @@ export function SettingsPage() {
         </Card>
       )}
 
-      <div className="mb-5">
+      <div className="mb-5 space-y-5">
+        <SystemHealthPanel />
         <TeamPanel />
       </div>
 

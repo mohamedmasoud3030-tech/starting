@@ -43,8 +43,8 @@ enabled = false
 port = 54324
 
 [storage]
-# No file uploads exist in the product (audit 2026-08-17).
-enabled = false
+# Private evidence bucket for attendance selfies, delivery proofs, etc. (0074)
+enabled = true
 file_size_limit = "50MiB"
 
 [storage.s3_protocol]

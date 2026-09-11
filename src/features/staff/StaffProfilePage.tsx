@@ -37,7 +37,7 @@ import {
  * الملف الشخصي — one central HR file per team member.
  *
  * Opening a specific person opens their whole file: identity and status,
- * employment/contract data with document expiries, leaves & absence register,
+ * employment/contract data with document expiries, attendance & finance,
  * biometric (face) enrollment, and — for payroll readers only — the financial
  * rollup, ledger and worked events. Attendance stays event-driven; nothing on
  * this page implies a fixed duty schedule.

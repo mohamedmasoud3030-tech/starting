@@ -50,7 +50,7 @@ function buildWelcomeText(firstName: string | null): string {
  *  oddly or "cut" mid-sentence. */
 function toSpokenText(text: string): string {
   return text
-    .replace(/[«»"“”‘’*_`#]/g, "")
+    .replace(/[«»""“”‘’*_`#]/g, "")
     .replace(/EV-\d{4}-\d+/gi, "")
     .replace(/^[\s]*[-•▪]\s*/gm, "")
     .replace(/^\s*\d+[\.\)]\s*/gm, "")
@@ -59,6 +59,16 @@ function toSpokenText(text: string): string {
     .replace(/\s*\n+\s*/g, ". ")
     .replace(/[ ]{2,}/g, " ")
     .trim();
+}
+
+/**
+ * Feature flag: hide assistant when VITE_ENABLE_ASSISTANT=false
+ * Default is enabled (true) to preserve existing behavior.
+ */
+function isAssistantEnabled(): boolean {
+  const raw = import.meta.env.VITE_ENABLE_ASSISTANT;
+  if (raw === undefined || raw === null || raw === "") return true;
+  return String(raw).toLowerCase() !== "false";
 }
 
 /**
@@ -181,17 +191,12 @@ export function AssistantLauncher() {
 
   const speakLocally = useCallback(
     (trimmed: string): boolean => {
-      // Browser-local feminine Arabic voice (unlimited, works offline).
-      // Diagnostics: the owner reports silence on some devices — knowing
-      // whether the reply fell back to the device engine is the first clue.
       console.info(
         "[لينا] cloud voice unavailable → device speech engine. supported=",
         voice.supported,
       );
       const started = voice.speak(trimmed);
       if (!started) {
-        // Autoplay/lock or no speech engine yet — retry on the next tap
-        // inside a user gesture where the browser allows audio.
         pendingSpeakRef.current = { text: trimmed };
       }
       return started;
@@ -203,9 +208,6 @@ export function AssistantLauncher() {
     async (text: string) => {
       const trimmed = text?.trim();
       if (!trimmed) return;
-      // Speak a cleaned, natural-sounding version (no bullets/guillemets/
-      // event codes that make TTS stumble), while the panel still shows the
-      // original formatted text.
       const spoken = toSpokenText(trimmed) || trimmed;
       const el = audioElRef.current;
       el?.pause();
@@ -215,19 +217,16 @@ export function AssistantLauncher() {
       const cache = cloudClipCacheRef.current;
       const cached = cache.get(trimmed);
 
-      // 1) Replay from the in-session cache — instant, free.
       if (cached) {
         const played = await playCloudClip(cached.audioB64, cached.mimeType);
         if (played) {
           pendingSpeakRef.current = null;
           return;
         }
-        // Cached clip failed to decode/play → local voice.
         speakLocally(spoken);
         return;
       }
 
-      // 2) Feminine cloud voice — unless today's provider quota is spent.
       const cloudAllowed = Date.now() >= cloudBlockedUntilRef.current;
       if (cloudAllowed) {
         const outcome = await synthesizeSpeech(spoken);
@@ -246,20 +245,15 @@ export function AssistantLauncher() {
           return;
         }
         if (outcome.kind === "quota") {
-          // Whole-day budget spent: don't keep probing the provider.
           cloudBlockedUntilRef.current = Date.now() + 60 * 60 * 1000;
         }
-        // kind === "failed" → transient, allow a quick retry next time.
       }
 
-      // 3) Browser-local feminine Arabic voice as the resilient fallback.
       speakLocally(spoken);
     },
     [voice, playCloudClip, speakLocally],
   );
 
-  // A pending voice reply is retried on the next user tap (user gesture),
-  // which lifts the autoplay restriction on mobile browsers.
   useEffect(() => {
     if (!open || !pendingSpeakRef.current) return;
     const onPointer = () => {
@@ -275,7 +269,6 @@ export function AssistantLauncher() {
 
   const speaking = voice.speaking || audioSpeaking;
 
-  // Read each new assistant reply aloud when auto-speak is on.
   useEffect(() => {
     if (!open || !autoSpeak) return;
     const last = assistant.messages[assistant.messages.length - 1];
@@ -286,9 +279,6 @@ export function AssistantLauncher() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assistant.messages, open, autoSpeak]);
 
-  // Warm spoken welcome the first time the panel opens (the open tap is a
-  // user gesture, so audio is allowed on mobile). It addresses the owner by
-  // name and reads naturally — the assistant's very first "hello" is human.
   const welcomeSaidRef = useRef(false);
   useEffect(() => {
     if (!open || !autoSpeak || assistant.messages.length !== 0) return;
@@ -300,7 +290,6 @@ export function AssistantLauncher() {
     return () => window.clearTimeout(timer);
   }, [open, autoSpeak, assistant.messages.length, ownerFirstName, speakText]);
 
-  // Silence everything when the panel closes.
   useEffect(() => {
     if (!open) {
       stopAudio();
@@ -308,6 +297,10 @@ export function AssistantLauncher() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  if (!isAssistantEnabled()) {
+    return null;
+  }
 
   if (!user || !currentOrganization || currentOrganization.id.length === 0) {
     return null;
@@ -325,8 +318,6 @@ export function AssistantLauncher() {
 
   return (
     <>
-      {/* Persistent (attached) audio element: required for reliable playback
-          of the cloud voice on mobile WebKit/Blink. */}
       <audio ref={audioElRef} className="hidden" preload="auto" aria-hidden="true" />
       {open ? (
         <AssistantPanel
@@ -344,6 +335,8 @@ export function AssistantLauncher() {
           onSend={assistant.sendPrompt}
           onClose={() => setOpen(false)}
           welcomeText={buildWelcomeText(ownerFirstName)}
+          isDegraded={assistant.isDegraded}
+          lastSource={assistant.lastSource}
         />
       ) : null}
 
@@ -387,6 +380,8 @@ function AssistantPanel({
   onSend,
   onClose,
   welcomeText,
+  isDegraded,
+  lastSource,
 }: {
   messages: AssistantChatMessage[];
   loading: boolean;
@@ -402,6 +397,8 @@ function AssistantPanel({
   onSend: (prompt: string) => Promise<void>;
   onClose: () => void;
   welcomeText: string;
+  isDegraded: boolean;
+  lastSource: string | null;
 }) {
   const [draft, setDraft] = useState("");
   const micActive = micStatus !== "idle";
@@ -430,6 +427,15 @@ function AssistantPanel({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold">{ASSISTANT_NAME}</p>
           <p className="truncate text-xs text-white/80">{ASSISTANT_ROLE}</p>
+          {isDegraded ? (
+            <p className="mt-1 inline-flex rounded bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-amber-900">
+              وضع تجريبي — ردود عامة {lastSource ? `(${lastSource})` : ""}
+            </p>
+          ) : lastSource === "model" ? (
+            <p className="mt-1 inline-flex rounded bg-emerald-400 px-2 py-0.5 text-[10px] font-bold text-emerald-900">
+              متصل مباشر ببيانات النظام
+            </p>
+          ) : null}
         </div>
         <button
           type="button"
@@ -466,6 +472,11 @@ function AssistantPanel({
               <Mic className="h-3.5 w-3.5" />
               اضغط الميكروفون وتكلم، أو اكتب سؤالك — سأجيبك بصوتي.
             </p>
+            {isDegraded ? (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                تنبيه: المساعد يعمل في وضع تجريبي لأن مفتاح الذكاء الاصطناعي غير مهيأ. الردود ستكون عامة من أرقام لوحتك فقط، والصوت سيكون من جهازك.
+              </p>
+            ) : null}
           </div>
         ) : (
           <div className="space-y-3">

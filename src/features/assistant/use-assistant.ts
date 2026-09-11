@@ -25,15 +25,15 @@ export interface UseAssistantState {
   messages: AssistantChatMessage[];
   loading: boolean;
   error: string | null;
-  /** The first (greeting) assistant turn, if any. */
   greeting: string | null;
+  isDegraded: boolean;
+  lastSource: string | null;
   sendPrompt: (prompt: string) => Promise<void>;
   reset: () => void;
 }
 
 /**
  * Conversation state for the operations assistant.
- *
  * On each send the hook re-gathers the operations snapshot through
  * `buildOperationsContext`, so figures always reflect the current
  * organization and the caller's role, then hands the model a trimmed history
@@ -43,6 +43,8 @@ export function useAssistant(input: UseAssistantInput): UseAssistantState {
   const [messages, setMessages] = useState<AssistantChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDegraded, setIsDegraded] = useState(false);
+  const [lastSource, setLastSource] = useState<string | null>(null);
 
   const buildContext = input.buildContext ?? buildOperationsContext;
   const send = input.send ?? requestAssistant;
@@ -82,6 +84,8 @@ export function useAssistant(input: UseAssistantInput): UseAssistantState {
           content: response.reply,
         };
         setMessages((prev) => [...prev, reply]);
+        setIsDegraded(response.meta?.degraded === true);
+        setLastSource(response.meta?.source ?? null);
       } catch (cause) {
         setError(
           cause instanceof Error ? cause.message : "تعذر إرسال السؤال الآن.",
@@ -108,6 +112,8 @@ export function useAssistant(input: UseAssistantInput): UseAssistantState {
     setMessages([]);
     setError(null);
     setLoading(false);
+    setIsDegraded(false);
+    setLastSource(null);
   }, []);
 
   return {
@@ -115,6 +121,8 @@ export function useAssistant(input: UseAssistantInput): UseAssistantState {
     loading,
     error,
     greeting: null,
+    isDegraded,
+    lastSource,
     sendPrompt,
     reset,
   };
