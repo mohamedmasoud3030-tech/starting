@@ -163,6 +163,24 @@ async function assertVercelContract() {
       serializedHeaders.includes("frame-ancestors 'none'"),
     "CSP must lock scripts to self, connections to Supabase and forbid framing",
   );
+
+  // Two sources the product cannot work without, and that dev never exercises
+  // (vite sends no CSP), so they regress silently — see PRE-1 in
+  // docs/DAY1_REHEARSAL_LOG.md:
+  //  - evidence thumbnails and the organization logo are Supabase Storage
+  //    signed URLs (EvidenceFileField.tsx, HandoverEvidenceSection.tsx,
+  //    DocumentShell.tsx). `connect-src` alone is not enough: fetching the
+  //    signed URL succeeds, then the <img> load is judged by img-src.
+  //  - the assistant plays cloud voice clips through <audio src="blob:…">
+  //    (AssistantLauncher.tsx base64ToAudioUrl), which is judged by media-src.
+  assert(
+    serializedHeaders.includes("img-src 'self' data: https://*.supabase.co"),
+    "CSP img-src must allow Supabase Storage signed URLs or evidence images break in production",
+  );
+  assert(
+    serializedHeaders.includes("media-src 'self' blob:"),
+    "CSP media-src must allow blob: or assistant cloud voice playback breaks in production",
+  );
 }
 
 const viteBinary = process.platform === "win32" ? "node_modules/.bin/vite.cmd" : "node_modules/.bin/vite";

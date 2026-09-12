@@ -77,6 +77,10 @@ export type ProcurementLineKind = DbEnum<"procurement_line_kind">;
 export type ProcurementOrderStatus = DbEnum<"procurement_order_status">;
 export type SupplierCategory = DbEnum<"supplier_category">;
 export type SupplierStatus = DbEnum<"supplier_status">;
+/** Contracted-restaurants enums (migration 0099). */
+export type SupplierContractStatus = DbEnum<"supplier_contract_status">;
+export type MealServiceType = DbEnum<"meal_service_type">;
+export type MealBookingStatus = DbEnum<"meal_booking_status">;
 export type MembershipStatus = DbEnum<"membership_status">;
 export type PackageStatus = DbEnum<"package_status">;
 export type PricingMethod = DbEnum<"pricing_method">;
@@ -126,6 +130,15 @@ export type CatalogItemOperationalRow = ViewRow<"catalog_items_operational">;
 
 export type SupplierSummaryRow = ViewRow<"supplier_summaries">;
 export type SupplierDetailRow = ViewRow<"supplier_details">;
+
+/**
+ * Contracted-restaurants read models (migration 0099). The generated types
+ * cover this slice completely, so the restaurants data layer reads through
+ * these aliases instead of an untyped client boundary — the same decision
+ * already taken for the S9 staff slice below.
+ */
+export type SupplierContractSummaryRow = ViewRow<"supplier_contract_summaries">;
+export type MealBookingSummaryRow = ViewRow<"meal_booking_summaries">;
 export type ProcurementOrderSummaryRow = ViewRow<"procurement_order_summaries">;
 export type ProcurementOrderDetailRow = ViewRow<"procurement_order_details">;
 export type ProcurementOrderLineSummaryRow =

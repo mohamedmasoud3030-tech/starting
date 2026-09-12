@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { ATTACHMENT_BUCKET } from "@/features/attachments/attachments.api";
+import {
+  HEALTH_PROBE_MIME,
+  classifyStorageFailure,
+  healthProbePath,
+  storageProbeBlob,
+} from "./systemHealth";
 
 interface CheckResult {
   name: string;
@@ -13,11 +19,11 @@ interface CheckResult {
 }
 
 export function SystemHealthPanel() {
-  const { currentOrganization } = useAuth();
+  const { currentOrganization, currentMembership } = useAuth();
   const orgId = currentOrganization?.id ?? null;
   const [checks, setChecks] = useState<CheckResult[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [uploadTest, setUploadTest] = useState<"idle" | "ok" | "fail">("idle");
+  const [uploadTest, setUploadTest] = useState<"idle" | "ok" | "warn" | "fail">("idle");
   const [uploadMsg, setUploadMsg] = useState("");
 
   async function runChecks() {
@@ -32,8 +38,28 @@ export function SystemHealthPanel() {
       results.push({ name: "إعدادات الاتصال", status: "ok", message: "تم تكوين Supabase بنجاح" });
     }
 
-    // 2. Organization exists
-    results.push({ name: "المنشأة", status: "ok", message: `منشأة نشطة: ${currentOrganization?.name ?? orgId}` });
+    // 2. Organization + membership are actually usable (an INACTIVE organization
+    //    or a non-ACTIVE membership blocks every protected read/write at the
+    //    database boundary, so this is a real precondition — not a formality).
+    if (!currentOrganization?.is_active) {
+      results.push({
+        name: "المنشأة",
+        status: "error",
+        message: "المنشأة غير نشطة (is_active = false) — كل القراءات والكتابات المحمية ستكون مرفوضة.",
+      });
+    } else if (currentMembership && currentMembership.status !== "ACTIVE") {
+      results.push({
+        name: "المنشأة",
+        status: "warn",
+        message: `عضويتك في المنشأة بحالة ${currentMembership.status} وليست ACTIVE — قد تُرفض بعض العمليات.`,
+      });
+    } else {
+      results.push({
+        name: "المنشأة",
+        status: "ok",
+        message: `منشأة نشطة: ${currentOrganization.name} — عضويتك ACTIVE`,
+      });
+    }
 
     // 3. Check attachments bucket existence via list (will fail if bucket missing)
     try {
@@ -77,22 +103,50 @@ export function SystemHealthPanel() {
     setLoading(false);
   }
 
+  /**
+   * End-to-end storage proof on the SAME path the product uses for real
+   * evidence: write into the private bucket under a valid evidence-type folder,
+   * then read it back through a short-lived signed URL (the only read path the
+   * application has — the bucket is private).
+   *
+   * Deletion is best-effort and its refusal is never a failure: migration 0074
+   * deliberately creates NO delete policy on storage.objects, so removal is the
+   * audited `reclaim_evidence` command, not a client call.
+   */
   async function testUpload() {
     if (!orgId) return;
     setUploadTest("idle");
     setUploadMsg("جارٍ اختبار الرفع...");
+
+    const probePath = healthProbePath(orgId, `${crypto.randomUUID()}.jpg`);
     try {
-      const content = new Blob(["test"], { type: "text/plain" });
-      const fileName = `${orgId}/TEST/health_${Date.now()}.txt`;
-      const { error } = await supabase.storage.from(ATTACHMENT_BUCKET).upload(fileName, content, { upsert: true });
-      if (error) throw error;
-      // Cleanup
-      await supabase.storage.from(ATTACHMENT_BUCKET).remove([fileName]);
+      const { error: uploadError } = await supabase.storage
+        .from(ATTACHMENT_BUCKET)
+        .upload(probePath, storageProbeBlob(), {
+          upsert: false,
+          contentType: HEALTH_PROBE_MIME,
+        });
+      if (uploadError) throw uploadError;
+
+      const { error: signedUrlError } = await supabase.storage
+        .from(ATTACHMENT_BUCKET)
+        .createSignedUrl(probePath, 60);
+      if (signedUrlError) throw signedUrlError;
+
+      const { error: removeError } = await supabase.storage
+        .from(ATTACHMENT_BUCKET)
+        .remove([probePath]);
+
       setUploadTest("ok");
-      setUploadMsg("نجح اختبار الرفع والحذف - التخزين يعمل بشكل صحيح");
-    } catch (e) {
-      setUploadTest("fail");
-      setUploadMsg(`فشل اختبار الرفع: ${e instanceof Error ? e.message : String(e)}`);
+      setUploadMsg(
+        removeError
+          ? "نجح الرفع والقراءة برابط موقّت — التخزين الخاص يعمل. تعذّر حذف ملف الفحص تلقائياً (لا توجد سياسة حذف من المتصفح by design)؛ سيظهر كعنصر يتيم في أمر تنظيف الأدلة."
+          : "نجح اختبار الرفع والقراءة والحذف - التخزين يعمل بشكل صحيح",
+      );
+    } catch (cause) {
+      const failure = classifyStorageFailure(cause);
+      setUploadTest(failure.status === "warn" ? "warn" : "fail");
+      setUploadMsg(failure.message);
     }
   }
 
@@ -131,9 +185,9 @@ export function SystemHealthPanel() {
       )}
 
       {uploadMsg && (
-        <div className={`mt-3 rounded-xl border p-3 text-sm ${uploadTest === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : uploadTest === "fail" ? "border-red-200 bg-red-50 text-red-700" : "border-slate-200 bg-slate-50"}`}>
+        <div className={`mt-3 rounded-xl border p-3 text-sm ${uploadTest === "ok" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : uploadTest === "warn" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-red-200 bg-red-50 text-red-700"}`}>
           <p className="flex items-center gap-2">
-            <HardDrive className="h-4 w-4" />
+            <HardDrive className="h-5 w-5 shrink-0" />
             {uploadMsg}
           </p>
         </div>
@@ -143,6 +197,7 @@ export function SystemHealthPanel() {
         <p className="font-bold text-slate-700">ماذا تفعل إذا فشل فحص؟</p>
         <ul className="mt-1 list-disc space-y-1 pr-5">
           <li>إذا فشل "تخزين المرفقات": اذهب إلى Supabase Dashboard → Storage → أنشئ bucket باسم "attachments" واجعله Private (غير public).</li>
+          <li>إذا ظهر اختبار الرفع بلون التحذير: التخزين سليم، لكن دورك لا يسمح برفع هذا النوع من الأدلة — أعد الفحص بحساب المالك (OWNER).</li>
           <li>إذا فشل "قاعدة البيانات": تأكد أنك سجلت دخول وعضويتك ACTIVE.</li>
           <li>إذا كان "ترقيم المستندات" تحذير: احفظ الإعدادات مرة واحدة من نفس الصفحة.</li>
         </ul>
