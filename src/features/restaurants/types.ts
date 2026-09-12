@@ -1,8 +1,8 @@
 /**
  * Contracted restaurants («المطاعم المتعاقدة») — read models + command types.
- * Column names mirror the 0099 read-model views verbatim; the dynamic client
- * in restaurants.db.ts validates shape here instead of editing the generated
- * database.types.ts (which predates migration 0099).
+ * Column names mirror the 0099 read-model views verbatim; rows arrive through
+ * the typed client and are narrowed once in restaurants.db.ts against the
+ * generated view row types (`src/lib/dbTypes.ts`).
  */
 
 export type MealType = "LUNCH" | "DINNER";

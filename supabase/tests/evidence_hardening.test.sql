@@ -191,11 +191,39 @@ select is((select count(*)::int from storage.objects
 -- Simulate the supported Storage-API deletion having succeeded: the removal
 -- endpoint clears the storage.objects metadata row. (Performed here as the
 -- migration owner, i.e. the privileged subsystem, not via a client policy.)
+--
+-- ENVIRONMENT NOTE: when the local stack runs with `[storage] enabled = true`
+-- (supabase/config.toml), the Storage service installs its own BEFORE DELETE
+-- guard on storage.objects (`storage.protect_delete()` → "Direct deletion from
+-- storage tables is not allowed"), which is correct production behaviour: the
+-- product never deletes from storage tables in SQL (see migration 0078). This
+-- fixture is the ONLY place in the repository that must simulate a completed
+-- Storage-API removal, so user triggers on that single table are suspended for
+-- the statement below and restored immediately afterwards. The handler keeps
+-- the file portable: the guard is absent when storage is disabled locally and
+-- in the native Layer-A replica, and the ALTER is skipped without privilege.
 reset role;
+do $suspend_storage_delete_guard$
+begin
+  execute 'alter table storage.objects disable trigger user';
+exception
+  when insufficient_privilege or undefined_table then null;
+end;
+$suspend_storage_delete_guard$;
+
 delete from storage.objects
  where bucket_id='attachments'
    and name in ('98122222-0000-0000-0000-0000000000a1/STAFF_ID/staff_member/old.jpg',
                 '98122222-0000-0000-0000-0000000000a1/DELIVERY_PROOF/event/never-linked.jpg');
+
+do $restore_storage_delete_guard$
+begin
+  execute 'alter table storage.objects enable trigger user';
+exception
+  when insufficient_privilege or undefined_table then null;
+end;
+$restore_storage_delete_guard$;
+
 set local role authenticated;
 set local "request.jwt.claims"='{"sub":"98111111-0000-0000-0000-0000000000a1","role":"authenticated"}';
 
