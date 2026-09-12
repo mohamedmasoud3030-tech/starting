@@ -194,35 +194,28 @@ select is((select count(*)::int from storage.objects
 --
 -- ENVIRONMENT NOTE: when the local stack runs with `[storage] enabled = true`
 -- (supabase/config.toml), the Storage service installs its own BEFORE DELETE
--- guard on storage.objects (`storage.protect_delete()` → "Direct deletion from
--- storage tables is not allowed"), which is correct production behaviour: the
--- product never deletes from storage tables in SQL (see migration 0078). This
--- fixture is the ONLY place in the repository that must simulate a completed
--- Storage-API removal, so user triggers on that single table are suspended for
--- the statement below and restored immediately afterwards. The handler keeps
--- the file portable: the guard is absent when storage is disabled locally and
--- in the native Layer-A replica, and the ALTER is skipped without privilege.
+-- guard on storage.objects — `storage.protect_delete()` (storage-api migration
+-- 0055) raises SQLSTATE 42501 "Direct deletion from storage tables is not
+-- allowed" unless the session GUC `storage.allow_delete_query` is 'true'. That
+-- GUC is the guard's OWN supported escape hatch, so this fixture — the only
+-- place in the repository that must simulate a completed Storage-API removal —
+-- sets it for the single delete below and clears it immediately afterwards.
+-- It requires no privilege the test connection lacks (plain `postgres` owns
+-- neither the table nor the trigger, so ALTER TABLE / DISABLE TRIGGER is not an
+-- option here), and it is a harmless no-op wherever the guard does not exist
+-- (storage disabled locally, or the native Layer-A replica).
 reset role;
-do $suspend_storage_delete_guard$
-begin
-  execute 'alter table storage.objects disable trigger user';
-exception
-  when insufficient_privilege or undefined_table then null;
-end;
-$suspend_storage_delete_guard$;
+select set_config('storage.allow_delete_query', 'true', true);
 
 delete from storage.objects
  where bucket_id='attachments'
    and name in ('98122222-0000-0000-0000-0000000000a1/STAFF_ID/staff_member/old.jpg',
                 '98122222-0000-0000-0000-0000000000a1/DELIVERY_PROOF/event/never-linked.jpg');
 
-do $restore_storage_delete_guard$
-begin
-  execute 'alter table storage.objects enable trigger user';
-exception
-  when insufficient_privilege or undefined_table then null;
-end;
-$restore_storage_delete_guard$;
+-- Put the guard back for the rest of the transaction: production never permits
+-- direct SQL deletes from storage tables, and the assertions below depend on
+-- that staying true.
+select set_config('storage.allow_delete_query', 'false', true);
 
 set local role authenticated;
 set local "request.jwt.claims"='{"sub":"98111111-0000-0000-0000-0000000000a1","role":"authenticated"}';
