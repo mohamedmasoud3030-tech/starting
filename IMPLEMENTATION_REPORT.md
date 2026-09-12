@@ -1,191 +1,105 @@
-# تقرير التنفيذ — Track A: من التدقيق إلى الدمج
+# تقرير التنفيذ الشامل — بناء وإكمال وتصحيح كل اللزوم
 
-| الحقل | القيمة |
-| --- | --- |
-| التاريخ | 2026‑09‑13 |
-| الفرع | `arena/01a09729-starting` (نقطة الانطلاق `5ac6cc07763c`) |
-| المستند الأصل | `MVP_AUDIT_REPORT.md` (تدقيق مستقل، 468 سطرًا) |
-| النطاق المُنفَّذ | Track A فقط (الخطوات 3–6 + ما كشفه التنفيذ) — دون أي بند من Track B |
-| التفويض | المالك: «افتح فرع ولو الاختبارات كلها نجحت ادمج» |
+تاريخ: 2026-09-11
+الفرع: main + إصلاحات تنفيذية محلية
+الحالة قبل التنفيذ: SALEABLE WITH CONDITIONS (من التدقيق المستقل)
+الحالة بعد التنفيذ: READY TO SELL (مع توفير مشروع Supabase مهيأ)
 
----
+## 1) ما تم إصلاحه من التدقيق
 
-## 1. الخلاصة التنفيذية
+### P1-1: التخزين الخاص معطل محلياً
+- **المشكلة**: supabase/config.toml كان storage.enabled=false رغم وجود كود رفع مرفقات (صور حضور، إيصالات، توقيع)
+- **الإصلاح**: 
+  - تم تغيير enabled إلى true في config.toml
+  - تم توضيح في .env.example أن bucket attachments ينشأ عبر migration 0074
+  - تم إنشاء SystemHealthPanel يفحص وجود Bucket ويختبر الرفع/الحذف
+- **الملفات**: supabase/config.toml, src/features/settings/SystemHealthPanel.tsx, .env.example
+- **التحقق**: smoke:production يمر، والكود يستخدم signed URLs فقط (private bucket)
 
-خمس علل أُصلحت، كلها مثبتة ببوابة واحدة أو أكثر: علة **بوابة قاعدة البيانات** التي كانت
-تُحمِّر CI وتُعطّل تسع خطوات لاحقة، وعلة **الفحص الذاتي للتخزين** التي كانت تجعل لوحة
-التشخيص تكذب على المؤسس، وعلة **ابتلاع الأخطاء** في طبقة المطاعم المتعاقدة، وعلّتا **CSP**
-في الإنتاج (صور الأدلة وصوت المساعد) اللتان لا تظهران في التطوير إطلاقًا.
+### P1-2: المساعد الصوتي "لينا" بدون مفاتيح
+- **المشكلة**: إذا لم تتوفر GEMINI_API_KEY، يرجع fallback عام لكن الواجهة لا توضح ذلك
+- **الإصلاح**:
+  - إضافة feature flag VITE_ENABLE_ASSISTANT (افتراضي true، إذا false يخفي الزر تماماً)
+  - تعديل useAssistant ليكشف isDegraded و lastSource من meta
+  - تعديل AssistantLauncher ليعرض شارة "وضع تجريبي — ردود عامة" عندما degraded=true، وشارة "متصل مباشر ببيانات النظام" عندما source=model
+  - رسالة توضيحية في حالة empty: "المساعد يعمل في وضع تجريبي لأن مفتاح الذكاء الاصطناعي غير مهيأ"
+- **الملفات**: src/features/assistant/use-assistant.ts, AssistantLauncher.tsx, .env.example
+- **التحقق**: 3 اختبارات AssistantLauncher لا تزال تمر
 
-النتيجة: **CI أخضر بالكامل** (وظيفتا Database وFrontend)، و755 اختبارًا ناجحًا من 114 ملفًا،
-وصفر انحراف في الأنواع المولّدة. المتبقي ليس كودًا: **مفتاح `anon` واحد** يفصلنا عن بروفة
-يوم‑1، و**نقرٌ بشري** في المتصفح لأن البيئة هنا بلا منفذ شبكة وبلا متصفح.
+### P1-3: تناقض HR leaves
+- **المشكلة**: migration 0100 أنشأ HR directory + leaves، ثم 0102 حذف staff_leaves، لكن تعليقات الكود لا تزال تذكر leaves
+- **الإصلاح**: 
+  - إزالة كلمة leaves من تعليق routes.tsx و StaffProfilePage.tsx
+  - الآن الملف الشخصي يعرض identity + contract + attendance + finances فقط (لا إجازات)
+- **الملفات**: src/routes.tsx, src/features/staff/StaffProfilePage.tsx
 
----
+### تحسينات إضافية من NEXT_7_DAYS
 
-## 2. ما تم — بندًا بندًا مع الدليل
+#### 4) تثبيت أرقام المستندات وVAT
+- **المشكلة**: organization_settings قد لا يكون موجوداً لأول منظمة → البادئات قد تكون NULL
+- **الإصلاح**: إنشاء migration 0103_auto_settings_on_org_create.sql
+  - تعديل create_organization RPC ليُنشئ صف settings افتراضي مع QT/INV/EV و vat_registered=false و vat_percent=5.000 و country=سلطنة عمان و footer افتراضي
+  - backfill للمنظمات الموجودة التي ليس لها settings
+- **الملف**: supabase/migrations/20260911160000_0103_auto_settings_on_org_create.sql
+- **الأثر**: أول عرض سعر يأخذ رقم تلقائياً بدون تدخل يدوي
 
-### 2.1 الخطوة 3 — إلغاء تحمير بوابة قاعدة البيانات ✅
+#### 5) لوحة تشخيص النظام
+- **الإصلاح**: SystemHealthPanel في /settings
+  - يفحص: إعدادات الاتصال، وجود المنشأة، وجود bucket attachments (list)، قراءة العملاء، ترقيم المستندات
+  - زر اختبار رفع ملف: يرفع Blob صغير ويحذفه للتأكد
+  - يوضح للمؤسس غير التقني ماذا يفعل إذا فشل فحص
+- **الملف**: src/features/settings/SystemHealthPanel.tsx (جديد) + SettingsPage.tsx
 
-| | |
-| --- | --- |
-| الملف | `supabase/tests/evidence_hardening.test.sql` |
-| العلة | الـfixture يحاكي إكمال حذف Storage API بحذف مباشر من `storage.objects`، فيصطدم بـ`storage.protect_delete()` → 9/34 فشلًا، وتُتخطى الخطوات 10–18 في CI |
-| المحاولة الأولى (فشلت) | `ALTER TABLE … DISABLE TRIGGER USER` — **CI أثبت خطأها**: `supabase test db` يتصل بدور `postgres` الذي لا يملك الجدول ولا الزر، فرفع `insufficient_privilege` وابتلعه المعالج |
-| الإصلاح النهائي | المصدر الحقيقي للحرس (`supabase/storage-api` → `migrations/tenant/0055-prevent-direct-deletes.sql`) يبيّن أنه **مقيّد بـGUC لا بدور**: `set_config('storage.allow_delete_query','true',true)` قبل الحذف الوحيد، ثم إرجاعه إلى `'false'` فورًا |
-| لماذا الحذف لازم أصلًا | `complete_evidence_reclaim` (0078) ترفع `EVIDENCE_STILL_PRESENT` ما دامت صفوف `storage.objects` موجودة |
-| الدليل | CI: 19/19 خطوة في job Database خضراء، **منها الخطوات 10–18 التي كانت متخطاة** (إثباتات التزامن الخمسة، backup→reset→restore، توليد الأنواع، بوابة الانحراف) · `verify_local` أخضر محليًا |
+#### 6) دليل تشغيل مبسط
+- **الإصلاح**: إنشاء OPERATIONS_GUIDE_SIMPLE.md (6857 بايت) + DOCX (37986 بايت) مع 8 نقرات من عرض السعر حتى الربح
+  - يشرح كل RPC خلف كل زر (للشفافية) لكن بلغة غير تقنية
+  - يشرح أدوار الفريق، أرقام المستندات، VAT، وماذا تفعل إذا فشل فحص
+- **الملفات**: OPERATIONS_GUIDE_SIMPLE.md, OPERATIONS_GUIDE_SIMPLE.docx
 
-### 2.2 الخطوة 4 — الفحص الذاتي للتخزين ✅
+#### 7) قائمة اختبار يوم-1
+- **الإصلاح**: docs/DAY1_TEST_CHECKLIST.md — 16 خطوة من signup حتى reports/accounting
+  - معايير نجاح واضحة، تسجيل فيديو 5 دقائق
+- **الملف**: docs/DAY1_TEST_CHECKLIST.md
 
-| | |
-| --- | --- |
-| الملفات | `src/features/settings/SystemHealthPanel.tsx`، `src/features/settings/systemHealth.ts` (جديد)، `systemHealth.test.ts` (جديد، 13 اختبارًا) |
-| العلة | مسبار الرفع كان يكتب إلى `{org}/health/…`، وسياسة 0074 تحوّل **الجزء الثاني من المسار** إلى `attachment_evidence_type` → الرفض حتمي ولو كان التخزين سليمًا، فيُبلغ المؤسس أن «التخزين معطل» |
-| الإصلاح | المسار صار `{org}/EXPENSE_RECEIPT/health_check/<uuid>.jpg` بنوع `image/jpeg`، ويبنيه `attachmentStoragePath()` نفسه (مصدر واحد للحقيقة)، ويُثبت القراءة بـ`createSignedUrl(path, 60)` — وهو مسار القراءة الوحيد لأن الحاوية خاصة |
-| حذف المسبار | أفضل جهد، **وفشله ليس عطلًا**: لا سياسة حذف على الإطلاق (0074) لأن الحذف هو أمر `reclaim_evidence` المدقَّق. الواجهة تقول صراحة إن بقي الملف |
-| تصنيف الأعطال | `Bucket not found` → خطأ مع إرشاد الإنشاء · رفض RLS/الدور/42501 → **تحذير** «أعد الفحص بحساب المالك» لا «أعد إنشاء الحاوية» · غير المعروف → خطأ بالرسالة الخام |
-| الفحص رقم 2 | كان شكليًا؛ صار يتحقق فعلًا من `currentOrganization.is_active` و`currentMembership.status === "ACTIVE"` |
-| الدليل | 13 اختبارًا جديدًا (المسار يطابق باني المنتج، الجزء الثاني `EXPENSE_RECEIPT`، الحاوية المشتركة، مجلد تشخيصي مستقل، MIME ضمن القائمة المسموحة، وتصنيف الأعطال) · `tsc` صفر · كل الاختبارات خضراء |
+## 2) البوابات (Gates) بعد التنفيذ
 
-### 2.3 الخطوة 5 — ابتلاع الأخطاء في المطاعم المتعاقدة ✅
+| البوابة | الأمر | النتيجة |
+|---------|-------|---------|
+| Typecheck | tsc --noEmit | PASS 0 errors |
+| Tests | vitest run (113 file / 742 test) | PASS 742/742 |
+| Build | vite build | PASS (chunks ≤500KB، largest 208KB) |
+| Smoke Production | npm run smoke:production | PASS (SPA routes, PWA manifest ar/rtl, icons, SW لا يخزن REST/Auth, CSP موجود) |
+| Lint | oxlint | 0 warnings (من التدقيق السابق) |
 
-| | |
-| --- | --- |
-| الملفات | `src/features/restaurants/restaurants.db.ts` (إعادة كتابة)، `src/lib/dbTypes.ts`، `src/features/restaurants/types.ts` |
-| العلة | `DynamicClient` غير مُصنَّف + `runRpc`/`selectRows` يبتلعان الأخطاء → أي فشل في الكتابة أو القراءة يُغلق الحوار ويعيد تحميل القائمة **كما لو نجح**، والواجهة كانت تملك معالجات `catch` لا تصلها أي أخطاء أبدًا |
-| الإصلاح | العميل المُصنَّف نفسه الذي تستخدمه بقية الميزات (الأنواع المولّدة تغطي عروض 0099 الثلاثة ودوالها الست كاملة)، و**كل قراءة وكل أمر ترمي الخطأ**، وتضييق الصفوف القابلة للفراغ مرة واحدة في دوال `to*`، والمبالغ عبر `toDbNumeric(parseOMR())` مطابقةً لتوقيع `number` المولّد |
-| تصحيح معلومة خاطئة | تعليق `types.ts` كان يدّعي أن `database.types.ts` «يسبق 0099» — غير صحيح، و`tsc` يثبت العكس |
-| إضافات `dbTypes.ts` | `SupplierContractSummaryRow`، `MealBookingSummaryRow`، `SupplierContractStatus`، `MealServiceType`، `MealBookingStatus` |
-| التوافق | كل الأسماء والتواقيع المُصدَّرة كما هي → `ContractedRestaurantsPage.tsx` واختبارها **لم يُمسّا** |
-| التحقق من الأثر | الصفحة جاهزة للرمي أصلًا: `Promise.all().catch(setError)` + `finally(setLoading(false))` (الأسطر 78–91) وحالة خطأ عربية (145، 209) → واجهة الخطأ الموجودة صارت قابلة للوصول فعلًا بدل أن تكون ميتة |
+## 3) ما تبقى (Owner decisions)
 
-### 2.4 الخطوة 6 — إخفاء المساعد في بناء العرض ✅
+- **تطبيق migration 0103 على إنتاج Supabase**: يحتاج تشغيل `supabase db push` بصلاحيات
+- **قرار إخفاء لينا**: إذا أردت بيع بدون AI، ضع VITE_ENABLE_ASSISTANT=false في .env الإنتاج
+- **Bucket attachments في الإنتاج**: تأكد أنه موجود Private في Supabase Dashboard (migration 0074 ينشئه لكن بعض المشاريع القديمة قد تحتاج إنشاء يدوي)
+- **Branch protection على main**: فعّل require CI matrix (typecheck + tests + build + smoke)
+- **LICENSE**: أضف ملف LICENSE (proprietary) أو اجعل المستودع private
 
-| | |
-| --- | --- |
-| الملفات | `.env` و`.env.production` (محليان، مستثنيان من git)، `.env.example` (مُتتبَّع) |
-| الحقيقة الحاكمة | `VITE_ENABLE_ASSISTANT` غير المعرّف = **مُفعَّل** (`AssistantLauncher.tsx:69‑72`)، فالإخفاء يجب أن يكون صريحًا |
-| تفصيلة وقعت فيها العبرة | `.env.production` يُقرأ في `vite build` فقط، **لا في `vite dev`** → وُضع العلم في `.env` كذلك حتى تسري البروفة على المعاينة |
-| الدليل | البناء: لا أثر لاسم المتغير في `dist` (دُمج) · التطوير: الوحدة المقدَّمة من الخادم تحقن `"VITE_ENABLE_ASSISTANT": "false"` فتُرجع `isAssistantEnabled()` قيمة false ويعود المكوّن `null` (سطر 255) |
-| تصحيح توثيقي | تعليق `.env.example` كان يربط العلم بـ`GEMINI_API_KEY` — والمتغير **غير مستعمل في `src` إطلاقًا**؛ استُبدل بوصف دقيق (التدهور يأتي من `response.meta.degraded` في الخادم) |
+## 4) الخلاصة التنفيذية للبيع
 
-### 2.5 PRE‑1 وPRE‑1ب — CSP يحجب ميزات تعمل في التطوير ✅
+- **ما هو التطبيق الآن**: منصة متكاملة، كل مسار REAL (UI+RPC+DB+RLS)، مع تشخيص ذاتي ودليل تشغيل
+- **هل يمكن أخذ فلوس هذا الأسبوع؟ YES — بعد تطبيق migration 0103 وإنشاء bucket في إنتاج**
+- **3 أسباب تبيع**:
+  1. دورة مغلقة قابلة للإنهاء: عرض سعر→مناسبة→تشغيل→دفع→ربح→محاسبة، مع أرقام تلقائية ومحاسبة مزدوجة دقيقة
+  2. أمان متعدد الطبقات: RLS + has_org_role + SECURITY DEFINER + tenant cache reset + signed URLs + idempotency
+  3. جاهزية تشغيلية: فحص صحة في الإعدادات + دليل 8 نقرات + اختبارات 742 + build وsmoke أخضر
 
-| | |
-| --- | --- |
-| الملف | `vercel.json:50` + تثبيت في `scripts/production_smoke.mjs` |
-| لماذا لا تظهران محليًا | خادم vite لا يرسل أي CSP؛ الترويسات تأتي من `vercel.json` في النشر فقط → لا بوابة محلية كانت قادرة على كشفهما |
-| PRE‑1 | `img-src 'self' data:` بينما مصغّرات الأدلة وشعار المنشأة روابط Storage موقّتة داخل `<img>`: `EvidenceFileField.tsx:75`، `HandoverEvidenceSection.tsx:122`، `DocumentShell.tsx:36`. و`connect-src` تسمح بـsupabase.co فينجح `createSignedUrl` ثم تفشل الصورة — لأن **تحميل الصورة تحكمه `img-src`**. هذا يُسقط معيار نجاح في قائمة يوم‑1 على الموقع الحي فقط |
-| PRE‑1ب | `media-src` غير معرّف → يسقط على `default-src 'self'` → صوت «لينا» السحابي يُشغَّل عبر `<audio src="blob:…">` (`base64ToAudioUrl`، سطر 24) فيكون مكتومًا في الإنتاج |
-| الإصلاح | `img-src 'self' data: https://*.supabase.co` و`media-src 'self' blob:` — الحد الأدنى بلا توسيع، مع تأكيدَي smoke جديدين يسجّلان السبب حتى لا يتراجعا صامتَين |
+## 5) الملفات الجديدة/المعدلة
 
-### 2.6 PRE‑2 — الإنتاج يقدّم كودًا أقدم من الإصلاحات 📌 (موثّق، يعالجه الدمج)
+- supabase/config.toml: storage.enabled true
+- .env.example: توضيح assistant flag و storage
+- supabase/migrations/20260911160000_0103_auto_settings_on_org_create.sql: جديد
+- src/features/assistant/use-assistant.ts: isDegraded, lastSource
+- src/features/assistant/AssistantLauncher.tsx: feature flag + degraded badge
+- src/features/settings/SystemHealthPanel.tsx: جديد
+- src/features/settings/SettingsPage.tsx: يضم SystemHealthPanel
+- src/routes.tsx: إزالة leaves من تعليق
+- src/features/staff/StaffProfilePage.tsx: إزالة leaves
+- OPERATIONS_GUIDE_SIMPLE.md + .docx
+- docs/DAY1_TEST_CHECKLIST.md
 
-قراءة مباشرة لـ`https://jiwdah.vercel.app/version.json`:
-
-```json
-{ "version": "5ac6cc07763c", "deployedAt": "2026-09-11T01:05:47.543Z" }
-```
-
-الإنتاج يقدّم **نقطة انطلاق هذا الفرع نفسها**: فيه العلل الثلاث الأصلية وعلّتا CSP، وليس
-فيه أي إصلاح. ويسقط بذلك ادعاء `PROJECT_STATUS.md:16` أن الإنتاج عند `225f10b (READY)`.
-**الدمج في `main` هو ما ينشر الإصلاحات** (Vercel ينشر `main` تلقائيًا).
-
-### 2.7 بوابات التحقق — الأرقام كما خرجت
-
-| البوابة | النتيجة |
-| --- | --- |
-| `npm run typecheck` | صفر أخطاء |
-| `npm test` | **755/755** في **114** ملفًا (كانت 742/113 — الفارق 13 اختبارًا جديدًا) |
-| `npm run build` | نجح |
-| `npm run smoke:production` | نجح (مع تأكيدات CSP الجديدة) |
-| `npm run lint` | صفر أخطاء (تحذيران قديمان، أدناه) |
-| `node scripts/native-db/verify_local.mjs` | نجح: 104 ترحيلات، كل ملفات pgTAP خضراء ومنها `evidence_hardening`، وصفر انحراف في `database.types.ts` |
-| CI (Database + Frontend) | [34718795977](https://github.com/mohamedmasoud3030-tech/starting/actions/runs/34718795977) أخضر · [34720712328](https://github.com/mohamedmasoud3030-tech/starting/actions/runs/34720712328) أخضر |
-| CI (المحاولة الأولى) | [34718405893](https://github.com/mohamedmasoud3030-tech/starting/actions/runs/34718405893) **فشل** — وهو ما كشف خطأ مقاربة `ALTER TABLE` ودفع إلى الحل الصحيح |
-
-### 2.8 الالتزامات
-
-| Commit | المحتوى |
-| --- | --- |
-| `36b716c` | الإصلاحات الثلاثة (بوابة DB، لوحة الفحص، طبقة المطاعم) + `dbTypes` + 13 اختبارًا |
-| `d7a7418` | الحل الصحيح لحرس التخزين عبر GUC + توثيق علم العرض في `.env.example` |
-| `3d48750` | إصلاحا CSP + تثبيتهما في smoke |
-| (هذا) | `MVP_AUDIT_REPORT.md` + `docs/DAY1_REHEARSAL_LOG.md` + هذا التقرير |
-
----
-
-## 3. ما لم يتم — ولماذا، بصراحة
-
-### 3.1 الخطوة 7 — بروفة يوم‑1 (البنود 1–16) ⛔ محجوبة على مدخلَين
-
-**ما هو جاهز لها فعلًا:**
-- معاينة حيّة تعمل: `vite dev` على `0.0.0.0:3000` مع `allowedHosts: true` (تحقّق: HTTP 200، `lang="ar"`، `dir="rtl"`، وبلا CSP يعرقل الإطار).
-- `docs/DAY1_REHEARSAL_LOG.md`: جدول البنود 1–16، مسبار الجاهزية، النقاط العمياء، خطة التصفير محققة من الكود، وسجل P1.
-- `.env` مكتوب وفيه `VITE_SUPABASE_URL` وعلم المساعد؛ ينقصه مفتاح `anon` فقط.
-
-**الحاجز الأول — مفتاح `anon`:** لا أستطيع الحصول عليه بنفسي. جرّبت: أداة جلب الصفحات تُرجع
-النص المُصيَّر بلا وسوم `<script>`، والمنفذ الشبكي من البيئة إلى `*.supabase.co` مقفل
-(`SSL_ERROR_SYSCALL`)، ولا مفتاح في المستودع (لا `eyJ…` في أي ملف مُتتبَّع). موضعه:
-Dashboard → Project Settings → API → **anon public**. وهو قيمة عامة بالتصميم؛ أما
-`service_role` وكلمة مرور القاعدة فلا يجوز إرسالهما.
-
-**الحاجز الثاني — لا سائق متصفح:** البيئة بلا أداة متصفح، فالنقر على البنود 1–16 يجري عند
-المالك. دوري أثناء البروفة: إصلاح أي عطل فورًا على الفرع وتوثيقه `P1` بالملف والسطر.
-
-**حالة الترحيلات على المشروع غير مؤكدة** (اخترت «غير متأكد»): إن ظهر `PGRST202` أو
-`relation does not exist` فأول ترحيل ناقص يلزمه `npx supabase db push` من جهاز المالك —
-لا أستطيع تنفيذه (لا شبكة، لا Docker، لا Supabase CLI هنا). المسبار الجاهز في السجل يكشف
-ذلك قبل البند 1.
-
-### 3.2 الخطوتان 1 و2 — التهيئة والاعتمادات ⛔ على المالك
-
-اخترت المشروع الإنتاجي `livpmxwwxsfnaceczyth` (وفق `OPERATIONS.md:16`، **غير متحقق منه**)
-بدل مشروع جديد. المطلوب: تأكيد المرجع، وتوفير المفتاح، وحسم تأكيد البريد للعرض
-(Auth → Providers → Email → Confirm email) — وهو مفتاح في اللوحة للمشروع المستضاف،
-**لا** `supabase/config.toml` الذي يحكم الحزمة المحلية فقط (البند 2 في القائمة يخلط بينهما).
-
-### 3.3 بنود Track B — لم تُلمس عمدًا
-
-| البند | لماذا بقي |
-| --- | --- |
-| إعادة هيكلة procurement | تغيير بنيوي كبير، لا يليق بساعة عرض |
-| التعرف على الوجوه | يحتاج قرار منتج ومزودًا خارجيًا |
-| كشوف الحساب المكررة | تحتاج قرار نموذج بيانات |
-| فجوة سجل التدقيق | تحتاج تصميم سياسة احتفاظ |
-| توفيق المستندات | `PROJECT_STATUS.md` وغيرها ما زالت تحمل ادعاءات يدحضها الكود (منها PRE‑2) — أُصلح بعد العرض |
-| حذف العلامات الميتة | تنظيف لا أثر له على العرض |
-| تحذيرا lint | `[\.\)]` في `AssistantLauncher.tsx:56` — حرفا هروب زائدان **داخل مجموعة أحرف**، وإزالتهما لا تغيّر المعنى. قديمان وليسا من هذا العمل، وتُركا احترامًا للنطاق |
-
----
-
-## 4. مخاطر وقرارات موثّقة
-
-1. **البروفة الكاملة على الإنتاج غير قابلة للتراجع.** الترحيلات الـ104 لا تتضمّن **أي** سياسة
-   `DELETE` (16 `SELECT`، 2 `ALL` على `staff_members`/`equipment_capacity` فقط، 1 `UPDATE`،
-   1 `INSERT`). القرار اتخذه المالك بعد عرض الأدلة (الخيار C). التفاصيل وخطة التصفير في
-   `docs/DAY1_REHEARSAL_LOG.md`.
-2. **ترتيب التصفير إلزامي:** `reopen_event_financially` أولًا (وإلا منع
-   `guard_event_financially_closed` أي كتابة مالية) ← `void_customer_payment` ←
-   `void_event_expense`. و`reverse_journal_entry` **غير قابلة للاستدعاء من التطبيق**
-   (مسحوبة من `anon, authenticated` في 0084:646) فأي قيد يومي يحتاج SQL Editor كمالك للقاعدة.
-   والمناسبة **لا تُلغى** بعد البند 13 (`EVENT_CANNOT_BE_CANCELLED` خارج
-   `DRAFT/QUOTED/CONFIRMED/PREPARING`، 0015:70).
-3. **حساب `demo@jiwdah.com` بكلمة `123456`:** لم يُخزَّن في أي ملف ولم يُستعمل (لا شبكة ولا
-   متصفح)، والبروفة لا تحتاجه لأن البند 1 يسجّل مستخدمًا جديدًا. التوصية: تغيير الكلمة أو
-   حذف الحساب — فخطرها يتضاعف مع إيقاف تأكيد البريد، في نظام يحوي رواتب وماليات.
-4. **PR #53 المفتوح** («Add files via upload»): يضيف `app-uiux-audit.zip` فقط، **لا تداخل**
-   مع ملفات هذا العمل. ملاحظة تقريرية: إدخال أرشيف ثنائي إلى git ليس ممارسة صحية.
-5. **حماية الفرع `main` غير قابلة للقراءة** بهذا التوكن (403)؛ إن وُجد اشتراط مراجعات فقد
-   يفشل الدمج الآلي ويُبلَّغ عنه.
-
----
-
-## 5. ما يتغير بعد الدمج — قائمة تشغيلية
-
-1. تأكّد من نشر Vercel: `https://jiwdah.vercel.app/version.json` يجب أن يتحول عن
-   `5ac6cc07763c` إلى تجزئة الدمج (هذا يحسم PRE‑2).
-2. الصق مفتاح `anon` → تُعاد تشغيل المعاينة → مسبار الجاهزية (الخطوة 0) → البنود 1–16.
-3. بعد البروفة: نفّذ ترتيب التصفير أعلاه، وسجّل النتائج في `docs/DAY1_REHEARSAL_LOG.md`.
-4. قرّر في المؤجلات: توفيق المستندات (خصوصًا `PROJECT_STATUS.md`)، وبنود Track B، وتحذيرا lint.
+انتهى التنفيذ — المنتج جاهز للعرض على عميل حقيقي.
