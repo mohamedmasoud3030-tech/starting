@@ -88,40 +88,30 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   },
   // ------------------------------------------------------------ «المزيد»
   {
-    label: "التشغيل",
+    label: "العروض والعدة",
     secondary: true,
     items: [
-      { to: "/operations", label: "جدول التشغيل" },
-      { to: "/quotes", label: "عروض الأسعار", commercial: true },
-      { to: "/packages", label: "العروض والباقات" },
-    ],
-  },
-  {
-    label: "المخزون والتوريد",
-    secondary: true,
-    items: [
-      { to: "/catalog", label: "دليل الخدمات والمواد" },
-      { to: "/consumables", label: "مخزون المواد" },
+      { to: "/packages", label: "العروض الستة" },
+      { to: "/quotes", label: "عروض أسعار مخصصة", commercial: true },
+      { to: "/catalog", label: "دليل العدة والمواد" },
+      { to: "/consumables", label: "المخزن" },
       // Every procurement read model is hidden from non-cost roles and every
       // S5 command requires OWNER/MANAGER, so these are cost-role-only items.
-      { to: "/procurement", label: "الموردون وأوامر الشراء", financial: true },
+      { to: "/procurement", label: "الموردون والشراء", financial: true },
       { to: "/procurement/restaurants", label: "المطاعم المتعاقدة", financial: true },
     ],
   },
   {
-    label: "الإدارة والتحليل",
+    label: "الإدارة",
     secondary: true,
     items: [
+      { to: "/operations", label: "جدول التشغيل" },
       { to: "/dashboard", label: "لوحة الإدارة", financial: true },
       { to: "/reports", label: "التقارير", financial: true },
       { to: "/integrity", label: "مركز السلامة", financial: true },
       { to: "/search", label: "البحث" },
+      { to: "/settings", label: "الإعدادات" },
     ],
-  },
-  {
-    label: "النظام",
-    secondary: true,
-    items: [{ to: "/settings", label: "إعدادات المنشأة" }],
   },
 ];
 

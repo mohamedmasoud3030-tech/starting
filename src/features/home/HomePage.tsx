@@ -10,7 +10,6 @@ import {
   MapPin,
   MessageCircle,
   Package,
-  PackageSearch,
   PlusCircle,
   UserCheck,
   Users,
@@ -151,7 +150,7 @@ export function HomePage() {
   const showClosures = canManageEvents || canCloseFinancially;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-16 md:pb-0">
       <PageHeader
         title={`${name}، ${currentOrganization?.name ?? ""}`}
         description="إيه اللي عندي النهارده؟ · مين لسه مدفعش؟ · إيه اللي محتاج تدخّلي؟"
@@ -179,7 +178,7 @@ export function HomePage() {
       {isNewOrganization && <FirstStepsCard />}
 
       {hasLoadError && (
-        <ErrorState message="تعذر تحميل جزء من لوحة التشغيل. أعد المحاولة قبل الاعتماد على حالة اليوم." />
+        <ErrorState message="تعذر تحميل جزء من الصفحة. أعد المحاولة." />
       )}
 
       {eventsTruncated && (
@@ -190,21 +189,17 @@ export function HomePage() {
         <h2 id="today-metrics-title" className="sr-only">
           مؤشرات اليوم
         </h2>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <StatCard label="مناسبات اليوم" value={metrics.todayEvents} icon={CalendarDays} tone="brand" />
           <StatCard label="جاهزة" value={metrics.ready} icon={CheckCircle2} tone="success" />
           <StatCard label="محتاجة تدخّل" value={metrics.attention} icon={AlertTriangle} tone="warning" />
+          <StatCard
+            label="بدون بصمة"
+            value={metrics.attendanceGaps ?? 0}
+            icon={UserCheck}
+            tone={(metrics.attendanceGaps ?? 0) > 0 ? "danger" : "neutral"}
+          />
         </div>
-        {(metrics.attendanceGaps ?? 0) > 0 || (metrics.lowStock ?? 0) > 0 ? (
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {(metrics.attendanceGaps ?? 0) > 0 && (
-              <StatCard label="مناسبات بدون تسجيل حضور" value={metrics.attendanceGaps} icon={UserCheck} tone="danger" />
-            )}
-            {(metrics.lowStock ?? 0) > 0 && (
-              <StatCard label="مواد قربت تخلص" value={metrics.lowStock} icon={PackageSearch} tone="danger" />
-            )}
-          </div>
-        ) : null}
       </section>
 
       <section aria-labelledby="today-events-title">
@@ -214,7 +209,7 @@ export function HomePage() {
               مناسبات اليوم
             </h2>
             <p className="text-base text-slate-500">
-              المرتبطة بالحاجة إلى إجراء أولاً، ثم حسب وقت البداية في توقيت مسقط
+              اللي محتاجة إجراء الأول، ثم حسب وقت البداية
             </p>
           </div>
           <Link to="/events" className="text-base font-bold text-brand-700 hover:text-brand-900">
@@ -226,7 +221,7 @@ export function HomePage() {
           <EventCardsSkeleton />
         ) : dashboard.todayEvents.length === 0 ? (
           <Card className="p-5 text-slate-600">
-            لا توجد مناسبات مجدولة اليوم — تابع المناسبات القادمة من التقويم أو لوحة التشغيل.
+            لا توجد مناسبات النهارده. المناسبات القادمة في «المناسبات».
           </Card>
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -348,7 +343,7 @@ export function HomePage() {
             <ListRowsSkeleton label="جارٍ فحص التحصيل…" />
           ) : collections.length === 0 ? (
             <Card className="border-emerald-200 bg-emerald-50 p-5 text-emerald-800">
-              لا متبقٍ يستحق المتابعة الآن — التحصيل مطابق للقيمة المعتمدة.
+              كل العملاء دفعوا — لا يوجد باقي.
             </Card>
           ) : (
             <ul className="space-y-2">
@@ -391,14 +386,14 @@ export function HomePage() {
               مناسبات جاهزة للإغلاق
             </h2>
             <p className="text-base text-slate-500">
-              الإغلاق التشغيلي يتطلب إرجاع المعدات وتسوية المواد؛ الإغلاق المالي يتطلب استيفاء المتبقي — وفق قواعد النظام نفسها.
+              مناسبات خلصت ومحتاجة إرجاع العدة أو تحصيل الباقي.
             </p>
           </div>
           {!closuresLoaded ? (
             <ListRowsSkeleton label="جارٍ فحص حالات الإغلاق…" />
           ) : closures.length === 0 ? (
             <Card className="p-5 text-slate-600">
-              لا توجد مناسبات تستحق إجراء إغلاق الآن.
+              لا توجد مناسبات محتاجة إقفال الآن.
             </Card>
           ) : (
             <ul className="space-y-2">
@@ -446,7 +441,7 @@ export function HomePage() {
             محتاج تدخّلك
           </h2>
           <p className="text-base text-slate-500">
-            نواقص فريق أو معدات أو مواد في مناسبات قريبة.
+            نقص مضيفين أو عدة أو مواد في مناسبات قريبة.
           </p>
         </div>
 
@@ -454,7 +449,7 @@ export function HomePage() {
           <ListRowsSkeleton label="جارٍ فحص التنبيهات…" />
         ) : dashboard.alerts.length === 0 && attendanceGaps.length === 0 ? (
           <Card className="border-emerald-200 bg-emerald-50 p-5 text-emerald-800">
-            لا توجد تنبيهات تشغيلية تحتاج تدخل الآن.
+            كل شيء تمام — لا يوجد ما يحتاج تدخّلك.
           </Card>
         ) : (
           <div className="space-y-3">
@@ -515,16 +510,18 @@ export function HomePage() {
         )}
       </section>
 
-      <section aria-labelledby="shortcuts-title">
-        <h2 id="shortcuts-title" className="mb-3 text-xl font-bold text-slate-900">
-          الإعدادات التجارية
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <ShortcutCard label="صنف في الكتالوج" value={shortcuts.catalog} icon={Boxes} to="/catalog" />
-          <ShortcutCard label="عرض / باقة" value={shortcuts.packages} icon={Package} to="/packages" />
-          <ShortcutCard label="عميل" value={shortcuts.customers} icon={Users} to="/customers" />
-        </div>
-      </section>
+      {isNewOrganization && (
+        <section aria-labelledby="shortcuts-title">
+          <h2 id="shortcuts-title" className="mb-3 text-xl font-bold text-slate-900">
+            إعداد أولي
+          </h2>
+          <div className="grid grid-cols-3 gap-2">
+            <ShortcutCard label="أصناف" value={shortcuts.catalog} icon={Boxes} to="/catalog" />
+            <ShortcutCard label="عروض" value={shortcuts.packages} icon={Package} to="/packages" />
+            <ShortcutCard label="عملاء" value={shortcuts.customers} icon={Users} to="/customers" />
+          </div>
+        </section>
+      )}
     </div>
   );
 }
