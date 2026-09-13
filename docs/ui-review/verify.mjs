@@ -1,0 +1,16 @@
+import { chromium, devices } from "playwright";
+const b = await chromium.launch({ args: ["--no-sandbox"] });
+const ctx = await b.newContext({ ...devices["iPhone 13"], locale: "ar-OM", timezoneId: "Asia/Muscat" });
+const p = await ctx.newPage();
+await p.goto("https://jiwdah.vercel.app/login", { waitUntil: "networkidle" });
+await p.fill('input[type="email"]', "Demo@jiwdah.com"); await p.fill('input[type="password"]', "123456");
+await p.click('button[type="submit"]'); await p.waitForURL(u => !u.pathname.includes("login"), { timeout: 30000 });
+await p.goto("https://jiwdah.vercel.app/events", { waitUntil: "networkidle" }); await p.waitForTimeout(3000);
+await p.screenshot({ path: "n-events.png" });
+await p.getByText(/EV-2026-00001/).first().click(); await p.waitForURL(/\/events\/[0-9a-f-]+/); await p.waitForTimeout(4000);
+await p.screenshot({ path: "n-event.png" });
+await p.goto(p.url().split("?")[0] + "?tab=" + encodeURIComponent("الحضور"), { waitUntil: "networkidle" }); await p.waitForTimeout(3000);
+await p.screenshot({ path: "n-event-attendance.png" });
+await p.goto("https://jiwdah.vercel.app/staff", { waitUntil: "networkidle" }); await p.waitForTimeout(3000);
+await p.screenshot({ path: "n-staff.png" });
+await b.close();

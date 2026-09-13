@@ -1,0 +1,15 @@
+import { chromium } from "playwright";
+const b = await chromium.launch({ args: ["--no-sandbox"] });
+const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, locale: "ar-OM", timezoneId: "Asia/Muscat" });
+const p = await ctx.newPage();
+const shot = async (n) => { await p.waitForTimeout(3500); await p.screenshot({ path: `e-${n}.png` }); };
+await p.goto("https://jiwdah.vercel.app/login", { waitUntil: "networkidle" });
+await p.fill('input[type="email"]', "Demo@jiwdah.com"); await p.fill('input[type="password"]', "123456");
+await p.click('button[type="submit"]'); await p.waitForURL(u => !u.pathname.includes("login"), { timeout: 30000 });
+await p.waitForLoadState("networkidle"); await shot("home");
+await p.goto("https://jiwdah.vercel.app/events", { waitUntil: "networkidle" }); await p.waitForTimeout(2000);
+await p.getByText(/EV-2026-00001/).first().click(); await p.waitForURL(/\/events\/[0-9a-f-]+/);
+await p.goto(p.url().split("?")[0]+"?tab="+encodeURIComponent("المخزن"), { waitUntil: "networkidle" }); await shot("kit");
+await p.goto("https://jiwdah.vercel.app/consumables", { waitUntil: "networkidle" }); await shot("consumables");
+await p.goto("https://jiwdah.vercel.app/staff", { waitUntil: "networkidle" }); await shot("staff");
+await b.close();
