@@ -3,6 +3,7 @@ import { Pencil, Plus, Search } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { canManageCommercialFor } from "@/app/authRoles";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { InventoryKitCard } from "@/features/quickEvent/InventoryKitCard";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -72,8 +73,8 @@ export function CatalogPage() {
   return (
     <div>
       <PageHeader
-        title="الكتالوج"
-        description="إدارة الأصناف والخدمات والأسعار"
+        title="دليل الخدمات والمواد"
+        description="كل ما يخرج للمناسبة: طاولات، مفارش، فناجين، دلال، مواد، قرطاسية… والأسعار"
         actions={
           canManageCatalog ? (
             <Button
@@ -88,6 +89,8 @@ export function CatalogPage() {
           ) : undefined
         }
       />
+
+      {canManageCatalog && <InventoryKitCard orgId={orgId} />}
 
       <AsyncState
         loading={itemsQuery.isLoading}

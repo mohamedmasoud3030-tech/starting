@@ -26,6 +26,7 @@ import { WorkOrderDocument } from "@/features/documents/WorkOrderDocument";
 import { EditEventDialog } from "./workspace/EditEventDialog";
 import { EventCommandCenter } from "./workspace/EventCommandCenter";
 import { QuickDepositCard } from "@/features/quickEvent/QuickDepositCard";
+import { HostCallCard } from "@/features/quickEvent/HostCallCard";
 import { useEventCommandCenter } from "./commandCenter.api";
 import { AttendancePanel } from "@/features/staff/AttendancePanel";
 import { HostPayrollPanel } from "@/features/staff/HostPayrollPanel";
@@ -181,6 +182,14 @@ export function EventWorkspace() {
               طباعة كشف فريق المناسبة
             </Button>
           </div>
+          <HostCallCard
+            event={ev}
+            orgName={currentOrganization?.name ?? ""}
+            staff={d.staff}
+            assignments={d.assignments}
+            run={ws.run}
+            canAssign={ws.canAssignStaff}
+          />
           <TeamTab
             staff={d.staff}
             assignments={d.assignments}

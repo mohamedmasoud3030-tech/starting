@@ -51,3 +51,22 @@ describe("office offers (printed price sheet)", () => {
     expect(text).not.toMatch(/تكلفة|هامش|ربح/);
   });
 });
+
+import { HOSPITALITY_INVENTORY, suggestedKit } from "./hospitalityInventory";
+
+describe("hospitality inventory kit", () => {
+  it("has unique item names across categories", () => {
+    const names = HOSPITALITY_INVENTORY.flatMap((c) => c.items.map((i) => i.name));
+    expect(new Set(names).size).toBe(names.length);
+  });
+  it("scales per-lane items and keeps per-event items fixed", () => {
+    const one = suggestedKit(1);
+    const three = suggestedKit(3);
+    const pots1 = one.find((k) => k.name === "دلة قهوة عمانية")!.quantity;
+    const pots3 = three.find((k) => k.name === "دلة قهوة عمانية")!.quantity;
+    expect(pots3).toBe(pots1 * 3);
+    const trolley1 = one.find((k) => k.name === "عربة نقل (ترولي)")!.quantity;
+    const trolley3 = three.find((k) => k.name === "عربة نقل (ترولي)")!.quantity;
+    expect(trolley3).toBe(trolley1);
+  });
+});
