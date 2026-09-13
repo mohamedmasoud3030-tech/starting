@@ -445,7 +445,7 @@ export function AssistantLauncher() {
         aria-expanded={open}
         aria-label={open ? `إغلاق مساعد ${ASSISTANT_NAME}` : `فتح مساعد ${ASSISTANT_NAME}`}
         className={cn(
-          "fixed bottom-24 end-4 z-50 flex h-14 w-14 flex-none items-center justify-center rounded-full shadow-lg md:bottom-7 md:end-7 md:h-16 md:w-16",
+          "fixed bottom-[4.75rem] end-3 z-30 flex h-[52px] w-[52px] flex-none items-center justify-center rounded-full shadow-lg md:bottom-7 md:end-7 md:h-14 md:w-14",
           open
             ? "bg-slate-900 text-white hover:bg-slate-800"
             : "bg-brand-700 text-white hover:bg-brand-800",
@@ -518,7 +518,7 @@ function AssistantPanel({
     <aside
       role="dialog"
       aria-label={`مساعد ${ASSISTANT_NAME}`}
-      className="fixed bottom-40 end-4 z-50 flex max-h-[70dvh] w-[min(27rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl md:bottom-24 md:end-7"
+      className="fixed bottom-[8.5rem] end-3 z-50 flex max-h-[70dvh] w-[min(27rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl md:bottom-24 md:end-7"
     >
       {/* Header */}
       <div className="flex items-start gap-3 border-b border-slate-100 bg-brand-700 px-4 py-3 text-white">
