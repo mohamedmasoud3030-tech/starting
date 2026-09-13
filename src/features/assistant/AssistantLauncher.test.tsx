@@ -33,6 +33,7 @@ vi.mock("./use-assistant-voice", () => ({
   useAssistantVoice: () => ({
     supported: true,
     speaking: false,
+    hasFeminineVoice: true,
     speak,
     stop,
   }),

@@ -4,6 +4,8 @@ import { AssistantSpeechEngine } from "./assistant-speech";
 export interface AssistantVoiceController {
   supported: boolean;
   speaking: boolean;
+  /** True when the device offers a feminine Arabic voice for the fallback. */
+  hasFeminineVoice: boolean;
   speak: (text: string) => boolean;
   stop: () => void;
 }
@@ -27,6 +29,7 @@ export function useAssistantVoice(
     () => ({
       supported: state.supported,
       speaking: state.status === "speaking",
+      hasFeminineVoice: state.hasFeminineVoice,
       speak: (text) => instance.speak(text),
       stop: () => instance.cancel(),
     }),

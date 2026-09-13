@@ -116,6 +116,13 @@ export function AssistantLauncher() {
   const spokenAssistantCount = useRef(0);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const pendingSpeakRef = useRef<{ text: string } | null>(null);
+  /**
+   * Monotonic token: every `speakText` call bumps it. Any in-flight call whose
+   * token is stale (a newer speak/stop happened while awaiting the cloud) must
+   * abort instead of starting a second voice — this is what previously let the
+   * device (male) voice talk over the cloud (لينا) voice.
+   */
+  const speakGenerationRef = useRef(0);
   /** Small LRU of cloud clips by exact reply text — replays never re-bill
    *  the provider quota and start instantly. */
   const cloudClipCacheRef = useRef<Map<string, { audioB64: string; mimeType: string }>>(new Map());
@@ -171,6 +178,8 @@ export function AssistantLauncher() {
   );
 
   const stopAudio = useCallback(() => {
+    speakGenerationRef.current += 1;
+    pendingSpeakRef.current = null;
     const el = audioElRef.current;
     if (el) {
       el.pause();
@@ -191,10 +200,22 @@ export function AssistantLauncher() {
 
   const speakLocally = useCallback(
     (trimmed: string): boolean => {
+      // لينا is a female persona: if the device only offers a masculine
+      // Arabic voice, stay silent (the text is still shown) rather than
+      // letting a male voice speak in her place.
+      if (!voice.hasFeminineVoice) {
+        console.info(
+          "[لينا] cloud voice unavailable and no feminine device voice → text only.",
+        );
+        return false;
+      }
       console.info(
         "[لينا] cloud voice unavailable → device speech engine. supported=",
         voice.supported,
       );
+      // Never let the device voice overlap a cloud clip.
+      audioElRef.current?.pause();
+      setAudioSpeaking(false);
       const started = voice.speak(trimmed);
       if (!started) {
         pendingSpeakRef.current = { text: trimmed };
@@ -209,6 +230,8 @@ export function AssistantLauncher() {
       const trimmed = text?.trim();
       if (!trimmed) return;
       const spoken = toSpokenText(trimmed) || trimmed;
+      const generation = ++speakGenerationRef.current;
+      const isStale = () => speakGenerationRef.current !== generation;
       const el = audioElRef.current;
       el?.pause();
       voice.stop();
@@ -218,7 +241,10 @@ export function AssistantLauncher() {
       const cached = cache.get(trimmed);
 
       if (cached) {
+        // Make sure the device voice is silent before the cloud clip starts.
+        voice.stop();
         const played = await playCloudClip(cached.audioB64, cached.mimeType);
+        if (isStale()) return;
         if (played) {
           pendingSpeakRef.current = null;
           return;
@@ -236,7 +262,14 @@ export function AssistantLauncher() {
             const oldest = cache.keys().next().value as string | undefined;
             if (oldest) cache.delete(oldest);
           }
+        }
+        // A newer speak/stop happened while we waited → do NOT start a second
+        // voice on top of it.
+        if (isStale()) return;
+        if (outcome.kind === "ok") {
+          voice.stop();
           const played = await playCloudClip(outcome.audioB64, outcome.mimeType);
+          if (isStale()) return;
           if (played) {
             pendingSpeakRef.current = null;
             return;
@@ -249,6 +282,7 @@ export function AssistantLauncher() {
         }
       }
 
+      if (isStale()) return;
       speakLocally(spoken);
     },
     [voice, playCloudClip, speakLocally],
