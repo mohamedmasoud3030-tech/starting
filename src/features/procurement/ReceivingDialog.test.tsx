@@ -147,7 +147,7 @@ describe("ReceivingDialog", () => {
     const controls = createTestSource();
     render(<ReceivingDialog open order={orderFixture("CONFIRMED")} dataSource={controls.source} onOpenChange={() => {}} onReceived={() => {}} />);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "تحديد كل المتبقي" })).toHaveClass("h-12");
+    expect(screen.getByRole("button", { name: "تحديد كل المتبقي" })).toHaveClass("h-11");
     expect(screen.getByText(/لا تعدّل الرصيد مباشرة/)).toBeInTheDocument();
     expect(document.body.innerHTML).not.toContain("line-consumable-internal");
   });

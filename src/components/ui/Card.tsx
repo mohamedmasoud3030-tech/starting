@@ -22,7 +22,7 @@ export function CardHeader({
 }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("border-b border-slate-100 p-4 sm:p-5", className)}
+      className={cn("border-b border-slate-100 p-3.5 sm:p-4", className)}
       {...props}
     />
   );
@@ -32,5 +32,5 @@ export function CardBody({
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-4 sm:p-5", className)} {...props} />;
+  return <div className={cn("p-3.5 sm:p-4", className)} {...props} />;
 }

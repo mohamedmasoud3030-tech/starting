@@ -180,7 +180,7 @@ export function ContractedRestaurantsPage() {
     <main className="space-y-6" aria-labelledby="restaurants-title">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 id="restaurants-title" className="flex items-center gap-2 text-3xl font-black">
+          <h1 id="restaurants-title" className="flex items-center gap-2 text-lg font-black sm:text-xl">
             <UtensilsCrossed className="h-8 w-8 text-brand-700" aria-hidden="true" />
             المطاعم المتعاقدة
           </h1>
@@ -216,15 +216,15 @@ export function ContractedRestaurantsPage() {
       <section aria-label="ملخص" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
           <p className="text-sm text-slate-500">عقود سارية</p>
-          <p className="mt-1 text-3xl font-black text-brand-700">{activeContractCount}</p>
+          <p className="mt-1 text-2xl font-black text-brand-700">{activeContractCount}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
           <p className="text-sm text-slate-500">حجوزات قيد التأكيد</p>
-          <p className="mt-1 text-3xl font-black text-amber-600">{pendingCount}</p>
+          <p className="mt-1 text-2xl font-black text-amber-600">{pendingCount}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
           <p className="text-sm text-slate-500">حجوزات مؤكدة</p>
-          <p className="mt-1 text-3xl font-black text-emerald-700">{confirmedCount}</p>
+          <p className="mt-1 text-2xl font-black text-emerald-700">{confirmedCount}</p>
         </div>
       </section>
 

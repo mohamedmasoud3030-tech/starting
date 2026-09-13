@@ -41,7 +41,7 @@ describe("SuppliersArea", () => {
     expect(await screen.findByText("تعذر تحميل الموردين")).toBeInTheDocument();
     expect(screen.getByText(/تعذر الاتصال بالخدمة/)).toBeInTheDocument();
     expect(document.body.textContent).not.toContain("socket detail");
-    expect(screen.getByRole("button", { name: "إعادة المحاولة" })).toHaveClass("h-12");
+    expect(screen.getByRole("button", { name: "إعادة المحاولة" })).toHaveClass("h-11");
   });
 
   it("searches and filters supplier cards", async () => {

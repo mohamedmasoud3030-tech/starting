@@ -48,7 +48,7 @@ describe("ProcurementWorkspace page", () => {
     render(<ProcurementWorkspace dataSource={controls.source} />);
     expect(await screen.findByRole("heading", { name: "تعذر فتح المشتريات" })).toBeInTheDocument();
     expect(screen.getByText("لا تملك صلاحية تنفيذ هذا الإجراء.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "إعادة المحاولة" })).toHaveClass("h-12");
+    expect(screen.getByRole("button", { name: "إعادة المحاولة" })).toHaveClass("h-11");
     expect(document.body.textContent).not.toContain("hidden policy");
   });
 });

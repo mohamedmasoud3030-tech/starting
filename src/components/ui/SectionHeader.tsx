@@ -21,9 +21,9 @@ export function SectionHeader({
       className={`flex flex-wrap items-end justify-between gap-3 ${className ?? ""}`}
     >
       <div className="min-w-0">
-        <h2 className="text-2xl font-black text-slate-900">{title}</h2>
+        <h2 className="text-base font-black text-slate-900 sm:text-lg">{title}</h2>
         {description && (
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+          <p className="mt-0.5 max-w-2xl text-sm leading-6 text-slate-600">
             {description}
           </p>
         )}

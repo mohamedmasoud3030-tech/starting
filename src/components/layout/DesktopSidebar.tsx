@@ -43,7 +43,7 @@ export function DesktopSidebar({
     });
 
   return (
-    <aside className="sticky top-16 hidden h-[calc(100dvh-4rem)] w-64 flex-none overflow-y-auto border-l border-slate-200 bg-white px-3 py-5 md:block">
+    <aside className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] w-64 flex-none overflow-y-auto border-l border-slate-200 bg-white px-3 py-5 md:block">
       <nav className="space-y-5" aria-label="التنقل الرئيسي">
         {/* The owner's daily path — always visible, one label per group. */}
         <div className="space-y-1">

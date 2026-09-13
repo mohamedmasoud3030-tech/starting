@@ -9,7 +9,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
       <input
         ref={ref}
         className={cn(
-          "h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-base text-slate-900",
+          "h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-base text-slate-900",
           "shadow-[inset_0_1px_2px_rgb(15_23_42/0.04)] transition-[border-color,box-shadow,background-color]",
           "placeholder:text-slate-400/90",
           "hover:border-slate-300",

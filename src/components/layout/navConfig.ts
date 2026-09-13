@@ -80,25 +80,25 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
     label: "الفريق",
     // The staff page is a payroll + HR surface (server-gated by payroll.read):
     // hosts, attendance, advances and payouts.
-    items: [{ to: "/staff", label: "المضيفون والحضور", payroll: true }],
+    items: [{ to: "/staff", label: "المضيفون", payroll: true }],
   },
   {
     label: "الفلوس",
-    items: [{ to: "/accounting", label: "الفلوس والمستحقات", financial: true }],
+    items: [{ to: "/accounting", label: "الفلوس", financial: true }],
   },
   // ------------------------------------------------------------ «المزيد»
   {
     label: "العروض والعدة",
     secondary: true,
     items: [
-      { to: "/packages", label: "العروض الستة" },
-      { to: "/quotes", label: "عروض أسعار مخصصة", commercial: true },
-      { to: "/catalog", label: "دليل العدة والمواد" },
+      { to: "/packages", label: "العروض الجاهزة" },
+      { to: "/quotes", label: "عروض الأسعار", commercial: true },
+      { to: "/catalog", label: "دليل الأصناف" },
       { to: "/consumables", label: "المخزن" },
       // Every procurement read model is hidden from non-cost roles and every
       // S5 command requires OWNER/MANAGER, so these are cost-role-only items.
-      { to: "/procurement", label: "الموردون والشراء", financial: true },
-      { to: "/procurement/restaurants", label: "المطاعم المتعاقدة", financial: true },
+      { to: "/procurement", label: "الموردون", financial: true },
+      { to: "/procurement/restaurants", label: "المطاعم", financial: true },
     ],
   },
   {

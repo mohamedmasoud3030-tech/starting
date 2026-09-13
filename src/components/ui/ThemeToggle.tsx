@@ -24,7 +24,7 @@ export function ThemeToggle({
       }
       title={isDark ? "الوضع النهاري" : "الوضع الليلي"}
       className={cn(
-        "flex h-11 w-11 flex-none items-center justify-center rounded-xl border transition-colors",
+        "flex h-10 w-10 flex-none items-center justify-center rounded-xl border transition-colors",
         "border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-brand-700",
         "dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-brand-300",
         className,

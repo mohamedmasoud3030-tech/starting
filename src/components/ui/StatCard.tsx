@@ -31,15 +31,15 @@ export function StatCard({
   tone?: StatTone;
 }) {
   return (
-    <Card className="p-3 sm:p-5">
+    <Card className="p-3 sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold leading-tight text-slate-500 sm:text-base">{label}</p>
-          <p className="mt-1 text-3xl font-bold text-slate-900">{value ?? "—"}</p>
+          <p className="text-xs font-semibold leading-tight text-slate-500 sm:text-sm">{label}</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{value ?? "—"}</p>
         </div>
         {Icon && (
           <div
-            className={`hidden h-11 w-11 shrink-0 sm:flex items-center justify-center rounded-xl ${toneClasses[tone]}`}
+            className={`hidden h-10 w-10 shrink-0 sm:flex items-center justify-center rounded-xl ${toneClasses[tone]}`}
           >
             <Icon className="h-5 w-5" aria-hidden="true" />
           </div>

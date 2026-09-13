@@ -549,7 +549,7 @@ function ShortcutCard({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-base text-slate-500">{label}</p>
-            <p className="mt-1 text-3xl font-bold text-slate-900">{value ?? "—"}</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{value ?? "—"}</p>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
             <Icon className="h-6 w-6" aria-hidden="true" />

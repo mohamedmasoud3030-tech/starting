@@ -47,9 +47,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <UpdateBanner />
 
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
-        <div className="mx-auto flex h-16 max-w-[1440px] items-center gap-3 px-4 md:px-6">
+        <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-3 px-3 sm:px-4 md:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-brand-700 text-base font-bold text-white sm:h-11 sm:w-11 sm:text-lg">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-brand-700 text-base font-bold text-white">
               ض
             </div>
             <div className="min-w-0 leading-tight">
@@ -65,13 +65,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* Multi-organization users only; renders nothing for a single org. */}
           <div className="ms-auto flex items-center gap-2">
             <OrganizationSwitcher />
-            <ThemeToggle />
+            <ThemeToggle className="hidden md:flex" />
             <button
               type="button"
               onClick={() => void logout()}
               aria-label="تسجيل الخروج"
               title="تسجيل الخروج"
-              className="flex h-11 flex-none items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+              className="hidden h-10 flex-none items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-bold text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700 md:flex"
             >
               <LogOut className="h-5 w-5" />
               <span className="hidden sm:inline">خروج</span>
@@ -86,7 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main
           id="main-content"
           tabIndex={-1}
-          className="min-w-0 flex-1 px-3 py-4 pb-28 outline-none sm:px-4 sm:py-6 md:px-6 md:pb-6 lg:px-8"
+          className="min-w-0 flex-1 px-3 py-3 pb-24 outline-none sm:px-4 sm:py-5 md:px-6 md:pb-6 lg:px-8"
         >
           <div className="mx-auto max-w-7xl">
             <ToastProvider>{children}</ToastProvider>
