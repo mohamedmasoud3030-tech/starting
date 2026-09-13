@@ -29,6 +29,11 @@ export function EventWorkspaceHeader({
           <p className="text-slate-600">
             {new Date(event.start_at).toLocaleString("ar-OM-u-nu-latn", {
               timeZone: "Asia/Muscat",
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              hour: "numeric",
+              minute: "2-digit",
             })}{" "}
             · {event.venue_name}
           </p>
