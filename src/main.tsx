@@ -13,9 +13,12 @@ import "@fontsource/cairo/800.css";
 import "./index.css";
 import { AuthProvider } from "@/app/AuthContext";
 import { ErrorBoundary } from "@/app/ErrorBoundary";
+import { installChunkRecovery } from "@/app/chunkRecovery";
 import { queryClient } from "@/lib/queryClient";
 import { registerServiceWorker } from "@/pwa/registerServiceWorker";
 import { router } from "@/routes";
+
+installChunkRecovery();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

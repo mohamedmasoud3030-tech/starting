@@ -72,7 +72,7 @@ export function ManagementDashboard() {
           </Card>
         ) : (
           <ul className="space-y-2">
-            {alerts.data!.slice(0, 12).map((a, i) => (
+            {(alerts.data ?? []).slice(0, 12).map((a, i) => (
               <li key={`${a.alert_type}-${a.entity_id}-${i}`}>
                 <Link to={a.destination} className="block">
                   <Card className="flex items-start gap-3 p-3 hover:border-brand-300">
