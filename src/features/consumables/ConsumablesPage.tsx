@@ -18,6 +18,9 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { InlineError } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { KitStockPanel } from "@/features/warehouse/KitStockPanel";
+import { useState } from "react";
 import { consumableErrorMessage } from "./consumables.model";
 import { StockLineCard } from "./StockLineCard";
 import { TrackNewItem } from "./TrackNewItem";
@@ -27,13 +30,51 @@ export function ConsumablesPage() {
   const { currentOrganization, currentRole, capabilities } = useAuth();
   const orgId = currentOrganization?.id ?? null;
   const page = useConsumablesPage(orgId, currentRole, capabilities);
+  const [section, setSection] = useState<"kit" | "materials">("materials");
+
+  const header = (
+    <PageHeader
+      title="المخزن"
+      description="العدة اللي بتتحجز وترجع (دلال، فناجين…) والمواد اللي بتتصرف وتخلص (قهوة، تمر…)"
+      actions={
+        <SegmentedControl<"kit" | "materials">
+          ariaLabel="قسم المخزن"
+          value={section}
+          onChange={setSection}
+          options={[
+            { value: "materials", label: "المواد" },
+            { value: "kit", label: "العدة" },
+          ]}
+        />
+      }
+    />
+  );
+
+  if (section === "kit") {
+    return (
+      <div className="space-y-5">
+        {header}
+        <KitStockPanel canManage={page.canManage} />
+      </div>
+    );
+  }
 
   if (page.stock.isLoading) {
-    return <LoadingState label="جارٍ تحميل المخزون…" full />;
+    return (
+      <div className="space-y-5">
+        {header}
+        <LoadingState label="جارٍ تحميل المواد…" />
+      </div>
+    );
   }
 
   if (page.stock.isError) {
-    return <InlineError message={consumableErrorMessage(page.stock.error)} />;
+    return (
+      <div className="space-y-5">
+        {header}
+        <InlineError message={consumableErrorMessage(page.stock.error)} />
+      </div>
+    );
   }
 
   const lines = page.stock.data?.lines ?? [];
@@ -42,10 +83,7 @@ export function ConsumablesPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="المواد الاستهلاكية"
-        description="رصيد المخزن للمواد الاستهلاكية: استلام، إتلاف، وتعديلات موثقة."
-      />
+      {header}
 
       {lowCount > 0 && (
         <Card className="border-amber-300 bg-amber-50">
@@ -74,8 +112,8 @@ export function ConsumablesPage() {
 
       {lines.length === 0 ? (
         <EmptyState
-          title="لا توجد أصناف متتبعة"
-          description="فعّل تتبع المخزون لأصناف الكتالوج الاستهلاكية لبدء تسجيل الأرصدة."
+          title="لا توجد مواد متتبعة"
+          description="فعّل تتبع الرصيد للمواد الاستهلاكية (قهوة، تمر، مناديل…) عشان تسجّل الاستلام والصرف."
         />
       ) : (
         <div className="space-y-3">

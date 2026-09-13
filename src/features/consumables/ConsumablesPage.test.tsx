@@ -140,7 +140,7 @@ describe("ConsumablesPage", () => {
 
   it("shows the empty state when nothing is tracked", async () => {
     render(<ConsumablesPage />, { wrapper });
-    expect(await screen.findByText("لا توجد أصناف متتبعة")).toBeInTheDocument();
+    expect(await screen.findByText("لا توجد مواد متتبعة")).toBeInTheDocument();
   });
 
   it("receives stock with an exact decimal quantity", async () => {
