@@ -44,7 +44,7 @@ export interface AssistantSynthLike {
   removeEventListener?(type: "voiceschanged", listener: () => void): void;
 }
 
-const ARABIC_LOCALE = "ar-OM";
+const ARABIC_LOCALE = "ar-OM-u-nu-latn";
 /** Slightly under 1: every word lands naturally, reads calm, not robotic. */
 const SPEECH_RATE = 0.96;
 /**

@@ -155,7 +155,7 @@ export function CustomerDetail() {
               <div className="flex justify-between">
                 <dt className="text-slate-500">آخر تفاعل</dt>
                 <dd className="font-bold">
-                  {new Date(row.last_interaction_at).toLocaleDateString("ar-OM", { timeZone: "Asia/Muscat" })}
+                  {new Date(row.last_interaction_at).toLocaleDateString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" })}
                 </dd>
               </div>
             )}

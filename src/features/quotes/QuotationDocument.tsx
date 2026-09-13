@@ -43,13 +43,13 @@ export function QuotationDocument({
   lines: QuotationLineRow[];
 }) {
   const dateText = data.issuedAt
-    ? new Date(data.issuedAt).toLocaleDateString("ar-OM", {
+    ? new Date(data.issuedAt).toLocaleDateString("ar-OM-u-nu-latn", {
         timeZone: "Asia/Muscat",
       })
     : null;
 
   const eventDate = data.startAt
-    ? new Date(data.startAt).toLocaleString("ar-OM", {
+    ? new Date(data.startAt).toLocaleString("ar-OM-u-nu-latn", {
         timeZone: "Asia/Muscat",
       })
     : "غير محدد";
@@ -96,7 +96,7 @@ export function QuotationDocument({
             <div>
               <span className="text-slate-500">صالح حتى: </span>
               <span className="font-bold">
-                {new Date(data.validUntil).toLocaleDateString("ar-OM", {
+                {new Date(data.validUntil).toLocaleDateString("ar-OM-u-nu-latn", {
                   timeZone: "Asia/Muscat",
                 })}
               </span>

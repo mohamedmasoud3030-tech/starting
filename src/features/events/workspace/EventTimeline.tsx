@@ -39,7 +39,7 @@ export function EventTimeline({ history }: { history: StatusHistoryRow[] }) {
               <span className="absolute -start-[1.15rem] top-1.5 h-3 w-3 rounded-full bg-brand-600" />
               <p className="font-bold">{label}</p>
               <p className="text-sm text-slate-500">
-                {new Date(h.created_at).toLocaleString("ar-OM", {
+                {new Date(h.created_at).toLocaleString("ar-OM-u-nu-latn", {
                   timeZone: "Asia/Muscat",
                 })}
                 {h.reason ? ` — ${h.reason}` : ""}

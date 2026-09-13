@@ -172,7 +172,7 @@ export function QuotesPage() {
                     {q.venue_snapshot && <p>📍 {q.venue_snapshot}</p>}
                     {q.start_at_snapshot && (
                       <p>
-                        {new Date(q.start_at_snapshot).toLocaleString("ar-OM", {
+                        {new Date(q.start_at_snapshot).toLocaleString("ar-OM-u-nu-latn", {
                           timeZone: "Asia/Muscat",
                         })}
                       </p>

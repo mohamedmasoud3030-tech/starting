@@ -27,7 +27,7 @@ export function EventWorkspaceHeader({
           </p>
           <h1 className="text-2xl font-black">{event.title}</h1>
           <p className="text-slate-600">
-            {new Date(event.start_at).toLocaleString("ar-OM", {
+            {new Date(event.start_at).toLocaleString("ar-OM-u-nu-latn", {
               timeZone: "Asia/Muscat",
             })}{" "}
             · {event.venue_name}

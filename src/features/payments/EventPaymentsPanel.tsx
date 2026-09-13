@@ -228,7 +228,7 @@ export function EventPaymentsPanel({
                         </Badge>
                       </div>
                       <p className="mt-1 text-sm text-slate-500">
-                        {new Date(p.paidAt).toLocaleString("ar-OM", { timeZone: "Asia/Muscat" })}
+                        {new Date(p.paidAt).toLocaleString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" })}
                         {p.reference ? ` · ${p.reference}` : ""}
                         {p.notes ? ` · ${p.notes}` : ""}
                       </p>

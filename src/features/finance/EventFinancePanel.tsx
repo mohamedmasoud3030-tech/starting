@@ -279,7 +279,7 @@ export function EventFinancePanel({
           <div className="mt-4">
             <p className="rounded-xl bg-slate-100 p-3 font-bold text-slate-700">
               مغلقة مالياً في{" "}
-              {new Date(activeClosure.closedAt).toLocaleString("ar-OM", { timeZone: "Asia/Muscat" })}
+              {new Date(activeClosure.closedAt).toLocaleString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" })}
               {activeClosure.closeNote ? ` — ${activeClosure.closeNote}` : ""}
               {" · "}الربح عند الإغلاق: {formatOMR(activeClosure.profitAtCloseMilli)}
             </p>
@@ -317,7 +317,7 @@ export function EventFinancePanel({
               {(closures.data ?? []).map((c) => (
                 <li key={c.id} className="flex justify-between gap-2">
                   <span>
-                    أُغلقت {new Date(c.closedAt).toLocaleString("ar-OM", { timeZone: "Asia/Muscat" })}
+                    أُغلقت {new Date(c.closedAt).toLocaleString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" })}
                     {c.reopenedAt ? ` · أُعيد فتحها (${c.reopenReason ?? ""})` : ""}
                   </span>
                   <span className="font-bold">{formatOMR(c.profitAtCloseMilli)}</span>

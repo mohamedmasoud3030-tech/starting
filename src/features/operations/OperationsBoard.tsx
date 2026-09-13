@@ -105,7 +105,7 @@ function BoardSection({
                     <div className="min-w-0">
                       <p className="truncate font-bold">{e.title}</p>
                       <p className="truncate text-sm text-slate-500">
-                        {new Date(e.start_at).toLocaleString("ar-OM", { timeZone: "Asia/Muscat" })} · {e.venue_name}
+                        {new Date(e.start_at).toLocaleString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" })} · {e.venue_name}
                       </p>
                       {r && r.status !== "READY" && (
                         <p className="mt-1 text-xs font-bold text-amber-700">

@@ -141,7 +141,7 @@ function DayList({ events, orgId }: { events: EventRow[]; orgId: string | null }
                   <div className="min-w-0">
                     <p className="truncate font-bold">{event.title}</p>
                     <p className="truncate text-sm text-slate-500">
-                      {new Date(event.start_at).toLocaleTimeString("ar-OM", { timeZone: "Asia/Muscat" })} · {event.venue_name}
+                      {new Date(event.start_at).toLocaleTimeString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" })} · {event.venue_name}
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-2">

@@ -68,5 +68,5 @@ export function dateOnly(value: string | null): string | null {
   if (!value) return null;
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("ar-OM", { timeZone: "Asia/Muscat" });
+  return d.toLocaleDateString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" });
 }

@@ -142,7 +142,7 @@ export function SettingsPage() {
         p_vat_percent: Number(form.vat_percent || "0"),
         p_vat_registration_number: form.vat_registration_number,
       });
-      setSavedAt(new Date().toLocaleTimeString("ar-OM", { timeZone: "Asia/Muscat" }));
+      setSavedAt(new Date().toLocaleTimeString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" }));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر حفظ الإعدادات.");
     }

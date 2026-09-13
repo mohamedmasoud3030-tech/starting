@@ -182,7 +182,7 @@ export function EventsPage() {
                     </div>
                     <p className="mt-1 truncate text-sm text-slate-500"><span dir="ltr">{event.event_number}</span> · {customerNames.get(event.customer_id) ?? "عميل"}</p>
                   </div>
-                  <p className="flex items-center gap-2 text-sm text-slate-700"><CalendarDays className="h-4 w-4 text-slate-400" />{new Date(event.start_at).toLocaleString("ar-OM", { timeZone: "Asia/Muscat", dateStyle: "medium", timeStyle: "short" })}</p>
+                  <p className="flex items-center gap-2 text-sm text-slate-700"><CalendarDays className="h-4 w-4 text-slate-400" />{new Date(event.start_at).toLocaleString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat", dateStyle: "medium", timeStyle: "short" })}</p>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600 md:block">
                     <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-slate-400" />{event.venue_name}</p>
                     <p className="mt-1 flex items-center gap-2"><Users className="h-4 w-4 text-slate-400" />{event.guest_count} ضيف</p>

@@ -223,7 +223,7 @@ export function buildEventWhatsAppUrl(
   const phone = normalizeWhatsAppPhone(event.contact_phone);
   if (!phone) return null;
 
-  const date = new Intl.DateTimeFormat("ar-OM", {
+  const date = new Intl.DateTimeFormat("ar-OM-u-nu-latn", {
     timeZone,
     weekday: "long",
     day: "numeric",

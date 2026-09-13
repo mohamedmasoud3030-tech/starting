@@ -103,6 +103,14 @@ export function EventWorkspace() {
         onEdit={() => setEditOpen(true)}
       />
 
+      <WorkspaceTabs
+        tab={ws.tab}
+        tabs={ws.visibleTabs}
+        onChange={ws.setTab}
+        stageStates={deriveStageStates(center, ev.status)}
+      />
+      {ws.error && <InlineError message={ws.error} />}
+
       {/*
         Command center above the detailed tabs (Scope C): one server
         projection answers "what does this event still need?" — the tabs
@@ -138,14 +146,6 @@ export function EventWorkspace() {
             )}
         </>
       )}
-
-      <WorkspaceTabs
-        tab={ws.tab}
-        tabs={ws.visibleTabs}
-        onChange={ws.setTab}
-        stageStates={deriveStageStates(center, ev.status)}
-      />
-      {ws.error && <InlineError message={ws.error} />}
 
       {editOpen && (
         <EditEventDialog

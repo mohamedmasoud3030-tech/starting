@@ -152,8 +152,8 @@ export function OverviewTab({
             <div>
               <dt className="text-sm text-slate-500">الفترة</dt>
               <dd className="font-bold">
-                {new Date(event.start_at).toLocaleString("ar-OM", { timeZone: "Asia/Muscat" })} —{" "}
-                {new Date(event.end_at).toLocaleString("ar-OM", { timeZone: "Asia/Muscat" })}
+                {new Date(event.start_at).toLocaleString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" })} —{" "}
+                {new Date(event.end_at).toLocaleString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" })}
               </dd>
             </div>
           </dl>

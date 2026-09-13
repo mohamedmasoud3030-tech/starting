@@ -5,13 +5,13 @@ import type { Assignment, EventRow, StaffMember } from "@/features/events/events
 import { STAFF_TYPE_LABELS } from "@/features/staff/labels";
 import { pickOfferForGuests } from "./officeOffers";
 
-const DATE_FMT = new Intl.DateTimeFormat("ar-OM", {
+const DATE_FMT = new Intl.DateTimeFormat("ar-OM-u-nu-latn", {
   timeZone: "Asia/Muscat",
   weekday: "long",
   day: "numeric",
   month: "long",
 });
-const TIME_FMT = new Intl.DateTimeFormat("ar-OM", {
+const TIME_FMT = new Intl.DateTimeFormat("ar-OM-u-nu-latn", {
   timeZone: "Asia/Muscat",
   hour: "numeric",
   minute: "2-digit",

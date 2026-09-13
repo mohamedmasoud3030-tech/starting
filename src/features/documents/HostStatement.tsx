@@ -4,7 +4,7 @@ import { formatOMR, fromDbAmount, type MilliOMR } from "@/lib/money";
 import type { HostStatementRow } from "./documents.api";
 
 function dateOnly(value: string): string {
-  return new Date(value).toLocaleDateString("ar-OM", {
+  return new Date(value).toLocaleDateString("ar-OM-u-nu-latn", {
     timeZone: "Asia/Muscat",
   });
 }

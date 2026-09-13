@@ -11,7 +11,7 @@ const EFFECTIVE_LABELS: Record<string, string> = {
 
 function dateOnly(value: string | null): string | null {
   return value
-    ? new Date(value).toLocaleDateString("ar-OM", { timeZone: "Asia/Muscat" })
+    ? new Date(value).toLocaleDateString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" })
     : null;
 }
 

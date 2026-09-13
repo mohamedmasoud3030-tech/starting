@@ -34,7 +34,7 @@ export function WarehouseSheet({
       identity={identity}
       title={title}
       documentNumber={eventNumber}
-      dateText={new Date(printedAt).toLocaleString("ar-OM", {
+      dateText={new Date(printedAt).toLocaleString("ar-OM-u-nu-latn", {
         timeZone: "Asia/Muscat",
       })}
       meta={
@@ -47,7 +47,7 @@ export function WarehouseSheet({
           <div>
             <span className="text-slate-500">وقت الطباعة: </span>
             <span className="font-bold">
-              {new Date(printedAt).toLocaleString("ar-OM", {
+              {new Date(printedAt).toLocaleString("ar-OM-u-nu-latn", {
                 timeZone: "Asia/Muscat",
               })}
             </span>

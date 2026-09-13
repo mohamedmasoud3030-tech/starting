@@ -32,7 +32,7 @@ export interface ClockStaff {
 
 function fmtTime(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleTimeString("ar-OM", {
+  return new Date(iso).toLocaleTimeString("ar-OM-u-nu-latn", {
     timeZone: "Asia/Muscat",
     hour: "2-digit",
     minute: "2-digit",

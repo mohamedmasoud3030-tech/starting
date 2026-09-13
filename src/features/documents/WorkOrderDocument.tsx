@@ -12,19 +12,19 @@ import type {
 
 function muscatDateTime(value: string | null): string {
   return value
-    ? new Date(value).toLocaleString("ar-OM", { timeZone: "Asia/Muscat" })
+    ? new Date(value).toLocaleString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" })
     : "—";
 }
 
 function dateOnly(value: string | null): string {
   return value
-    ? new Date(value).toLocaleDateString("ar-OM", { timeZone: "Asia/Muscat" })
+    ? new Date(value).toLocaleDateString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" })
     : "—";
 }
 
 function muscatTime(value: string | null): string {
   return value
-    ? new Date(value).toLocaleTimeString("ar-OM", {
+    ? new Date(value).toLocaleTimeString("ar-OM-u-nu-latn", {
         hour: "2-digit",
         minute: "2-digit",
         timeZone: "Asia/Muscat",

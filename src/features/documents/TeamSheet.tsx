@@ -5,7 +5,7 @@ import type { EventTeamSheetRow } from "./documents.api";
 
 function muscatTime(value: string | null): string {
   return value
-    ? new Date(value).toLocaleTimeString("ar-OM", {
+    ? new Date(value).toLocaleTimeString("ar-OM-u-nu-latn", {
         hour: "2-digit",
         minute: "2-digit",
         timeZone: "Asia/Muscat",
@@ -14,7 +14,7 @@ function muscatTime(value: string | null): string {
 }
 
 function muscatDate(value: string): string {
-  return new Date(value).toLocaleDateString("ar-OM", { timeZone: "Asia/Muscat" });
+  return new Date(value).toLocaleDateString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" });
 }
 
 function presenceLabel(status: string | null): string {
@@ -62,7 +62,7 @@ export function TeamSheet({
           <div>
             <span className="text-slate-500">وقت الطباعة: </span>
             <span className="font-bold">
-              {new Date(printedAt).toLocaleString("ar-OM", {
+              {new Date(printedAt).toLocaleString("ar-OM-u-nu-latn", {
                 timeZone: "Asia/Muscat",
               })}
             </span>

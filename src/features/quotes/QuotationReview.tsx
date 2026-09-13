@@ -274,7 +274,7 @@ export function QuotationReview({ quoteId }: { quoteId: string }) {
               <dt className="text-sm text-slate-500">التاريخ</dt>
               <dd className="font-bold">
                 {q.start_at_snapshot
-                  ? new Date(q.start_at_snapshot).toLocaleString("ar-OM", {
+                  ? new Date(q.start_at_snapshot).toLocaleString("ar-OM-u-nu-latn", {
                       timeZone: "Asia/Muscat",
                     })
                   : "غير محدد"}

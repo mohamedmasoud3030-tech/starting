@@ -53,7 +53,7 @@ function toLocalInput(iso: string | undefined): string {
 
 function fmt(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString("ar-OM", { timeZone: "Asia/Muscat" });
+  return new Date(iso).toLocaleString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" });
 }
 
 /**

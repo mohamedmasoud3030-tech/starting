@@ -60,7 +60,7 @@ function daysUntil(dateValue: string): number {
 function humanDate(value: string): string {
   const parsed = new Date(`${value.slice(0, 10)}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("ar-OM", {
+  return parsed.toLocaleDateString("ar-OM-u-nu-latn", {
     timeZone: "Asia/Muscat",
     day: "numeric",
     month: "short",

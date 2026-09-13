@@ -31,7 +31,7 @@ function defaultStart(): string {
 function arabicDateLabel(wallClock: string): string {
   const d = new Date(wallClock);
   if (Number.isNaN(d.getTime())) return wallClock;
-  return new Intl.DateTimeFormat("ar-OM", {
+  return new Intl.DateTimeFormat("ar-OM-u-nu-latn", {
     weekday: "long",
     day: "numeric",
     month: "long",

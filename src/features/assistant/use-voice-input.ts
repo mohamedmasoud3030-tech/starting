@@ -143,7 +143,7 @@ export function useVoiceInput(): VoiceInputController {
     const Ctor = resolveSpeechRecognition();
     if (!Ctor) return false;
     const recognition = new Ctor();
-    recognition.lang = "ar-OM";
+    recognition.lang = "ar-OM-u-nu-latn";
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
     recognition.continuous = false;

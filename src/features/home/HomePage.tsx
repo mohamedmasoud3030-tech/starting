@@ -36,7 +36,7 @@ import { FirstStepsCard } from "./FirstStepsCard";
 import { QuickEventDialog } from "@/features/quickEvent/QuickEventDialog";
 import { useOperationalDashboard } from "./useOperationalDashboard";
 
-const timeFormatter = new Intl.DateTimeFormat("ar-OM", {
+const timeFormatter = new Intl.DateTimeFormat("ar-OM-u-nu-latn", {
   timeZone: DEFAULT_TIME_ZONE,
   hour: "numeric",
   minute: "2-digit",

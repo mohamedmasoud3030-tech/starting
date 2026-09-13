@@ -6,7 +6,7 @@ import type { PaymentReceiptRow } from "./documents.api";
 
 function muhcatDate(value: string | null): string | null {
   return value
-    ? new Date(value).toLocaleString("ar-OM", { timeZone: "Asia/Muscat" })
+    ? new Date(value).toLocaleString("ar-OM-u-nu-latn", { timeZone: "Asia/Muscat" })
     : null;
 }
 

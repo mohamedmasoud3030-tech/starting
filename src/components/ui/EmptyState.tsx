@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Inbox } from "lucide-react";
 
 export function EmptyState({
   title,
@@ -11,8 +12,8 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-10 text-center sm:px-6 sm:py-16">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-xl sm:h-14 sm:w-14 sm:text-2xl">
-        📋
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 sm:h-14 sm:w-14">
+        <Inbox className="h-6 w-6" aria-hidden="true" />
       </div>
       <h3 className="text-base font-bold text-slate-800 sm:text-lg">{title}</h3>
       {description && (

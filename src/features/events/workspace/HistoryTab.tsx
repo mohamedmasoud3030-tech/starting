@@ -84,7 +84,7 @@ export function HistoryTab({
                   {h.to_status}
                 </p>
                 <p className="text-sm text-slate-500">
-                  {new Date(h.created_at).toLocaleString("ar-OM")}
+                  {new Date(h.created_at).toLocaleString("ar-OM-u-nu-latn")}
                   {h.reason && ` · ${h.reason}`}
                 </p>
               </Card>
@@ -109,7 +109,7 @@ export function HistoryTab({
                     {a.action}
                   </p>
                   <p className="text-sm text-slate-500">
-                    {new Date(a.created_at).toLocaleString("ar-OM", {
+                    {new Date(a.created_at).toLocaleString("ar-OM-u-nu-latn", {
                       timeZone: "Asia/Muscat",
                     })}
                   </p>
