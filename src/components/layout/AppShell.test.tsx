@@ -8,6 +8,7 @@ import { AppShell } from "./AppShell";
 vi.mock("@/app/authContext", () => ({ useAuth: vi.fn() }));
 
 vi.mock("@tanstack/react-router", () => ({
+  useNavigate: () => vi.fn(),
   useRouterState: ({ select }: { select?: (s: unknown) => unknown }) =>
     select
       ? select({ location: { pathname: "/home" } })

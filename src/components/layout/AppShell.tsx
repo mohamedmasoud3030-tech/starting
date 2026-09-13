@@ -10,6 +10,7 @@ import { OfflineBanner } from "./OfflineBanner";
 import { UpdateBanner } from "@/pwa/UpdateBanner";
 import { OrganizationSwitcher } from "./OrganizationSwitcher";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { QuickAddMenu } from "./QuickAddMenu";
 import { visibleNavGroups } from "./navConfig";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -64,8 +65,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           {/* Multi-organization users only; renders nothing for a single org. */}
           <div className="ms-auto flex items-center gap-2">
+            <QuickAddMenu />
             <OrganizationSwitcher />
-            <ThemeToggle className="hidden md:flex" />
+            <ThemeToggle />
             <button
               type="button"
               onClick={() => void logout()}
