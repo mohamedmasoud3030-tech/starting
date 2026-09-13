@@ -133,8 +133,8 @@ export function StaffMemberDialog({
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title={isEditing ? "تعديل بيانات عضو" : "إضافة عضو جديد"}
-      description="ملف العضو ضمن فريقك: بياناته وطريقة الأجر الافتراضية لحساب حضوره في المناسبات، مع سجل تعاقده ومستنداته."
+      title={isEditing ? "تعديل بيانات مضيف" : "إضافة مضيف"}
+      description="بيانات المضيف وطريقة حساب أجره في المناسبات."
     >
       <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
         <Field label="الاسم" htmlFor="staff-name" required>

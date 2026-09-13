@@ -159,9 +159,9 @@ describe("AccountingPage", () => {
   it("renders AR / AP / contract-asset aging with buckets and gross totals", async () => {
     render(<AccountingPage />, { wrapper });
 
-    expect(await screen.findByText("أعمار الذمم المدينة (العملاء)")).toBeInTheDocument();
-    expect(screen.getByText("أعمار الذمم الدائنة (الموردون)")).toBeInTheDocument();
-    expect(screen.getByText("أعمار أصول العقود (إيراد غير مفوتر)")).toBeInTheDocument();
+    expect(await screen.findByText("باقي على العملاء")).toBeInTheDocument();
+    expect(screen.getByText("علينا للموردين")).toBeInTheDocument();
+    expect(screen.getByText("مناسبات خلصت بدون فاتورة")).toBeInTheDocument();
 
     // 1050.500 appears both in the AR row and in the AR card total.
     expect(await screen.findAllByText("1050.500 ر.ع.")).not.toHaveLength(0);

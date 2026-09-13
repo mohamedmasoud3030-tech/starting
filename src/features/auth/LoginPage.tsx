@@ -105,7 +105,7 @@ export function LoginPage() {
                 نظام إدارة الضيافة
               </p>
               <p className="text-sm text-slate-500">
-                عملياتك من عرض السعر حتى الربح الفعلي
+                من العرض والعربون لحد الإقفال
               </p>
             </div>
           </div>
@@ -229,7 +229,7 @@ export function LoginPage() {
                 </p>
                 <Link
                   to="/forgot-password"
-                  className="inline-flex items-center gap-1.5 font-bold text-slate-500 transition-colors hover:text-slate-800"
+                  className="inline-flex items-center gap-1.5 font-bold text-slate-400 underline underline-offset-4 transition-colors hover:text-white"
                 >
                   نسيت كلمة المرور؟
                 </Link>
@@ -237,9 +237,9 @@ export function LoginPage() {
             </div>
           </div>
 
-          <p className="mt-5 flex items-center justify-center gap-1.5 text-sm text-slate-400">
+          <p className="mt-5 flex items-center justify-center gap-1.5 text-sm font-semibold text-slate-200/90">
             <ShieldCheck className="h-4 w-4 text-brand-500" aria-hidden="true" />
-            اتصال مشفّر وبيانات كل منشأة معزولة تماماً
+            اتصال مشفّر — بيانات كل منشأة معزولة
           </p>
         </div>
       </main>

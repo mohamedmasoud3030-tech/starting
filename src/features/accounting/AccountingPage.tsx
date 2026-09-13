@@ -43,15 +43,15 @@ export function AccountingPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="المحاسبة"
-        description="أعمار الذمم والأصول، وكشوف حساب العملاء والموردين من الدفاتر المحاسبية"
+        title="الفلوس والمستحقات"
+        description="مين عليه فلوس ومن كام يوم، وكشف حساب لأي عميل أو مورد"
         actions={
           <SegmentedControl<AccountingSection>
             ariaLabel="قسم المحاسبة"
             value={section}
             onChange={setSection}
             options={[
-              { value: "aging", label: "التقادم" },
+              { value: "aging", label: "المتأخرات" },
               { value: "customer-statement", label: "كشف حساب عميل" },
               { value: "supplier-statement", label: "كشف حساب مورد" },
             ]}

@@ -77,8 +77,8 @@ export function AgingSection() {
   return (
     <div className="space-y-5">
       <AgingCard
-        title="أعمار الذمم المدينة (العملاء)"
-        description="فواتير صادرة لم تُحصَّل بعد — الإجمالي شامل الضريبة"
+        title="باقي على العملاء"
+        description="فواتير صادرة ولسه ما اتحصّلتش — شامل الضريبة"
         hasSecondary
         rows={ar.isSuccess ? toArRows(ar.data ?? []) : null}
         loading={ar.isLoading}
@@ -86,8 +86,8 @@ export function AgingSection() {
         onRetry={() => void ar.refetch()}
       />
       <AgingCard
-        title="أعمار الذمم الدائنة (الموردون)"
-        description="مستحقات لموردين لم تُسدَّد بعد"
+        title="علينا للموردين"
+        description="مشتريات لسه ما اتدفعتش"
         hasSecondary={false}
         rows={ap.isSuccess ? toApRows(ap.data ?? []) : null}
         loading={ap.isLoading}
@@ -95,8 +95,8 @@ export function AgingSection() {
         onRetry={() => void ap.refetch()}
       />
       <AgingCard
-        title="أعمار أصول العقود (إيراد غير مفوتر)"
-        description="مناسبات مغلقة أُثبت إيرادها قبل إصدار الفاتورة — الإجمالي شامل الضريبة"
+        title="مناسبات خلصت بدون فاتورة"
+        description="مناسبات مقفولة ولسه فاتورتها ما اتعملتش — شامل الضريبة"
         hasSecondary
         rows={ca.isSuccess ? toCaRows(ca.data ?? []) : null}
         loading={ca.isLoading}
@@ -148,8 +148,8 @@ function AgingCard({
         <LoadingState label="جارٍ تجهيز الأعمار…" />
       ) : error ? (
         <ErrorState
-          title="تعذّر تحميل الأعمار"
-          message="حدث خطأ أثناء تحميل بيانات التقادم. أعد المحاولة."
+          title="تعذّر تحميل البيانات"
+          message="حدث خطأ أثناء التحميل. أعد المحاولة."
           onRetry={onRetry}
           className="m-4"
         />

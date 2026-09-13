@@ -63,9 +63,7 @@ function PayrollPeriodCard({ orgId }: { orgId: string | null }) {
         <h2 className="font-black">كشف صرف / رواتب فترة</h2>
       </div>
       <p className="mt-1 text-sm leading-6 text-slate-500">
-        حدد الفترة ثم اطبع كشف الرواتب لكل المضيفين: الاستحقاق والسلف والصرف
-        خلالها. يعرض الكشف المجاميع فقط لا معدلات الأجور، وهو مخصص لمن يملك
-        صلاحية قراءة الأجور — ويُصفّى في الخادم وفق الصلاحية نفسها.
+        اختر الفترة واطبع كشف بكل المضيفين: المستحق، السلف، والمصروف.
       </p>
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <Field label="من تاريخ" htmlFor="period-from">
@@ -332,7 +330,7 @@ export function StaffPage() {
     <div className="space-y-4">
       <PageHeader
         title="المضيفون والحضور"
-        description="لكل عضو في فريقك ملف واحد: بياناته وتواريخ مستنداته، وحضوره ومستحقاته في مناسباتك. المضيفون يُستدعَون للمناسبات — فمن حضر سُجّل حضوره من داخل المناسبة، ومن لم يُستدعَ أو لم يحضر فلا يُسجَّل عنه شيء."
+        description="ملف لكل مضيف: بياناته، حضوره، سلفه ومستحقاته. الحضور يتسجّل بالبصمة من داخل المناسبة."
         actions={
           canManageStaff ? (
             <Button
@@ -342,7 +340,7 @@ export function StaffPage() {
               }}
             >
               <Plus className="h-5 w-5" />
-              إضافة عضو
+              إضافة مضيف
             </Button>
           ) : undefined
         }
@@ -351,7 +349,7 @@ export function StaffPage() {
         <LoadingState label="جارٍ تحميل بيانات الفريق…" />
       ) : staff.error || archive.error ? (
         <ErrorState
-          title="تعذّر تحميل بيانات الفريق"
+          title="تعذّر تحميل المضيفين"
           message="حدث خطأ أثناء تحميل بيانات الفريق والأجور. أعد المحاولة."
           onRetry={() => {
             void staff.refetch();
@@ -360,8 +358,8 @@ export function StaffPage() {
         />
       ) : (staff.data ?? []).length === 0 ? (
         <EmptyState
-          title="لا يوجد أعضاء بعد"
-          description="أضف أول عضو في الفريق لبدء إسناد المناسبات وتسجيل الحضور ومتابعة الملفات."
+          title="لا يوجد مضيفون بعد"
+          description="أضف أول مضيف عشان تقدر تستدعيه للمناسبات وتسجّل حضوره."
         />
       ) : (
         <div className="space-y-3">
