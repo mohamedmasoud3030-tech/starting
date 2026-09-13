@@ -191,7 +191,7 @@ describe("operator overview", () => {
     state.summary = summary({ status: "NO_EQUIPMENT", reserved: 0 });
     renderPanel();
     expect(
-      await screen.findByText(/لا توجد معدات محجوزة لهذه المناسبة/),
+      await screen.findByText(/لا توجد عدة محجوزة لهذه المناسبة/),
     ).toBeInTheDocument();
   });
 
