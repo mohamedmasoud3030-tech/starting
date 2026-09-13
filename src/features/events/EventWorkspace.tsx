@@ -25,6 +25,7 @@ import { TeamSheet } from "@/features/documents/TeamSheet";
 import { WorkOrderDocument } from "@/features/documents/WorkOrderDocument";
 import { EditEventDialog } from "./workspace/EditEventDialog";
 import { EventCommandCenter } from "./workspace/EventCommandCenter";
+import { QuickDepositCard } from "@/features/quickEvent/QuickDepositCard";
 import { useEventCommandCenter } from "./commandCenter.api";
 import { AttendancePanel } from "@/features/staff/AttendancePanel";
 import { HostPayrollPanel } from "@/features/staff/HostPayrollPanel";
@@ -106,12 +107,23 @@ export function EventWorkspace() {
         below keep every expert detail exactly where it was.
       */}
       {ws.tab === "ملخص" && center && (
-        <EventCommandCenter
-          center={center}
-          canReadMoney={ws.canCost}
-          eventStatus={ev.status}
-          onOpenTab={ws.setTab}
-        />
+        <>
+          <EventCommandCenter
+            center={center}
+            canReadMoney={ws.canCost}
+            eventStatus={ev.status}
+            onOpenTab={ws.setTab}
+          />
+          {ws.canRecordPayment &&
+            ["CONFIRMED", "PREPARING"].includes(ev.status) && (
+              <QuickDepositCard
+                orgId={ws.orgId}
+                eventId={ev.id}
+                acceptedValue={center.commercial.value}
+                collected={center.commercial.collected}
+              />
+            )}
+        </>
       )}
 
       <WorkspaceTabs tab={ws.tab} tabs={ws.visibleTabs} onChange={ws.setTab} />

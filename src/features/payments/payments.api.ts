@@ -163,6 +163,7 @@ export function invalidatePaymentReadModels(
   void queryClient.invalidateQueries({ queryKey: ["event-finance", orgId, eventId] });
   void queryClient.invalidateQueries({ queryKey: ["event-invoice", orgId, eventId] });
   void queryClient.invalidateQueries({ queryKey: ["event-installments", orgId, eventId] });
+  void queryClient.invalidateQueries({ queryKey: ["event-command-center", orgId, eventId] });
 }
 
 export function useRecordPayment(orgId: string | null, eventId: string) {

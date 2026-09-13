@@ -32,6 +32,12 @@ export type NavItem = {
 export type NavGroup = {
   label: string;
   items: ReadonlyArray<NavItem>;
+  /**
+   * Secondary groups are collapsed under «المزيد» by default. The owner's
+   * daily path (today / events / customers / team / money) stays in view;
+   * expert screens remain one tap away without competing for attention.
+   */
+  secondary?: boolean;
 };
 
 /**
@@ -57,60 +63,64 @@ export type NavGroup = {
 export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     label: "اليوم",
-    items: [{ to: "/home", label: "لوحة اليوم" }],
+    items: [{ to: "/home", label: "اليوم" }],
   },
   {
     label: "المناسبات",
     items: [
       { to: "/events", label: "المناسبات" },
       { to: "/calendar", label: "التقويم" },
-      { to: "/operations", label: "جدول التشغيل" },
     ],
   },
   {
-    label: "المبيعات والعملاء",
+    label: "العملاء",
+    items: [{ to: "/customers", label: "العملاء" }],
+  },
+  {
+    label: "الفريق",
+    // The staff page is a payroll + HR surface (server-gated by payroll.read):
+    // hosts, attendance, advances and payouts.
+    items: [{ to: "/staff", label: "المضيفون والحضور", payroll: true }],
+  },
+  {
+    label: "الفلوس",
+    items: [{ to: "/accounting", label: "الفلوس والمستحقات", financial: true }],
+  },
+  // ------------------------------------------------------------ «المزيد»
+  {
+    label: "التشغيل",
+    secondary: true,
     items: [
+      { to: "/operations", label: "جدول التشغيل" },
       { to: "/quotes", label: "عروض الأسعار", commercial: true },
-      { to: "/customers", label: "العملاء" },
-      { to: "/packages", label: "الباقات" },
+      { to: "/packages", label: "العروض والباقات" },
     ],
   },
   {
     label: "المخزون والتوريد",
+    secondary: true,
     items: [
       { to: "/catalog", label: "دليل الخدمات والمواد" },
       { to: "/consumables", label: "مخزون المواد" },
       // Every procurement read model is hidden from non-cost roles and every
-      // S5 command requires OWNER/MANAGER, so these are cost-role-only items
-      // shown inside the supply group.
+      // S5 command requires OWNER/MANAGER, so these are cost-role-only items.
       { to: "/procurement", label: "الموردون وأوامر الشراء", financial: true },
-      {
-        to: "/procurement/restaurants",
-        label: "المطاعم المتعاقدة",
-        financial: true,
-      },
+      { to: "/procurement/restaurants", label: "المطاعم المتعاقدة", financial: true },
     ],
   },
   {
-    label: "الفريق",
-    // The staff page is a payroll + HR surface (server-gated by payroll.read).
-    // The page serves the team inside the events lifecycle (hosts are assigned,
-    // attend and are settled per event) plus the per-member HR file. The label
-    // keeps the operational identity first: «الفريق والموارد البشرية».
-    items: [{ to: "/staff", label: "الفريق والموارد البشرية", payroll: true }],
-  },
-  {
     label: "الإدارة والتحليل",
+    secondary: true,
     items: [
       { to: "/dashboard", label: "لوحة الإدارة", financial: true },
       { to: "/reports", label: "التقارير", financial: true },
-      { to: "/accounting", label: "المحاسبة", financial: true },
       { to: "/integrity", label: "مركز السلامة", financial: true },
       { to: "/search", label: "البحث" },
     ],
   },
   {
     label: "النظام",
+    secondary: true,
     items: [{ to: "/settings", label: "إعدادات المنشأة" }],
   },
 ];
@@ -119,7 +129,8 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
 export const MOBILE_PRIMARY_TARGETS: ReadonlyArray<NavTarget> = [
   "/home",
   "/events",
-  "/customers",
+  "/staff",
+  "/accounting",
 ];
 
 /** All navigation targets (flat) — used to resolve nested active states. */

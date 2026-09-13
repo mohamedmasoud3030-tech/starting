@@ -154,7 +154,7 @@ export function HomePage() {
     <div className="space-y-6">
       <PageHeader
         title={`${name}، ${currentOrganization?.name ?? ""}`}
-        description="لوحة تشغيل اليوم: المناسبات، الجاهزية والتنبيهات التي تحتاج تدخل"
+        description="إيه اللي عندي النهارده؟ · مين لسه مدفعش؟ · إيه اللي محتاج تدخّلي؟"
       />
 
       {canManageEvents && (
@@ -190,13 +190,21 @@ export function HomePage() {
         <h2 id="today-metrics-title" className="sr-only">
           مؤشرات اليوم
         </h2>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-3 gap-2">
           <StatCard label="مناسبات اليوم" value={metrics.todayEvents} icon={CalendarDays} tone="brand" />
-          <StatCard label="جاهزة للتنفيذ" value={metrics.ready} icon={CheckCircle2} tone="success" />
-          <StatCard label="تحتاج تدخل" value={metrics.attention} icon={AlertTriangle} tone="warning" />
-          <StatCard label="لم يُسجَّل حضورها" value={metrics.attendanceGaps} icon={UserCheck} tone="danger" />
-          <StatCard label="مواد مخزونها منخفض" value={metrics.lowStock} icon={PackageSearch} tone="danger" />
+          <StatCard label="جاهزة" value={metrics.ready} icon={CheckCircle2} tone="success" />
+          <StatCard label="محتاجة تدخّل" value={metrics.attention} icon={AlertTriangle} tone="warning" />
         </div>
+        {(metrics.attendanceGaps ?? 0) > 0 || (metrics.lowStock ?? 0) > 0 ? (
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {(metrics.attendanceGaps ?? 0) > 0 && (
+              <StatCard label="مناسبات بدون تسجيل حضور" value={metrics.attendanceGaps} icon={UserCheck} tone="danger" />
+            )}
+            {(metrics.lowStock ?? 0) > 0 && (
+              <StatCard label="مواد قربت تخلص" value={metrics.lowStock} icon={PackageSearch} tone="danger" />
+            )}
+          </div>
+        ) : null}
       </section>
 
       <section aria-labelledby="today-events-title">
@@ -330,10 +338,10 @@ export function HomePage() {
         <section aria-labelledby="collections-title">
           <div className="mb-3">
             <h2 id="collections-title" className="text-xl font-bold text-slate-900">
-              يحتاج تحصيل
+              مين لسه مدفعش؟
             </h2>
             <p className="text-base text-slate-500">
-              مبالغ متبقية على مناسبات نشطة أو منتهية — منفصل تماماً عن الجاهزية التشغيلية.
+              مبالغ متبقية على العملاء — اضغط على أي واحدة لتسجيل الدفع.
             </p>
           </div>
           {!collectionsLoaded ? (
@@ -435,10 +443,10 @@ export function HomePage() {
       <section aria-labelledby="alerts-title">
         <div className="mb-3">
           <h2 id="alerts-title" className="text-xl font-bold text-slate-900">
-            التنبيهات التشغيلية
+            محتاج تدخّلك
           </h2>
           <p className="text-base text-slate-500">
-            تنبيهات مشتقة من الجاهزية والمخزون الفعلي، وليست إحصائيات تقديرية.
+            نواقص فريق أو معدات أو مواد في مناسبات قريبة.
           </p>
         </div>
 
@@ -509,11 +517,11 @@ export function HomePage() {
 
       <section aria-labelledby="shortcuts-title">
         <h2 id="shortcuts-title" className="mb-3 text-xl font-bold text-slate-900">
-          اختصارات الإدارة
+          الإعدادات التجارية
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <ShortcutCard label="صنف في الكتالوج" value={shortcuts.catalog} icon={Boxes} to="/catalog" />
-          <ShortcutCard label="باقة جاهزة" value={shortcuts.packages} icon={Package} to="/packages" />
+          <ShortcutCard label="عرض / باقة" value={shortcuts.packages} icon={Package} to="/packages" />
           <ShortcutCard label="عميل" value={shortcuts.customers} icon={Users} to="/customers" />
         </div>
       </section>

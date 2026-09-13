@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { CalendarDays, Home, LogOut, MoreHorizontal, Users, X } from "lucide-react";
+import { CalendarDays, Home, LogOut, MoreHorizontal, UserCheck, Users, Wallet, X } from "lucide-react";
 import { useAuth } from "@/app/authContext";
 import { cn } from "@/lib/utils";
 import {
@@ -10,12 +10,12 @@ import {
   type NavItem,
 } from "./navConfig";
 
-const MOBILE_PRIMARY_ICONS: Partial<
-  Record<NavItem["to"], typeof Home | typeof CalendarDays | typeof Users>
-> = {
+const MOBILE_PRIMARY_ICONS: Partial<Record<NavItem["to"], typeof Home>> = {
   "/home": Home,
   "/events": CalendarDays,
   "/customers": Users,
+  "/staff": UserCheck,
+  "/accounting": Wallet,
 };
 
 /** Mobile (md-) navigation: slide-up drawer + fixed bottom quick bar. */
