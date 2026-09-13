@@ -88,22 +88,42 @@ function firstText(out: { ok: boolean; body: unknown }): string | null {
 
 /* ----------------------------- auth ----------------------------- */
 
-async function assertAuthenticated(request: Request): Promise<string | null> {
+/**
+ * The Supabase gateway already validates the JWT signature and expiry
+ * (`verify_jwt = true` in config.toml) before this code runs. Previously we
+ * re-checked by calling `auth/v1/user` on every message; that extra round
+ * trip failed intermittently (rate limits / transient 5xx) and surfaced as
+ * «انتهت الجلسة» right after a successful first reply. Now we only decode
+ * the already-verified token to make sure it belongs to a signed-in user
+ * (not the anon key) and is not expired.
+ */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    return JSON.parse(atob(padded)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function assertAuthenticated(request: Request): string | null {
   const authHeader = request.headers.get("Authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) return "يجب تسجيل الدخول لاستخدام المساعد.";
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim();
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")?.trim();
-  if (!supabaseUrl || !anonKey) return "إعدادات الخدمة الخلفية غير مكتملة.";
-  try {
-    const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: { apikey: anonKey, Authorization: authHeader },
-    });
-    if (!res.ok) return "انتهت الجلسة أو لا تملك صلاحية استخدام المساعد.";
-    const body = (await res.json().catch(() => null)) as { id?: string } | null;
-    return body && typeof body.id === "string" ? null : "تعذر التحقق من هوية المستخدم.";
-  } catch {
-    return "تعذر التحقق من الجلسة الآن.";
+  const payload = decodeJwtPayload(authHeader.slice(7).trim());
+  if (!payload) return "تعذر التحقق من هوية المستخدم.";
+  const role = payload.role;
+  const sub = payload.sub;
+  if (role !== "authenticated" || typeof sub !== "string" || sub.length === 0) {
+    return "يجب تسجيل الدخول لاستخدام المساعد.";
   }
+  const exp = typeof payload.exp === "number" ? payload.exp : 0;
+  if (exp && exp * 1000 < Date.now() - 30_000) {
+    return "انتهت الجلسة — سجّل الدخول من جديد.";
+  }
+  return null;
 }
 
 /* ----------------------------- chat ----------------------------- */
@@ -593,7 +613,7 @@ Deno.serve(async (request: Request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return errorResponse("METHOD_NOT_ALLOWED", "طريقة الطلب غير مدعومة.", 405);
 
-  const authError = await assertAuthenticated(request);
+  const authError = assertAuthenticated(request);
   if (authError) return errorResponse("AUTH_REQUIRED", authError, 401);
 
   const authHeader = request.headers.get("Authorization") ?? "";

@@ -133,6 +133,8 @@ export function AssistantLauncher() {
   const [open, setOpen] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [audioSpeaking, setAudioSpeaking] = useState(false);
+  /** A reply is waiting for a tap because the browser blocked autoplay. */
+  const [tapToHear, setTapToHear] = useState(false);
   const voice = useAssistantVoice();
   const voiceInput = useVoiceInput();
 
@@ -189,6 +191,7 @@ export function AssistantLauncher() {
         };
         element.onplay = () => {
           setAudioSpeaking(true);
+          setTapToHear(false);
           resolve(true);
         };
         element.onended = () => {
@@ -284,6 +287,8 @@ export function AssistantLauncher() {
 
       if (cached) {
         // Make sure the device voice is silent before the cloud clip starts.
+        // No `await` before play(): when this runs inside a tap (▶ on a
+        // message, or the retry tap) Safari only honours play() synchronously.
         voice.stop();
         const played = await playCloudClip(cached.audioB64, cached.mimeType);
         if (isStale()) return;
@@ -294,7 +299,7 @@ export function AssistantLauncher() {
         // Playback blocked (autoplay policy): keep the reply so the next tap
         // replays it, then try the device voice.
         pendingSpeakRef.current = { text: trimmed };
-        speakLocally(spoken);
+        if (!speakLocally(spoken)) setTapToHear(true);
         return;
       }
 
@@ -320,7 +325,7 @@ export function AssistantLauncher() {
             return;
           }
           pendingSpeakRef.current = { text: trimmed };
-          speakLocally(spoken);
+          if (!speakLocally(spoken)) setTapToHear(true);
           return;
         }
         if (outcome.kind === "quota") {
@@ -347,6 +352,7 @@ export function AssistantLauncher() {
       const pending = pendingSpeakRef.current?.text;
       if (pending) {
         pendingSpeakRef.current = null;
+        setTapToHear(false);
         void speakText(pending);
       }
     };
@@ -424,6 +430,7 @@ export function AssistantLauncher() {
           welcomeText={buildWelcomeText(ownerFirstName)}
           isDegraded={assistant.isDegraded}
           lastSource={assistant.lastSource}
+          tapToHear={tapToHear}
         />
       ) : null}
 
@@ -473,6 +480,7 @@ function AssistantPanel({
   onClose,
   welcomeText,
   isDegraded,
+  tapToHear,
   lastSource,
 }: {
   messages: AssistantChatMessage[];
@@ -490,6 +498,7 @@ function AssistantPanel({
   onClose: () => void;
   welcomeText: string;
   isDegraded: boolean;
+  tapToHear: boolean;
   lastSource: string | null;
 }) {
   const [draft, setDraft] = useState("");
@@ -577,7 +586,11 @@ function AssistantPanel({
                 key={index}
                 message={message}
                 onSpeak={
-                  message.role === "assistant" ? () => onSpeak(message.content) : undefined
+                  message.role === "assistant"
+                    ? () => {
+                        onSpeak(message.content);
+                      }
+                    : undefined
                 }
                 speaking={message.role === "assistant" && speaking}
               />
@@ -596,6 +609,11 @@ function AssistantPanel({
         {error ? (
           <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
             {error}
+          </p>
+        ) : null}
+        {tapToHear ? (
+          <p className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-sm font-bold text-brand-800" role="status">
+            المتصفح منع تشغيل الصوت تلقائياً — اضغط في أي مكان لسماع الرد.
           </p>
         ) : null}
 

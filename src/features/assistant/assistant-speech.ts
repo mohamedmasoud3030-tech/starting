@@ -133,6 +133,7 @@ const MALE_ARABIC_VOICE_NAMES: ReadonlyArray<string> = [
   "fahd",
   "abdullah",
   "majed",
+  "maged",
   "youssef",
   "yousef",
   "zein",
