@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
@@ -10,6 +11,7 @@ import {
   MessageCircle,
   Package,
   PackageSearch,
+  PlusCircle,
   UserCheck,
   Users,
 } from "lucide-react";
@@ -32,6 +34,7 @@ import type { AttendanceGap } from "@/features/staff/staff.api";
 import { buildEventWhatsAppUrl, todayBlockers } from "./operationalDashboard.model";
 import { outstandingMilliText } from "./dailyOperations.api";
 import { FirstStepsCard } from "./FirstStepsCard";
+import { QuickEventDialog } from "@/features/quickEvent/QuickEventDialog";
 import { useOperationalDashboard } from "./useOperationalDashboard";
 
 const timeFormatter = new Intl.DateTimeFormat("ar-OM", {
@@ -143,6 +146,7 @@ export function HomePage() {
   } = useOperationalDashboard();
 
   const name = profile?.full_name || "أهلاً بك";
+  const [quickOpen, setQuickOpen] = useState(false);
   const showCollections = canReadFinance || canRecordPayment;
   const showClosures = canManageEvents || canCloseFinancially;
 
@@ -152,6 +156,25 @@ export function HomePage() {
         title={`${name}، ${currentOrganization?.name ?? ""}`}
         description="لوحة تشغيل اليوم: المناسبات، الجاهزية والتنبيهات التي تحتاج تدخل"
       />
+
+      {canManageEvents && (
+        <section aria-label="مناسبة سريعة">
+          <button
+            type="button"
+            onClick={() => setQuickOpen(true)}
+            className="flex w-full items-center justify-between gap-4 rounded-2xl bg-brand-700 px-6 py-5 text-start text-white shadow-cta transition-colors hover:bg-brand-800"
+          >
+            <div>
+              <p className="text-2xl font-black">مناسبة جديدة</p>
+              <p className="mt-1 text-base text-white/85">
+                اسم العميل · الهاتف · الموعد · عدد الضيوف — والعرض يتحدد تلقائياً
+              </p>
+            </div>
+            <PlusCircle className="h-12 w-12 shrink-0" aria-hidden="true" />
+          </button>
+          <QuickEventDialog open={quickOpen} onOpenChange={setQuickOpen} />
+        </section>
+      )}
 
       {isNewOrganization && <FirstStepsCard />}
 
