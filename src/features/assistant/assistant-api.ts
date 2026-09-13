@@ -13,16 +13,43 @@ import type {
  * a provider key.
  */
 
+/**
+ * Turn the SDK's opaque "Edge Function returned a non-2xx status code" into
+ * the Arabic reason the function actually sent (401 session, 422 bad input,
+ * 504 provider timeout…). The function always answers JSON `{error:{message}}`.
+ */
+async function describeInvokeError(error: unknown): Promise<string> {
+  const ctx = (error as { context?: unknown })?.context;
+  if (ctx instanceof Response) {
+    const status = ctx.status;
+    try {
+      const body = (await ctx.clone().json()) as { error?: { message?: string } };
+      if (body?.error?.message) return body.error.message;
+    } catch {
+      /* not JSON */
+    }
+    if (status === 401) return "انتهت الجلسة — سجّل الدخول من جديد.";
+    if (status === 429) return "المساعد مشغول الآن — حاول بعد دقيقة.";
+    if (status >= 500) return "المساعد غير متاح مؤقتاً — حاول بعد قليل.";
+  }
+  const msg = (error as { message?: unknown })?.message;
+  if (typeof msg === "string" && msg && !/non-2xx|Failed to send/i.test(msg)) return msg;
+  return "تعذر الوصول إلى المساعد الآن.";
+}
+
 async function invokeAssistant(body: unknown): Promise<unknown> {
+  // Make sure the JWT we send is fresh: a token that expired while the tab
+  // was in the background makes the function answer 401.
+  try {
+    await supabase.auth?.getSession?.();
+  } catch {
+    /* offline — let invoke report it */
+  }
   const { data, error } = await supabase.functions.invoke("ai-assistant", {
     body: body as Record<string, unknown>,
   });
   if (error) {
-    throw new Error(
-      typeof error.message === "string" && error.message.length > 0
-        ? error.message
-        : "تعذر الوصول إلى المساعد الآن.",
-    );
+    throw new Error(await describeInvokeError(error));
   }
   return data;
 }
