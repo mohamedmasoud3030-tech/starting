@@ -18,6 +18,7 @@ import {
 import {
   eventPermissions,
   isWorkspaceTab,
+  normalizeWorkspaceTab,
   resolveActiveTab,
   visibleWorkspaceTabs,
   type WorkspaceTab,
@@ -83,7 +84,7 @@ export function useEventWorkspace() {
   const command = useEventCommand(orgId, eventId);
 
   const [requestedTab, setTab] = useState<WorkspaceTab>(() =>
-    isWorkspaceTab(search.tab) ? search.tab : "ملخص",
+    isWorkspaceTab(search.tab) ? normalizeWorkspaceTab(search.tab) : "ملخص",
   );
   /**
    * Tabs are filtered by role, so the active tab is resolved against what the

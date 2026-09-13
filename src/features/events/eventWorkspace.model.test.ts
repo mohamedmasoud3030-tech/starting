@@ -13,6 +13,7 @@ import {
   WORKSPACE_GROUP_TABS,
   WORKSPACE_TABS,
   WORKSPACE_TAB_GROUPS,
+  normalizeWorkspaceTab,
 } from "./eventWorkspace.model";
 
 describe("eventWorkspace.model", () => {
@@ -132,7 +133,10 @@ describe("eventWorkspace.model", () => {
 describe("visibleWorkspaceTabs — no dead-end tabs", () => {
   it("gives an OWNER the full workspace", () => {
     const tabs = visibleWorkspaceTabs(eventPermissions("OWNER", null));
-    expect(tabs).toEqual([...WORKSPACE_TABS]);
+    // «المعدات» is merged into «المخزن» (one tab over one table), so it is
+    // never offered as its own tab — but its deep link still lands there.
+    expect(tabs).toEqual(WORKSPACE_TABS.filter((t) => t !== "المعدات"));
+    expect(normalizeWorkspaceTab("المعدات")).toBe("المخزن");
   });
 
   it("hides finance-only tabs from a WAREHOUSE user", () => {
@@ -145,7 +149,7 @@ describe("visibleWorkspaceTabs — no dead-end tabs", () => {
     expect(tabs).not.toContain("المشتريات");
     // The operational work a warehouse user is actually here to do stays.
     expect(tabs).toEqual(
-      expect.arrayContaining(["ملخص", "المخزن", "المواد", "المعدات", "السجل"]),
+      expect.arrayContaining(["ملخص", "المخزن", "المواد", "السجل"]),
     );
   });
 
@@ -281,7 +285,7 @@ describe("capability contract — one capability without its neighbor", () => {
 
 describe("event workspace tab grouping (M-04)", () => {
   it("partitions every non-summary tab into exactly one labeled bucket", () => {
-    const nonSummary = WORKSPACE_TABS.filter((t) => t !== "ملخص");
+    const nonSummary = WORKSPACE_TABS.filter((t) => t !== "ملخص" && t !== "المعدات");
     expect(WORKSPACE_GROUP_TABS.length).toBe(nonSummary.length);
     // no duplicate tab across buckets
     expect(new Set(WORKSPACE_GROUP_TABS).size).toBe(nonSummary.length);
@@ -307,7 +311,7 @@ describe("event workspace tab grouping (M-04)", () => {
     const buckets = groupWorkspaceTabs(visible.filter((t) => t !== "ملخص"));
     expect(buckets.map((b) => b.id)).toEqual(["deal", "hosts", "kit", "day", "closeout", "history"]);
     const flat = buckets.flatMap((b) => b.tabs);
-    expect(new Set(flat)).toEqual(new Set(WORKSPACE_TABS.filter((t) => t !== "ملخص")));
+    expect(new Set(flat)).toEqual(new Set(WORKSPACE_TABS.filter((t) => t !== "ملخص" && t !== "المعدات")));
   });
 
   it("drops buckets a limited role cannot see (no empty headers)", () => {

@@ -220,18 +220,15 @@ export function EventWorkspace() {
         </div>
       )}
 
-      {ws.tab === "المعدات" && (
-        <EquipmentTab
-          orgId={ws.orgId}
-          capacities={d.capacities}
-          reservations={d.reservations}
-          canProvision={ws.canDispatch}
-          run={ws.run}
-        />
-      )}
-
       {ws.tab === "المخزن" && (
         <div className="space-y-4">
+          <EquipmentTab
+            orgId={ws.orgId}
+            capacities={d.capacities}
+            reservations={d.reservations}
+            canProvision={ws.canDispatch}
+            run={ws.run}
+          />
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setDocMode("PREP")}>
               <ClipboardCheck className="h-4 w-4" />

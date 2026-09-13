@@ -88,7 +88,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           tabIndex={-1}
           className="min-w-0 flex-1 px-3 py-4 pb-28 outline-none sm:px-4 sm:py-6 md:px-6 md:pb-6 lg:px-8"
         >
-          <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-7xl">
             <ToastProvider>{children}</ToastProvider>
           </div>
         </main>

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
-import { isActivePath, type NavGroup } from "./navConfig";
+import { NAV_ICONS, isActivePath, type NavGroup } from "./navConfig";
 
 /** Desktop (md+) left sidebar navigation. */
 export function DesktopSidebar({
@@ -17,18 +17,26 @@ export function DesktopSidebar({
   const renderItems = (group: NavGroup, big: boolean) =>
     group.items.map((item) => {
       const active = isActivePath(pathname, item.to);
+      const Icon = NAV_ICONS[item.to];
       return (
         <Link
           key={item.to}
           to={item.to}
+          aria-current={active ? "page" : undefined}
           className={cn(
-            "flex items-center rounded-xl px-3 font-bold transition-colors",
-            big ? "min-h-12 py-3 text-base" : "min-h-11 py-2.5 text-sm",
+            "relative flex items-center gap-3 rounded-xl px-3 font-bold transition-colors",
+            big ? "min-h-12 py-3 text-base" : "min-h-10 py-2 text-sm",
             active
-              ? "bg-brand-50 text-brand-800"
+              ? "bg-brand-700 text-white shadow-sm"
               : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
           )}
         >
+          {Icon && (
+            <Icon
+              className={cn("shrink-0", big ? "h-5 w-5" : "h-4 w-4", active ? "text-white" : "text-slate-400")}
+              aria-hidden="true"
+            />
+          )}
           {item.label}
         </Link>
       );
@@ -45,12 +53,12 @@ export function DesktopSidebar({
         </div>
 
         {secondary.length > 0 && (
-          <details open={secondaryActive} className="group/more rounded-xl border border-slate-100">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 text-sm font-bold text-slate-500 hover:text-slate-800 [&::-webkit-details-marker]:hidden">
+          <details open={secondaryActive} className="group/more border-t border-slate-100 pt-3">
+            <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-xs font-bold tracking-wide text-slate-400 hover:text-slate-700 [&::-webkit-details-marker]:hidden">
               المزيد
-              <span className="text-xs transition-transform group-open/more:rotate-180">▼</span>
+              <span className="text-[10px] transition-transform group-open/more:rotate-180">▼</span>
             </summary>
-            <div className="space-y-4 px-1 pb-3 pt-1">
+            <div className="space-y-4 pb-3 pt-2">
               {secondary.map((group) => (
                 <section key={group.label}>
                   <p className="mb-1.5 px-3 text-xs font-bold tracking-wide text-slate-400">

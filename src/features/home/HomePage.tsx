@@ -68,7 +68,7 @@ function EventCardsSkeleton() {
     <div
       role="status"
       aria-busy="true"
-      className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+      className="grid grid-cols-1 gap-4 md:grid-cols-2"
     >
       <span className="sr-only">جارٍ تحميل حالة مناسبات اليوم…</span>
       {[0, 1, 2].map((i) => (
@@ -202,313 +202,319 @@ export function HomePage() {
         </div>
       </section>
 
-      <section aria-labelledby="today-events-title">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h2 id="today-events-title" className="text-xl font-bold text-slate-900">
-              مناسبات اليوم
-            </h2>
-            <p className="text-base text-slate-500">
-              اللي محتاجة إجراء الأول، ثم حسب وقت البداية
-            </p>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="min-w-0 space-y-6">
+        <section aria-labelledby="today-events-title">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 id="today-events-title" className="text-xl font-bold text-slate-900">
+                مناسبات اليوم
+              </h2>
+              <p className="text-base text-slate-500">
+                اللي محتاجة إجراء الأول، ثم حسب وقت البداية
+              </p>
+            </div>
+            <Link to="/events" className="text-base font-bold text-brand-700 hover:text-brand-900">
+              كل المناسبات
+            </Link>
           </div>
-          <Link to="/events" className="text-base font-bold text-brand-700 hover:text-brand-900">
-            كل المناسبات
-          </Link>
-        </div>
 
-        {!dashboardLoaded ? (
-          <EventCardsSkeleton />
-        ) : dashboard.todayEvents.length === 0 ? (
-          <Card className="p-5 text-slate-600">
-            لا توجد مناسبات النهارده. المناسبات القادمة في «المناسبات».
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {dashboard.todayEvents.map((event) => {
-              const readiness = readinessByEventId[event.id];
-              const blockers = todayBlockers(readiness);
-              const whatsappUrl = buildEventWhatsAppUrl(event);
+          {!dashboardLoaded ? (
+            <EventCardsSkeleton />
+          ) : dashboard.todayEvents.length === 0 ? (
+            <Card className="p-5 text-slate-600">
+              لا توجد مناسبات النهارده. المناسبات القادمة في «المناسبات».
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {dashboard.todayEvents.map((event) => {
+                const readiness = readinessByEventId[event.id];
+                const blockers = todayBlockers(readiness);
+                const whatsappUrl = buildEventWhatsAppUrl(event);
 
-              return (
-                <Card key={event.id} className="p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
+                return (
+                  <Card key={event.id} className="p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <Link
+                          to="/events/$eventId"
+                          params={{ eventId: event.id }}
+                          className="text-lg font-bold text-slate-900 hover:text-brand-700"
+                        >
+                          {event.title}
+                        </Link>
+                        <p className="mt-1 text-base text-slate-500">{event.event_number}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-base font-bold text-slate-600">
+                          {timeFormatter.format(new Date(event.start_at))}
+                        </span>
+                        <Badge tone="neutral">
+                          {EVENT_STATUS_ARABIC[event.status] ?? event.status}
+                        </Badge>
+                        <ReadinessBadge status={readiness?.status} />
+                      </div>
+                    </div>
+
+                    {blockers.length > 0 && (
+                      <ul className="mt-3 flex flex-wrap gap-2" aria-label="عوائق اليوم">
+                        {blockers.map((reason) => (
+                          <li key={reason}>
+                            <Link
+                              to="/events/$eventId"
+                              params={{ eventId: event.id }}
+                              search={{ tab: readinessReasonTab(reason) }}
+                              className="inline-flex min-h-9 items-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-sm font-bold text-amber-900 hover:bg-amber-100"
+                            >
+                              {readinessReasonLabel(reason)}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {readiness?.status === "READY" && blockers.length === 0 && (
+                      <p className="mt-3 flex items-center gap-1.5 text-base font-semibold text-emerald-800">
+                        <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        جاهزة — لا عوائق تشغيلية مسجلة
+                      </p>
+                    )}
+
+                    <div className="mt-3 grid gap-1 text-base text-slate-600 sm:grid-cols-3">
+                      <span className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                        {event.venue_name}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <Users className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                        {event.guest_count} ضيف
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <Clock3 className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+                        {EVENT_STATUS_ARABIC[event.status] ?? event.status}
+                      </span>
+                    </div>
+
+                    {canReadFinance && readiness?.status === "NOT_READY" && (
+                      <p className="mt-2 text-sm text-slate-400">
+                        ملاحظة: الجاهزية التشغيلية لا تتأثر بالتحصيل — راجع قسم «يحتاج تحصيل» بشكل منفصل.
+                      </p>
+                    )}
+
+                    <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
                       <Link
                         to="/events/$eventId"
                         params={{ eventId: event.id }}
-                        className="text-lg font-bold text-slate-900 hover:text-brand-700"
+                        className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-4 py-2 text-base font-bold text-white hover:bg-brand-800"
                       >
-                        {event.title}
+                        فتح مركز القيادة
                       </Link>
-                      <p className="mt-1 text-base text-slate-500">{event.event_number}</p>
+                      {whatsappUrl ? (
+                        <a
+                          href={whatsappUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-base font-bold text-emerald-800 hover:bg-emerald-100"
+                        >
+                          <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                          مشاركة واتساب
+                        </a>
+                      ) : (
+                        <span className="inline-flex min-h-11 items-center rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500">
+                          لا يوجد رقم تواصل صالح
+                        </span>
+                      )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-base font-bold text-slate-600">
-                        {timeFormatter.format(new Date(event.start_at))}
-                      </span>
-                      <Badge tone="neutral">
-                        {EVENT_STATUS_ARABIC[event.status] ?? event.status}
-                      </Badge>
-                      <ReadinessBadge status={readiness?.status} />
-                    </div>
-                  </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </section>
+        </div>
+        <div className="min-w-0 space-y-6">
 
-                  {blockers.length > 0 && (
-                    <ul className="mt-3 flex flex-wrap gap-2" aria-label="عوائق اليوم">
-                      {blockers.map((reason) => (
-                        <li key={reason}>
-                          <Link
-                            to="/events/$eventId"
-                            params={{ eventId: event.id }}
-                            search={{ tab: readinessReasonTab(reason) }}
-                            className="inline-flex min-h-9 items-center rounded-lg border border-amber-200 bg-amber-50 px-3 text-sm font-bold text-amber-900 hover:bg-amber-100"
-                          >
-                            {readinessReasonLabel(reason)}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {readiness?.status === "READY" && blockers.length === 0 && (
-                    <p className="mt-3 flex items-center gap-1.5 text-base font-semibold text-emerald-800">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-                      جاهزة — لا عوائق تشغيلية مسجلة
-                    </p>
-                  )}
+        {showCollections && (
+          <section aria-labelledby="collections-title">
+            <div className="mb-3">
+              <h2 id="collections-title" className="text-xl font-bold text-slate-900">
+                مين لسه مدفعش؟
+              </h2>
+              <p className="text-base text-slate-500">
+                مبالغ متبقية على العملاء — اضغط على أي واحدة لتسجيل الدفع.
+              </p>
+            </div>
+            {!collectionsLoaded ? (
+              <ListRowsSkeleton label="جارٍ فحص التحصيل…" />
+            ) : collections.length === 0 ? (
+              <Card className="border-emerald-200 bg-emerald-50 p-5 text-emerald-800">
+                كل العملاء دفعوا — لا يوجد باقي.
+              </Card>
+            ) : (
+              <ul className="space-y-2">
+                {collections.map((row) => (
+                  <li key={row.event_id}>
+                    <Link to="/events/$eventId" params={{ eventId: row.event_id }} search={{ tab: "المدفوعات" }}>
+                      <Card className="p-4 hover:border-brand-300">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="font-bold text-slate-900">
+                              {row.event_title}
+                              <span className="mr-2 text-base font-normal text-slate-500">
+                                · {row.customer_name}
+                              </span>
+                            </p>
+                            <p className="text-base text-slate-500">
+                              {row.event_number} · {timeFormatter.format(new Date(row.start_at))}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {row.overdue && <Badge tone="danger">متأخر</Badge>}
+                            <span className="font-black text-amber-900" dir="ltr">
+                              متبقٍ {outstandingMilliText(row.outstanding)} OMR
+                            </span>
+                          </div>
+                        </div>
+                      </Card>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
 
-                  <div className="mt-3 grid gap-1 text-base text-slate-600 sm:grid-cols-3">
-                    <span className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-                      {event.venue_name}
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <Users className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-                      {event.guest_count} ضيف
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <Clock3 className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-                      {EVENT_STATUS_ARABIC[event.status] ?? event.status}
-                    </span>
-                  </div>
-
-                  {canReadFinance && readiness?.status === "NOT_READY" && (
-                    <p className="mt-2 text-sm text-slate-400">
-                      ملاحظة: الجاهزية التشغيلية لا تتأثر بالتحصيل — راجع قسم «يحتاج تحصيل» بشكل منفصل.
-                    </p>
-                  )}
-
-                  <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+        {showClosures && (
+          <section aria-labelledby="closures-title">
+            <div className="mb-3">
+              <h2 id="closures-title" className="text-xl font-bold text-slate-900">
+                مناسبات جاهزة للإغلاق
+              </h2>
+              <p className="text-base text-slate-500">
+                مناسبات خلصت ومحتاجة إرجاع العدة أو تحصيل الباقي.
+              </p>
+            </div>
+            {!closuresLoaded ? (
+              <ListRowsSkeleton label="جارٍ فحص حالات الإغلاق…" />
+            ) : closures.length === 0 ? (
+              <Card className="p-5 text-slate-600">
+                لا توجد مناسبات محتاجة إقفال الآن.
+              </Card>
+            ) : (
+              <ul className="space-y-2">
+                {closures.map((row) => (
+                  <li key={`${row.event_id}:${row.action}`}>
                     <Link
                       to="/events/$eventId"
-                      params={{ eventId: event.id }}
-                      className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-4 py-2 text-base font-bold text-white hover:bg-brand-800"
+                      params={{ eventId: row.event_id }}
+                      search={{ tab: "ملخص" }}
                     >
-                      فتح مركز القيادة
-                    </Link>
-                    {whatsappUrl ? (
-                      <a
-                        href={whatsappUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-base font-bold text-emerald-800 hover:bg-emerald-100"
-                      >
-                        <MessageCircle className="h-4 w-4" aria-hidden="true" />
-                        مشاركة واتساب
-                      </a>
-                    ) : (
-                      <span className="inline-flex min-h-11 items-center rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500">
-                        لا يوجد رقم تواصل صالح
-                      </span>
-                    )}
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {showCollections && (
-        <section aria-labelledby="collections-title">
-          <div className="mb-3">
-            <h2 id="collections-title" className="text-xl font-bold text-slate-900">
-              مين لسه مدفعش؟
-            </h2>
-            <p className="text-base text-slate-500">
-              مبالغ متبقية على العملاء — اضغط على أي واحدة لتسجيل الدفع.
-            </p>
-          </div>
-          {!collectionsLoaded ? (
-            <ListRowsSkeleton label="جارٍ فحص التحصيل…" />
-          ) : collections.length === 0 ? (
-            <Card className="border-emerald-200 bg-emerald-50 p-5 text-emerald-800">
-              كل العملاء دفعوا — لا يوجد باقي.
-            </Card>
-          ) : (
-            <ul className="space-y-2">
-              {collections.map((row) => (
-                <li key={row.event_id}>
-                  <Link to="/events/$eventId" params={{ eventId: row.event_id }} search={{ tab: "المدفوعات" }}>
-                    <Card className="p-4 hover:border-brand-300">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
+                      <Card className="p-4 hover:border-brand-300">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="font-bold text-slate-900">
                             {row.event_title}
                             <span className="mr-2 text-base font-normal text-slate-500">
-                              · {row.customer_name}
+                              · {row.event_number}
                             </span>
                           </p>
-                          <p className="text-base text-slate-500">
-                            {row.event_number} · {timeFormatter.format(new Date(row.start_at))}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            {row.outstanding !== null && (
+                              <span className="text-base text-slate-500" dir="ltr">
+                                متبقٍ {outstandingMilliText(row.outstanding)}
+                              </span>
+                            )}
+                            <Badge tone={row.action === "CLOSE_OPS" ? "brand" : "warning"}>
+                              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+                              {row.action === "CLOSE_OPS"
+                                ? "جاهزة للإغلاق التشغيلي"
+                                : "جاهزة للإغلاق المالي"}
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {row.overdue && <Badge tone="danger">متأخر</Badge>}
-                          <span className="font-black text-amber-900" dir="ltr">
-                            متبقٍ {outstandingMilliText(row.outstanding)} OMR
-                          </span>
-                        </div>
-                      </div>
-                    </Card>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
+                      </Card>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
 
-      {showClosures && (
-        <section aria-labelledby="closures-title">
+        <section aria-labelledby="alerts-title">
           <div className="mb-3">
-            <h2 id="closures-title" className="text-xl font-bold text-slate-900">
-              مناسبات جاهزة للإغلاق
+            <h2 id="alerts-title" className="text-xl font-bold text-slate-900">
+              محتاج تدخّلك
             </h2>
             <p className="text-base text-slate-500">
-              مناسبات خلصت ومحتاجة إرجاع العدة أو تحصيل الباقي.
+              نقص مضيفين أو عدة أو مواد في مناسبات قريبة.
             </p>
           </div>
-          {!closuresLoaded ? (
-            <ListRowsSkeleton label="جارٍ فحص حالات الإغلاق…" />
-          ) : closures.length === 0 ? (
-            <Card className="p-5 text-slate-600">
-              لا توجد مناسبات محتاجة إقفال الآن.
+
+          {!dashboardLoaded ? (
+            <ListRowsSkeleton label="جارٍ فحص التنبيهات…" />
+          ) : dashboard.alerts.length === 0 && attendanceGaps.length === 0 ? (
+            <Card className="border-emerald-200 bg-emerald-50 p-5 text-emerald-800">
+              كل شيء تمام — لا يوجد ما يحتاج تدخّلك.
             </Card>
           ) : (
-            <ul className="space-y-2">
-              {closures.map((row) => (
-                <li key={`${row.event_id}:${row.action}`}>
-                  <Link
-                    to="/events/$eventId"
-                    params={{ eventId: row.event_id }}
-                    search={{ tab: "ملخص" }}
+            <div className="space-y-3">
+              {dashboard.alerts.map((alert) => {
+                const body = (
+                  <Card
+                    className={
+                      alert.severity === "danger"
+                        ? "border-red-200 bg-red-50 p-4"
+                        : "border-amber-200 bg-amber-50 p-4"
+                    }
                   >
-                    <Card className="p-4 hover:border-brand-300">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-bold text-slate-900">
-                          {row.event_title}
-                          <span className="mr-2 text-base font-normal text-slate-500">
-                            · {row.event_number}
-                          </span>
-                        </p>
-                        <div className="flex items-center gap-2">
-                          {row.outstanding !== null && (
-                            <span className="text-base text-slate-500" dir="ltr">
-                              متبقٍ {outstandingMilliText(row.outstanding)}
-                            </span>
-                          )}
-                          <Badge tone={row.action === "CLOSE_OPS" ? "brand" : "warning"}>
-                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                            {row.action === "CLOSE_OPS"
-                              ? "جاهزة للإغلاق التشغيلي"
-                              : "جاهزة للإغلاق المالي"}
-                          </Badge>
-                        </div>
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle
+                        className={
+                          alert.severity === "danger"
+                            ? "mt-0.5 h-5 w-5 shrink-0 text-red-700"
+                            : "mt-0.5 h-5 w-5 shrink-0 text-amber-700"
+                        }
+                        aria-hidden="true"
+                      />
+                      <div>
+                        <p className="font-bold text-slate-900">{alert.title}</p>
+                        <p className="mt-1 text-base text-slate-700">{alert.detail}</p>
                       </div>
-                    </Card>
+                    </div>
+                  </Card>
+                );
+
+                return alert.kind === "EVENT" ? (
+                  <Link key={alert.id} to="/events/$eventId" params={{ eventId: alert.eventId }}>
+                    {body}
                   </Link>
-                </li>
+                ) : (
+                  <Link key={alert.id} to="/consumables">
+                    {body}
+                  </Link>
+                );
+              })}
+
+              {attendanceGaps.map((gap: AttendanceGap) => (
+                <Link key={gap.eventId} to="/events/$eventId" params={{ eventId: gap.eventId }} search={{ tab: "الحضور" }}>
+                  <Card className="border-amber-200 bg-amber-50 p-4 hover:border-amber-300">
+                    <div className="flex items-start gap-3">
+                      <UserCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
+                      <div>
+                        <p className="font-bold text-slate-900">{gap.eventTitle}</p>
+                        <p className="mt-1 text-base text-slate-700">
+                          مُسند لها {toArabicDigits(gap.assignmentCount)} مضيفاً ولم يُسجَّل حضور{" "}
+                          {toArabicDigits(gap.attendanceCount)} منهم اليوم.
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
               ))}
-            </ul>
+            </div>
           )}
         </section>
-      )}
-
-      <section aria-labelledby="alerts-title">
-        <div className="mb-3">
-          <h2 id="alerts-title" className="text-xl font-bold text-slate-900">
-            محتاج تدخّلك
-          </h2>
-          <p className="text-base text-slate-500">
-            نقص مضيفين أو عدة أو مواد في مناسبات قريبة.
-          </p>
         </div>
-
-        {!dashboardLoaded ? (
-          <ListRowsSkeleton label="جارٍ فحص التنبيهات…" />
-        ) : dashboard.alerts.length === 0 && attendanceGaps.length === 0 ? (
-          <Card className="border-emerald-200 bg-emerald-50 p-5 text-emerald-800">
-            كل شيء تمام — لا يوجد ما يحتاج تدخّلك.
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {dashboard.alerts.map((alert) => {
-              const body = (
-                <Card
-                  className={
-                    alert.severity === "danger"
-                      ? "border-red-200 bg-red-50 p-4"
-                      : "border-amber-200 bg-amber-50 p-4"
-                  }
-                >
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle
-                      className={
-                        alert.severity === "danger"
-                          ? "mt-0.5 h-5 w-5 shrink-0 text-red-700"
-                          : "mt-0.5 h-5 w-5 shrink-0 text-amber-700"
-                      }
-                      aria-hidden="true"
-                    />
-                    <div>
-                      <p className="font-bold text-slate-900">{alert.title}</p>
-                      <p className="mt-1 text-base text-slate-700">{alert.detail}</p>
-                    </div>
-                  </div>
-                </Card>
-              );
-
-              return alert.kind === "EVENT" ? (
-                <Link key={alert.id} to="/events/$eventId" params={{ eventId: alert.eventId }}>
-                  {body}
-                </Link>
-              ) : (
-                <Link key={alert.id} to="/consumables">
-                  {body}
-                </Link>
-              );
-            })}
-
-            {attendanceGaps.map((gap: AttendanceGap) => (
-              <Link key={gap.eventId} to="/events/$eventId" params={{ eventId: gap.eventId }} search={{ tab: "الحضور" }}>
-                <Card className="border-amber-200 bg-amber-50 p-4 hover:border-amber-300">
-                  <div className="flex items-start gap-3">
-                    <UserCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" aria-hidden="true" />
-                    <div>
-                      <p className="font-bold text-slate-900">{gap.eventTitle}</p>
-                      <p className="mt-1 text-base text-slate-700">
-                        مُسند لها {toArabicDigits(gap.assignmentCount)} مضيفاً ولم يُسجَّل حضور{" "}
-                        {toArabicDigits(gap.attendanceCount)} منهم اليوم.
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
+      </div>
 
       {isNewOrganization && (
         <section aria-labelledby="shortcuts-title">

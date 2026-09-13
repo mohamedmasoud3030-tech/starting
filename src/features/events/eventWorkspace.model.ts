@@ -31,6 +31,18 @@ export function isWorkspaceTab(value: unknown): value is WorkspaceTab {
 }
 
 /**
+ * Tabs that no longer render on their own and where they now live. Kept so
+ * old links, alerts and the command center keep landing somewhere sensible.
+ */
+export const WORKSPACE_TAB_ALIASES: Partial<Record<WorkspaceTab, WorkspaceTab>> = {
+  المعدات: "المخزن",
+};
+
+export function normalizeWorkspaceTab(tab: WorkspaceTab): WorkspaceTab {
+  return WORKSPACE_TAB_ALIASES[tab] ?? tab;
+}
+
+/**
  * Capability required to get anything out of a tab.
  *
  * Tabs whose panel can only ever render a "not available for your role"
@@ -63,7 +75,7 @@ const TAB_REQUIREMENT: Partial<Record<WorkspaceTab, keyof EventPermissions>> = {
  *
  *   ③ العرض والعربون  — التسعير · المدفوعات        (quote agreed, 30% deposit)
  *   ④ المضيفون        — الفريق                    (WhatsApp call → confirmations)
- *   ⑤ العدة           — المعدات · المخزن · المواد · المشتريات
+ *   ⑤ العدة           — المخزن (حجز + تجهيز + إرجاع) · المواد · المشتريات
  *   ⑥ يوم المناسبة    — الحضور · الأجور            (face check-in/out → pay)
  *   ⑦ الإقفال         — الفواتير · المالية          (balance, settle, close)
  *      السجل
@@ -83,7 +95,10 @@ export type WorkspaceTabGroup = {
 export const WORKSPACE_TAB_GROUPS: ReadonlyArray<WorkspaceTabGroup> = [
   { id: "deal", label: "العرض والعربون", step: 1, tabs: ["التسعير", "المدفوعات"] },
   { id: "hosts", label: "المضيفون", step: 2, tabs: ["الفريق"] },
-  { id: "kit", label: "العدة", step: 3, tabs: ["المعدات", "المخزن", "المواد", "المشتريات"] },
+  // «المعدات» (reservation form) and «المخزن» (prep/return of the same
+  // reservations) were two tabs over one table — merged into one tab; the
+  // old ?tab=المعدات deep link is normalised to المخزن (see normalizeWorkspaceTab).
+  { id: "kit", label: "العدة", step: 3, tabs: ["المخزن", "المواد", "المشتريات"] },
   { id: "day", label: "يوم المناسبة", step: 4, tabs: ["الحضور", "الأجور"] },
   { id: "closeout", label: "الإقفال", step: 5, tabs: ["الفواتير", "المالية"] },
   { id: "history", label: "السجل", step: null, tabs: ["السجل"] },
@@ -115,6 +130,7 @@ export function visibleWorkspaceTabs(
   permissions: EventPermissions,
 ): WorkspaceTab[] {
   return WORKSPACE_TABS.filter((tab) => {
+    if (WORKSPACE_TAB_ALIASES[tab]) return false; // merged into another tab
     const requirement = TAB_REQUIREMENT[tab];
     return requirement === undefined || permissions[requirement];
   });
@@ -129,7 +145,8 @@ export function resolveActiveTab(
   tab: WorkspaceTab,
   permissions: EventPermissions,
 ): WorkspaceTab {
-  return visibleWorkspaceTabs(permissions).includes(tab) ? tab : "ملخص";
+  const wanted = normalizeWorkspaceTab(tab);
+  return visibleWorkspaceTabs(permissions).includes(wanted) ? wanted : "ملخص";
 }
 
 /**

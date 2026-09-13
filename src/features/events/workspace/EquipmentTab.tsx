@@ -31,7 +31,7 @@ const RESERVATION_STATUS_TONE: Record<
 /**
  * Equipment tab: reservation form + reservations list, plus (defect F11) the
  * capacity provisioning form — capacity rows previously had no product path
- * to exist, which left the "اختر المعدة" list permanently empty.
+ * to exist, which left the "اختر الصنف" list permanently empty.
  *
  * Provisioning (capacity management) follows the `warehouse.dispatch`
  * capability — the same gate the equipment_capacity RLS policy (0079)
@@ -72,7 +72,7 @@ export function EquipmentTab({
     setCapacityError(null);
     setCapacityDone(false);
     if (!capacityItem) {
-      setCapacityError("اختر المعدة أولاً");
+      setCapacityError("اختر الصنف أولاً");
       return;
     }
     const quantity = Number(capacityQty);
@@ -99,20 +99,47 @@ export function EquipmentTab({
 
   return (
     <div className="space-y-4">
+<Card>
+        <h2 className="mb-3 font-black">حجز العدة للمناسبة</h2>
+        <form
+          className="flex flex-wrap gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget);
+            void run("reserve_event_equipment", {
+              p_capacity_id: String(f.get("capacity")),
+              p_quantity: Number(f.get("quantity")),
+              p_idempotency_key: crypto.randomUUID(),
+            });
+          }}
+        >
+          <Select name="capacity" required>
+            <option value="">اختر الصنف</option>
+            {capacities.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.catalog_items?.name ?? c.catalog_item_id} · المتاح الكلي {c.total_quantity}
+              </option>
+            ))}
+          </Select>
+          <Input name="quantity" type="number" min="1" placeholder="الكمية" required className="w-32" />
+          <Button type="submit">حجز</Button>
+        </form>
+      </Card>
+
       {canProvision && (
-        <Card>
-          <h2 className="mb-3 font-black">سعة المعدات</h2>
-          <p className="mb-3 text-sm text-slate-500">
-            عرّف السعة الكلية لكل معدة قابلة لإعادة الاستخدام — تظهر مباشرة في قائمة الحجز أدناه.
+        <details className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+          <summary className="cursor-pointer text-sm font-bold text-slate-600">تعريف كميات العدة المملوكة (إعداد لمرة واحدة)</summary>
+          <p className="mb-3 mt-2 text-sm text-slate-500">
+            كام قطعة عندكم من كل صنف؟ تظهر مباشرة في قائمة الحجز.
           </p>
           <div className="flex flex-wrap items-end gap-2">
             <Select
               value={capacityItem}
               onChange={(e) => setCapacityItem(e.target.value)}
-              aria-label="المعدة"
+              aria-label="الصنف"
               className="min-w-52 flex-1"
             >
-              <option value="">اختر المعدة</option>
+              <option value="">اختر الصنف</option>
               {reusableItems.map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
@@ -144,35 +171,10 @@ export function EquipmentTab({
               تم حفظ السعة بنجاح.
             </p>
           )}
-        </Card>
+        </details>
       )}
 
-      <Card>
-        <h2 className="mb-3 font-black">حجز معدات</h2>
-        <form
-          className="flex flex-wrap gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const f = new FormData(e.currentTarget);
-            void run("reserve_event_equipment", {
-              p_capacity_id: String(f.get("capacity")),
-              p_quantity: Number(f.get("quantity")),
-              p_idempotency_key: crypto.randomUUID(),
-            });
-          }}
-        >
-          <Select name="capacity" required>
-            <option value="">اختر المعدة</option>
-            {capacities.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.catalog_items?.name ?? c.catalog_item_id} · المتاح الكلي {c.total_quantity}
-              </option>
-            ))}
-          </Select>
-          <Input name="quantity" type="number" min="1" placeholder="الكمية" required className="w-32" />
-          <Button type="submit">حجز</Button>
-        </form>
-      </Card>
+      
       {reservations.map((r) => (
         <Card key={r.id}>
           <p className="font-bold">

@@ -51,7 +51,7 @@ describe("EquipmentTab — capacity provisioning (F11)", () => {
         run={run}
       />,
     );
-    expect(screen.queryByText("سعة المعدات")).not.toBeInTheDocument();
+    expect(screen.queryByText(/تعريف كميات العدة/)).not.toBeInTheDocument();
   });
 
   it("lists only reusable equipment items for provisioning", async () => {
@@ -64,9 +64,9 @@ describe("EquipmentTab — capacity provisioning (F11)", () => {
         run={run}
       />,
     );
-    await userEvent.selectOptions(screen.getByLabelText("المعدة"), "cat-1");
+    await userEvent.selectOptions(screen.getByLabelText("الصنف"), "cat-1");
     const options = screen
-      .getByLabelText("المعدة")
+      .getByLabelText("الصنف")
       .querySelectorAll("option");
     const labels = Array.from(options).map((o) => o.textContent);
     expect(labels).toContain("دلة قهوة");
@@ -83,7 +83,7 @@ describe("EquipmentTab — capacity provisioning (F11)", () => {
         run={run}
       />,
     );
-    await userEvent.selectOptions(screen.getByLabelText("المعدة"), "cat-1");
+    await userEvent.selectOptions(screen.getByLabelText("الصنف"), "cat-1");
     await userEvent.type(screen.getByLabelText("السعة الكلية"), "40");
     await userEvent.click(screen.getByRole("button", { name: "حفظ السعة" }));
 
@@ -103,7 +103,7 @@ describe("EquipmentTab — capacity provisioning (F11)", () => {
         run={run}
       />,
     );
-    await userEvent.selectOptions(screen.getByLabelText("المعدة"), "cat-1");
+    await userEvent.selectOptions(screen.getByLabelText("الصنف"), "cat-1");
     expect(screen.getByRole("button", { name: "تحديث السعة" })).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("السعة الكلية"), "55");
     await userEvent.click(screen.getByRole("button", { name: "تحديث السعة" }));
@@ -124,7 +124,7 @@ describe("EquipmentTab — capacity provisioning (F11)", () => {
         run={run}
       />,
     );
-    await userEvent.selectOptions(screen.getByLabelText("المعدة"), "cat-1");
+    await userEvent.selectOptions(screen.getByLabelText("الصنف"), "cat-1");
     await userEvent.type(screen.getByLabelText("السعة الكلية"), "-5");
     await userEvent.click(screen.getByRole("button", { name: "حفظ السعة" }));
 

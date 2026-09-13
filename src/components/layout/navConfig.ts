@@ -166,3 +166,47 @@ export function visibleNavGroups(
     ),
   })).filter((group) => group.items.length > 0);
 }
+
+import {
+  BarChart3,
+  Boxes,
+  CalendarDays,
+  CalendarRange,
+  ClipboardList,
+  FileText,
+  Home,
+  Package,
+  Search,
+  Settings,
+  ShieldCheck,
+  ShoppingCart,
+  Tags,
+  UserCheck,
+  Users,
+  Utensils,
+  Wallet,
+  Warehouse,
+  type LucideIcon,
+} from "lucide-react";
+
+/** One icon per destination, shared by the desktop sidebar and the mobile bars. */
+export const NAV_ICONS: Partial<Record<NavTarget, LucideIcon>> = {
+  "/home": Home,
+  "/events": CalendarDays,
+  "/calendar": CalendarRange,
+  "/customers": Users,
+  "/staff": UserCheck,
+  "/accounting": Wallet,
+  "/packages": Package,
+  "/quotes": Tags,
+  "/catalog": Boxes,
+  "/consumables": Warehouse,
+  "/procurement": ShoppingCart,
+  "/procurement/restaurants": Utensils,
+  "/operations": ClipboardList,
+  "/dashboard": BarChart3,
+  "/reports": FileText,
+  "/integrity": ShieldCheck,
+  "/search": Search,
+  "/settings": Settings,
+};

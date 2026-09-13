@@ -109,11 +109,11 @@ export function EventCommandCenter({
         </DimensionCard>
 
         <DimensionCard
-          title="المعدات"
+          title="العدة"
           icon={<Boxes className="h-5 w-5" />}
           reason="EQUIPMENT_SHORTAGE"
           missing={o.reasons.includes("EQUIPMENT_SHORTAGE")}
-          onOpen={() => onOpenTab("المعدات")}
+          onOpen={() => onOpenTab("المخزن")}
         >
           {o.equipment_shortage > 0 ? (
             <ul className="space-y-1 text-sm">
