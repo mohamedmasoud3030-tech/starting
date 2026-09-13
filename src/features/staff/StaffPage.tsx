@@ -98,7 +98,7 @@ function PayrollPeriodCard({ orgId }: { orgId: string | null }) {
         open={open}
         onOpenChange={setOpen}
         title="كشف صرف / رواتب فترة"
-        description="الأرقام من سجلات الأجور الرسمية — الإجماليات مجموع المطبوع في الكشف نفسه."
+        description="كشف واحد بكل المضيفين: المستحق، السلف، والمصروف خلال الفترة."
       >
         {period.isLoading && (
           <div className="flex justify-center py-10">
@@ -250,7 +250,7 @@ function StaffSummaryCard({
           open={statementOpen}
           onOpenChange={setStatementOpen}
           title="كشف حساب مضيف"
-          description="الأرقام من سجلات الأجور الرسمية نفسها — الاستحقاق والسلف والصرف والمتبقي."
+          description="المستحق والسلف والمصروف والباقي لهذا المضيف."
         >
           {statement.isLoading && (
             <div className="flex justify-center py-10">

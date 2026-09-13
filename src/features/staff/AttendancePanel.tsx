@@ -351,7 +351,7 @@ export function AttendancePanel({
         open={open}
         onOpenChange={setOpen}
         title="تسجيل حضور مضيف"
-        description="سجّل وقت الدخول والخروج؛ طريقة الأجر وسعره تشتقهما الخادم من الإسناد الرسمي، والمستحق يُحسب في قاعدة البيانات."
+        description="للاستثناءات فقط: مضيف نسي البصمة أو تصحيح وقت. الأجر يُحسب تلقائياً."
       >
         <form className="space-y-3" onSubmit={submit}>
           <Field label="المضيف" htmlFor="att-staff" required>

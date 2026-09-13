@@ -57,7 +57,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {orgName}
               </p>
               <p className="hidden text-sm text-slate-500 sm:block">
-                عمليات الضيافة والمناسبات
+                إدارة الضيافة
               </p>
             </div>
           </div>
