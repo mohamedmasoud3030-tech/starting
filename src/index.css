@@ -37,10 +37,9 @@
   html {
     direction: rtl;
     min-height: 100%;
-    /* Legibility-first base type (16px → 18px): the owner is senior and
-       reads small screens all day, so every rem-based text scales up by a
-       real, comfortable step — dense data rows stay readable without zoom. */
-    font-size: 112.5%;
+    /* Standard 16px base. (An earlier 18px "senior-eye" bump made every
+       screen feel oversized — owner asked for normal sizing.) */
+    font-size: 100%;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
@@ -50,7 +49,7 @@
     overflow-x: clip;
     font-family: var(--font-sans);
     /* Generous Arabic line rhythm — key to senior-eye reading comfort. */
-    line-height: 1.75;
+    line-height: 1.6;
     /* Cairo Medium for body copy: noticeably clearer to older eyes on
        backlit screens than the hairline Regular, without redesigning UI. */
     font-weight: 500;
@@ -472,24 +471,9 @@ input[type="number"] {
   }
 }
 
-/* ---------------------------------------------------------------------------
- * Senior-eye legibility (owner is elderly and reads small text all day).
- * These unlayered rules beat Tailwind's @layer utilities, so the smallest
- * text steps never render below a comfortable size (~14.5px real at the
- * 18px base): labels, badges, table rows and helper text stay crisp.
- * ------------------------------------------------------------------------- */
-.text-xs {
-  font-size: 0.8125rem;
-}
-.text-sm {
-  font-size: 0.9375rem;
-}
+/* Minimum floor only for the tiniest pixel steps so nothing dips below 12px;
+ * Tailwind's own text-xs (12px) / text-sm (14px) are left untouched. */
+.text-\[10px\],
 .text-\[11px\] {
-  font-size: 0.8125rem;
-}
-.text-\[12px\] {
-  font-size: 0.8125rem;
-}
-.text-\[13px\] {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
 }
