@@ -22,7 +22,6 @@ import {
   OFFICE_OFFERS,
   type OfficeOffer,
 } from "./officeOffers";
-import { HOSPITALITY_INVENTORY, suggestedKit } from "./hospitalityInventory";
 
 // ------------------------------------------------------------------ seeding
 
@@ -181,114 +180,6 @@ export function useSeedOfficeOffers(orgId: string | null) {
   });
 }
 
-/**
- * Seed the full hospitality inventory (categories + items). Idempotent by
- * name. Reusable equipment also gets a capacity row (0 — the owner fills the
- * real count from the warehouse screen) so it shows up in the warehouse
- * ledger immediately.
- */
-export function useInventorySeedStatus(orgId: string | null) {
-  return useQuery({
-    queryKey: ["hospitality-inventory-seeded", orgId],
-    enabled: !!orgId,
-    queryFn: async () => {
-      if (!orgId) return { seeded: false, count: 0 };
-      const names = HOSPITALITY_INVENTORY.flatMap((c) => c.items.map((i) => i.name));
-      const { count, error } = await supabase
-        .from("catalog_items")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", orgId)
-        .in("name", names);
-      if (error) throw error;
-      return { seeded: (count ?? 0) >= names.length, count: count ?? 0, total: names.length };
-    },
-  });
-}
-
-export function useSeedHospitalityInventory(orgId: string | null) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async () => {
-      if (!orgId) throw new Error("لا توجد منظمة محددة");
-
-      // categories
-      const { data: cats, error: catErr } = await supabase
-        .from("catalog_categories")
-        .select("id,name")
-        .eq("organization_id", orgId);
-      if (catErr) throw catErr;
-      const catByName = new Map((cats ?? []).map((c) => [c.name, c.id]));
-      const missingCats = HOSPITALITY_INVENTORY.filter((c) => !catByName.has(c.name));
-      if (missingCats.length > 0) {
-        const { data: ins, error } = await supabase
-          .from("catalog_categories")
-          .insert(missingCats.map((c, i) => ({ organization_id: orgId, name: c.name, sort_order: (catByName.size + i) * 10 })))
-          .select("id,name");
-        if (error) throw error;
-        for (const c of ins ?? []) catByName.set(c.name, c.id);
-      }
-
-      // items
-      const { data: items, error: itemErr } = await supabase
-        .from("catalog_items")
-        .select("id,name,item_type")
-        .eq("organization_id", orgId);
-      if (itemErr) throw itemErr;
-      const itemByName = new Map((items ?? []).map((r) => [r.name, r]));
-
-      const toInsert = HOSPITALITY_INVENTORY.flatMap((c) =>
-        c.items
-          .filter((i) => !itemByName.has(i.name))
-          .map((i, idx) => ({
-            organization_id: orgId,
-            category_id: catByName.get(c.name) ?? null,
-            name: i.name,
-            item_type: i.type,
-            unit: i.unit,
-            pricing_method: "PER_UNIT" as const,
-            cost_price: 0,
-            selling_price: 0,
-            sort_order: idx,
-            status: "ACTIVE" as const,
-          })),
-      );
-      let inserted: Array<{ id: string; name: string; item_type: string }> = [];
-      if (toInsert.length > 0) {
-        const { data, error } = await supabase.from("catalog_items").insert(toInsert).select("id,name,item_type");
-        if (error) throw error;
-        inserted = data ?? [];
-      }
-
-      // capacity rows for reusable equipment (0 until the owner counts)
-      const equipmentIds = [...(items ?? []), ...inserted]
-        .filter((r) => r.item_type === "REUSABLE_EQUIPMENT")
-        .map((r) => r.id);
-      if (equipmentIds.length > 0) {
-        const { data: caps, error: capErr } = await supabase
-          .from("equipment_capacity")
-          .select("catalog_item_id")
-          .eq("organization_id", orgId);
-        if (capErr) throw capErr;
-        const have = new Set((caps ?? []).map((c) => c.catalog_item_id));
-        const missing = equipmentIds.filter((id) => !have.has(id));
-        if (missing.length > 0) {
-          const { error } = await supabase
-            .from("equipment_capacity")
-            .insert(missing.map((id) => ({ organization_id: orgId, catalog_item_id: id, total_quantity: 0 })));
-          if (error) throw error;
-        }
-      }
-      return { inserted: inserted.length };
-    },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["hospitality-inventory-seeded", orgId] });
-      void qc.invalidateQueries({ queryKey: ["catalog-items", orgId] });
-      void qc.invalidateQueries({ queryKey: ["catalog-categories", orgId] });
-      void qc.invalidateQueries({ queryKey: ["event-workspace", orgId] });
-    },
-  });
-}
-
 // ------------------------------------------------------------- quick event
 
 export interface QuickEventInput {
@@ -370,19 +261,6 @@ export function useCreateQuickEvent(orgId: string | null) {
         ...OFFER_FIXED_INCLUSIONS.map((n) =>
           line(n, 1, "0.000", { itemType: "CONSUMABLE", unit: "مجموعة", pricingMethod: "PER_EVENT" }),
         ),
-        // The real kit per lane (tables, cloths, cups, trays, consumables…):
-        // only items that exist in this org's catalog are attached, so the
-        // warehouse/consumables tabs show what to prepare. Price 0 — the tier
-        // line already carries the printed total.
-        ...suggestedKit(o.lanes)
-          .filter((k) => item(k.name) !== null && k.name !== OFFER_CATALOG_ITEMS.coffeePot)
-          .map((k) =>
-            line(k.name, k.quantity, "0.000", {
-              itemType: k.type,
-              unit: "قطعة",
-              pricingMethod: "PER_UNIT",
-            }),
-          ),
       ];
 
       const notes = [
