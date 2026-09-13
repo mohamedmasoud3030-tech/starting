@@ -106,7 +106,7 @@ export function WarehousePanel({
       {lines.length === 0 ? (
         <Card>
           <p className="font-bold text-slate-600">
-            لا توجد معدات محجوزة لهذه المناسبة. احجز المعدات أولاً من تبويب المعدات.
+            لا توجد عدة محجوزة لهذه المناسبة بعد — احجزها من النموذج أعلاه.
           </p>
         </Card>
       ) : (
