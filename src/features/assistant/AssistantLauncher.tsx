@@ -24,6 +24,45 @@ function base64ToAudioUrl(audioB64: string, mimeType: string): string {
   return URL.createObjectURL(new Blob([bytes], { type: mimeType }));
 }
 
+/**
+ * A 1-sample silent WAV. Playing it *inside* a user gesture "unlocks" the
+ * <audio> element on iOS Safari / Android Chrome, so a clip that arrives
+ * seconds later (after the cloud round-trip) is still allowed to play.
+ * Without this, autoplay policy rejects every reply after the first.
+ */
+const SILENT_WAV =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+
+let synthWarmed = false;
+
+function unlockAudioElement(el: HTMLAudioElement | null): void {
+  if (!el) return;
+  try {
+    el.muted = false;
+    el.volume = 1;
+    el.src = SILENT_WAV;
+    el.load();
+    const p = el.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  } catch {
+    /* noop */
+  }
+  // Warm the device speech engine too (Safari needs one speak() in a
+  // gesture) — once per page, so later taps never interrupt a live read.
+  if (synthWarmed) return;
+  synthWarmed = true;
+  try {
+    const synth = window.speechSynthesis;
+    if (synth) {
+      const u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0;
+      synth.speak(u);
+    }
+  } catch {
+    /* noop */
+  }
+}
+
 /** First word of the owner's name (e.g. "يعقوب الخصيبي" → "يعقوب"). */
 function friendlyFirstName(fullName: string | null | undefined): string | null {
   const cleaned = (fullName ?? "").replace(/\s+/g, " ").trim();
@@ -148,7 +187,10 @@ export function AssistantLauncher() {
           element.onerror = null;
           resolve(ok);
         };
-        element.onplay = () => setAudioSpeaking(true);
+        element.onplay = () => {
+          setAudioSpeaking(true);
+          resolve(true);
+        };
         element.onended = () => {
           setAudioSpeaking(false);
           try {
@@ -162,16 +204,16 @@ export function AssistantLauncher() {
           setAudioSpeaking(false);
           finish(false);
         };
+        element.muted = false;
+        element.volume = 1;
         element.src = url;
         element.load();
-        element.play().then(
-          () => finish(true),
-          () => {
-            // Autoplay policy / decode failure on mobile.
-            setAudioSpeaking(false);
-            finish(false);
-          },
-        );
+        element.play().catch((err: unknown) => {
+          // Autoplay policy (NotAllowedError) / decode failure on mobile.
+          console.info("[لينا] audio.play() rejected:", (err as Error)?.name ?? err);
+          setAudioSpeaking(false);
+          finish(false);
+        });
       });
     },
     [],
@@ -203,9 +245,9 @@ export function AssistantLauncher() {
       // لينا is a female persona: if the device only offers a masculine
       // Arabic voice, stay silent (the text is still shown) rather than
       // letting a male voice speak in her place.
-      if (!voice.hasFeminineVoice) {
+      if (!voice.hasFeminineVoice && voice.hasMasculineVoice) {
         console.info(
-          "[لينا] cloud voice unavailable and no feminine device voice → text only.",
+          "[لينا] cloud voice unavailable and only a masculine device voice → text only.",
         );
         return false;
       }
@@ -249,6 +291,9 @@ export function AssistantLauncher() {
           pendingSpeakRef.current = null;
           return;
         }
+        // Playback blocked (autoplay policy): keep the reply so the next tap
+        // replays it, then try the device voice.
+        pendingSpeakRef.current = { text: trimmed };
         speakLocally(spoken);
         return;
       }
@@ -274,6 +319,7 @@ export function AssistantLauncher() {
             pendingSpeakRef.current = null;
             return;
           }
+          pendingSpeakRef.current = { text: trimmed };
           speakLocally(spoken);
           return;
         }
@@ -289,17 +335,24 @@ export function AssistantLauncher() {
   );
 
   useEffect(() => {
-    if (!open || !pendingSpeakRef.current) return;
+    if (!open) return;
+    // Any tap while the panel is open re-arms audio and replays a reply that
+    // was blocked by the autoplay policy.
     const onPointer = () => {
+      // Only arm when nothing is playing — re-loading the element mid-clip
+      // would cut لينا off.
+      const el = audioElRef.current;
+      const idle = !el || el.paused || el.ended;
+      if (idle) unlockAudioElement(el);
       const pending = pendingSpeakRef.current?.text;
       if (pending) {
         pendingSpeakRef.current = null;
         void speakText(pending);
       }
     };
-    window.addEventListener("pointerdown", onPointer, { once: true });
+    window.addEventListener("pointerdown", onPointer);
     return () => window.removeEventListener("pointerdown", onPointer);
-  }, [open, speakText, pendingSpeakRef]);
+  }, [open, speakText]);
 
   const speaking = voice.speaking || audioSpeaking;
 
@@ -376,7 +429,12 @@ export function AssistantLauncher() {
 
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          // Must run synchronously inside the tap: this is the only moment
+          // mobile browsers let us arm audio playback.
+          if (!open) unlockAudioElement(audioElRef.current);
+          setOpen((value) => !value);
+        }}
         aria-expanded={open}
         aria-label={open ? `إغلاق مساعد ${ASSISTANT_NAME}` : `فتح مساعد ${ASSISTANT_NAME}`}
         className={cn(

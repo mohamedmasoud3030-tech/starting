@@ -18,6 +18,8 @@ export interface AssistantSpeechState {
   lastText: string | null;
   /** Whether the best available device voice is a known feminine Arabic voice. */
   hasFeminineVoice: boolean;
+  /** True when the best Arabic device voice is clearly masculine. */
+  hasMasculineVoice: boolean;
 }
 
 /** Narrow structural types so tests can inject faithful fakes. */
@@ -225,6 +227,7 @@ export class AssistantSpeechEngine {
       status: "idle",
       lastText: null,
       hasFeminineVoice: false,
+      hasMasculineVoice: false,
     };
     this.onVoicesChanged = () => {
       this.refreshVoices();
@@ -245,7 +248,10 @@ export class AssistantSpeechEngine {
       this.voiceCache = voices;
       if (changed) {
         const best = pickAssistantArabicVoice(voices);
-        this.update({ hasFeminineVoice: best ? isLikelyFeminine(best.name) : false });
+        this.update({
+          hasFeminineVoice: best ? isLikelyFeminine(best.name) : false,
+          hasMasculineVoice: best ? isLikelyMasculine(best.name) : false,
+        });
         for (const listener of [...this.listeners]) listener();
       }
     } catch {
