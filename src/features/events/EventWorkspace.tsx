@@ -27,6 +27,7 @@ import { EditEventDialog } from "./workspace/EditEventDialog";
 import { EventCommandCenter } from "./workspace/EventCommandCenter";
 import { QuickDepositCard } from "@/features/quickEvent/QuickDepositCard";
 import { HostCallCard } from "@/features/quickEvent/HostCallCard";
+import { CloseoutCard } from "./workspace/CloseoutCard";
 import { useEventCommandCenter } from "./commandCenter.api";
 import { AttendancePanel } from "@/features/staff/AttendancePanel";
 import { HostPayrollPanel } from "@/features/staff/HostPayrollPanel";
@@ -43,7 +44,7 @@ import { OverviewTab } from "./workspace/OverviewTab";
 import { PricingTab } from "./workspace/PricingTab";
 import { TeamTab } from "./workspace/TeamTab";
 import { WorkspaceTabs } from "./workspace/WorkspaceTabs";
-import { pickLinkedQuote } from "./eventWorkspace.model";
+import { deriveStageStates, pickLinkedQuote } from "./eventWorkspace.model";
 import { useEventWorkspace } from "./useEventWorkspace";
 
 export function EventWorkspace() {
@@ -115,6 +116,17 @@ export function EventWorkspace() {
             eventStatus={ev.status}
             onOpenTab={ws.setTab}
           />
+          {["RETURNING", "IN_PROGRESS", "CLOSED"].includes(ev.status) && (
+            <CloseoutCard
+              orgId={ws.orgId}
+              eventId={ws.eventId}
+              center={center}
+              canCost={ws.canCost}
+              canPayroll={ws.canPayroll}
+              eventStatus={ev.status}
+              onOpenTab={ws.setTab}
+            />
+          )}
           {ws.canRecordPayment &&
             ["CONFIRMED", "PREPARING"].includes(ev.status) && (
               <QuickDepositCard
@@ -127,7 +139,12 @@ export function EventWorkspace() {
         </>
       )}
 
-      <WorkspaceTabs tab={ws.tab} tabs={ws.visibleTabs} onChange={ws.setTab} />
+      <WorkspaceTabs
+        tab={ws.tab}
+        tabs={ws.visibleTabs}
+        onChange={ws.setTab}
+        stageStates={deriveStageStates(center, ev.status)}
+      />
       {ws.error && <InlineError message={ws.error} />}
 
       {editOpen && (
@@ -280,6 +297,18 @@ export function EventWorkspace() {
               ? (ws.finance.data?.acceptedRevenueMilli ?? 0)
               : null
           }
+        />
+      )}
+
+      {(ws.tab === "المالية" || ws.tab === "الفواتير") && (
+        <CloseoutCard
+          orgId={ws.orgId}
+          eventId={ws.eventId}
+          center={center}
+          canCost={ws.canCost}
+          canPayroll={ws.canPayroll}
+          eventStatus={ev.status}
+          onOpenTab={ws.setTab}
         />
       )}
 

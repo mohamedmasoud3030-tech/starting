@@ -60,7 +60,7 @@ describe("TeamTab", () => {
         onOpenAttendance={onOpenAttendance}
       />,
     );
-    const options = Array.from(screen.getByLabelText("اختر الموظف").querySelectorAll("option")).map(
+    const options = Array.from(screen.getByLabelText("اختر المضيف").querySelectorAll("option")).map(
       (option) => option.textContent,
     );
     expect(options.join(" ")).toContain("فاطمة");
@@ -118,7 +118,7 @@ describe("TeamTab", () => {
         canCost={false}
       />,
     );
-    expect(screen.queryByText("إسناد موظف")).not.toBeInTheDocument();
+    expect(screen.queryByText("إضافة مضيف يدوياً")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "تحرير" })).not.toBeInTheDocument();
     expect(screen.queryByText(/2\.000/)).not.toBeInTheDocument();
   });

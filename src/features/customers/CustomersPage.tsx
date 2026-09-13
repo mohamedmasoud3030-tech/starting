@@ -245,28 +245,29 @@ function CustomerDialog({
             onChange={(e) => set("name", e.target.value)}
           />
         </Field>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="رقم الهاتف" htmlFor="cust-phone">
-            <Input
-              id="cust-phone"
-              dir="ltr"
-              inputMode="tel"
-              value={values.phone}
-              onChange={(e) => set("phone", e.target.value)}
-              placeholder="+968 ..."
-            />
-          </Field>
-          <Field label="رقم الواتساب" htmlFor="cust-whatsapp">
+        <Field label="رقم الهاتف (واتساب)" htmlFor="cust-phone" hint="نفس الرقم يُستخدم للاتصال والواتساب">
+          <Input
+            id="cust-phone"
+            dir="ltr"
+            inputMode="tel"
+            value={values.phone}
+            onChange={(e) => set("phone", e.target.value)}
+            placeholder="9XXXXXXX"
+          />
+        </Field>
+        <details className="text-sm">
+          <summary className="cursor-pointer font-bold text-slate-500">رقم واتساب مختلف؟</summary>
+          <Field label="رقم الواتساب" htmlFor="cust-whatsapp" className="mt-2">
             <Input
               id="cust-whatsapp"
               dir="ltr"
               inputMode="tel"
               value={values.whatsapp}
               onChange={(e) => set("whatsapp", e.target.value)}
-              placeholder="+968 ..."
+              placeholder="اتركه فارغاً إن كان نفس رقم الهاتف"
             />
           </Field>
-        </div>
+        </details>
         <Field label="نوع العميل" htmlFor="cust-type">
           <Select
             id="cust-type"

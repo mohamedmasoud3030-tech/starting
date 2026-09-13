@@ -147,32 +147,34 @@ export function AttendanceClock({
 
   return (
     <section aria-labelledby="clock-heading" className="space-y-4">
-      <div>
-        <h2 id="clock-heading" className="text-xl font-black">
-          بصمة الحضور
-        </h2>
-        <p className="mt-1 text-slate-600">
-          اضغط دخول عند وصول المضيف، وخروج عند انصرافه — مع صورة حضور تُحفظ
-          كإثبات خاص. الأجر يُحسب بعد الخروج بدقة الريال العماني.
-        </p>
-        <p className="mt-1 text-sm text-slate-500">
-          الوردية الحالية: {SHIFT_LABELS[shift]} · التطابق على الوجه مساعدة للمدير فقط —
-          لا يُنشئ أي سجل من تلقاء نفسه.
-        </p>
-      </div>
+      <h2 id="clock-heading" className="sr-only">بصمة الحضور</h2>
 
       {error && <InlineError message={error} />}
 
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={() => setFaceAction("CHECK_IN")}>
-          <ScanFace className="h-5 w-5" />
-          بصمة دخول بالكاميرا
-        </Button>
-        <Button variant="outline" onClick={() => setFaceAction("CHECK_OUT")}>
-          <ScanFace className="h-5 w-5" />
-          بصمة خروج بالكاميرا
-        </Button>
+      {/* The day-of flow is two taps: face at move-out, face at finish. */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => setFaceAction("CHECK_IN")}
+          className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl bg-brand-700 text-white shadow-cta hover:bg-brand-800"
+        >
+          <ScanFace className="h-10 w-10" />
+          <span className="text-xl font-black">بصمة التحرك</span>
+          <span className="text-sm text-white/80">عند الانطلاق للمناسبة</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setFaceAction("CHECK_OUT")}
+          className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-brand-700 bg-white text-brand-900 hover:bg-brand-50"
+        >
+          <ScanFace className="h-10 w-10" />
+          <span className="text-xl font-black">بصمة الانتهاء</span>
+          <span className="text-sm text-brand-900/70">عند انتهاء الخدمة — يُحسب الأجر</span>
+        </button>
       </div>
+      <p className="text-sm text-slate-500">
+        الوردية الحالية: {SHIFT_LABELS[shift]} · الكاميرا تقترح الاسم والمدير يؤكد. تُحفظ صورة كإثبات.
+      </p>
 
       <FaceAttendanceDialog
         orgId={orgId}

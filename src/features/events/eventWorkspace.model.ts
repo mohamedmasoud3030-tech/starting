@@ -56,41 +56,37 @@ const TAB_REQUIREMENT: Partial<Record<WorkspaceTab, keyof EventPermissions>> = {
 };
 
 /**
- * A visual grouping of the event tabs, purely for orientation (IA), NOT a
- * change to any tab identity, role gate, route or deep-link. The workspace's
- * canonical single tab strip is a long wall of 13 peers — hard for the owner
- * persona to scan. Grouping keeps the same one-active-tab model but labels
- * related tabs so the operator reads the tab area as: summary (pinned),
- * then تشغيل / مالية / سجل buckets.
+ * The event workspace grouped by the OFFICE'S OWN STAGES, in the order the
+ * work actually happens. This is presentation only — tab identities, role
+ * gates, routes and deep links (?tab=…) are unchanged; every existing panel
+ * simply lives inside the stage it serves:
  *
- * `ملخص` is deliberately NOT in any bucket — it is pinned first and always
- * available. The order of members here is presentation order within a bucket
- * and may differ from the canonical `WORKSPACE_TABS` lifecycle order.
+ *   ③ العرض والعربون  — التسعير · المدفوعات        (quote agreed, 30% deposit)
+ *   ④ المضيفون        — الفريق                    (WhatsApp call → confirmations)
+ *   ⑤ العدة           — المعدات · المخزن · المواد · المشتريات
+ *   ⑥ يوم المناسبة    — الحضور · الأجور            (face check-in/out → pay)
+ *   ⑦ الإقفال         — الفواتير · المالية          (balance, settle, close)
+ *      السجل
+ *
+ * `ملخص` is pinned first and always available.
  */
 export type WorkspaceTabGroup = {
-  /** Stable machine id (used for testing only). */
-  id: "operations" | "finance" | "history";
-  /** Arabic label shown above/in front of the bucket. */
+  /** Stable machine id. */
+  id: "deal" | "hosts" | "kit" | "day" | "closeout" | "history";
+  /** Arabic stage label. */
   label: string;
+  /** Stage number as the office counts it (null for the log). */
+  step: number | null;
   tabs: ReadonlyArray<WorkspaceTab>;
 };
 
 export const WORKSPACE_TAB_GROUPS: ReadonlyArray<WorkspaceTabGroup> = [
-  {
-    id: "operations",
-    label: "التشغيل والتحضير",
-    tabs: ["التسعير", "الفريق", "المعدات", "المخزن", "المواد", "المشتريات", "الحضور"],
-  },
-  {
-    id: "finance",
-    label: "المالية",
-    tabs: ["المدفوعات", "الفواتير", "الأجور", "المالية"],
-  },
-  {
-    id: "history",
-    label: "السجل",
-    tabs: ["السجل"],
-  },
+  { id: "deal", label: "العرض والعربون", step: 1, tabs: ["التسعير", "المدفوعات"] },
+  { id: "hosts", label: "المضيفون", step: 2, tabs: ["الفريق"] },
+  { id: "kit", label: "العدة", step: 3, tabs: ["المعدات", "المخزن", "المواد", "المشتريات"] },
+  { id: "day", label: "يوم المناسبة", step: 4, tabs: ["الحضور", "الأجور"] },
+  { id: "closeout", label: "الإقفال", step: 5, tabs: ["الفواتير", "المالية"] },
+  { id: "history", label: "السجل", step: null, tabs: ["السجل"] },
 ];
 
 /** Every non-summary tab must belong to exactly one bucket. */
@@ -257,3 +253,56 @@ export function jobPathForQuoteStatus(status: string): JobPathStepId {
   return "quote";
 }
 
+
+/**
+ * Derive each stage's completion from the server projection the workspace
+ * already loads (`event_command_center`) + the event status. Pure.
+ *
+ *  deal     — accepted quotation AND something collected (the 30% deposit)
+ *  hosts    — no staff missing (staff_required met)
+ *  kit      — no equipment / consumable shortage and no pending procurement
+ *  day      — event has been executed (DISPATCHED+) and everyone assigned
+ *             has checked out
+ *  closeout — outstanding = 0 and event CLOSED
+ */
+export function deriveStageStates(
+  center: {
+    operational: {
+      staff_required: number;
+      staff_missing: number;
+      equipment_shortage: number;
+      consumables_shortage: number;
+      procurement_pending: number;
+    };
+    attendance: { assigned: number; checked_out: number };
+    commercial: { has_accepted_quotation: boolean; collected: string | null; outstanding: string | null };
+  } | null | undefined,
+  eventStatus: string,
+): Partial<Record<WorkspaceTabGroup["id"], "done" | "current" | "todo">> {
+  if (!center) return {};
+  const o = center.operational;
+  const num = (v: string | null) => (v == null ? 0 : Number.parseFloat(v) || 0);
+  const executed = ["DISPATCHED", "IN_PROGRESS", "RETURNING", "CLOSED"].includes(eventStatus);
+
+  const deal = center.commercial.has_accepted_quotation && num(center.commercial.collected) > 0;
+  const hosts = o.staff_required > 0 && o.staff_missing === 0;
+  const kit = o.equipment_shortage === 0 && o.consumables_shortage === 0 && o.procurement_pending === 0;
+  const day = executed && center.attendance.assigned > 0 && center.attendance.checked_out >= center.attendance.assigned;
+  const closeout = eventStatus === "CLOSED" && num(center.commercial.outstanding) <= 0;
+
+  const states: Partial<Record<WorkspaceTabGroup["id"], "done" | "current" | "todo">> = {
+    deal: deal ? "done" : "todo",
+    hosts: hosts ? "done" : "todo",
+    kit: kit ? "done" : "todo",
+    day: day ? "done" : "todo",
+    closeout: closeout ? "done" : "todo",
+  };
+  // first not-done stage is "current"
+  for (const id of ["deal", "hosts", "kit", "day", "closeout"] as const) {
+    if (states[id] !== "done") {
+      states[id] = "current";
+      break;
+    }
+  }
+  return states;
+}

@@ -317,11 +317,11 @@ export function StaffPage() {
     return (
       <div className="space-y-4">
         <PageHeader
-          title="الفريق والموارد البشرية"
-          description="ملفات أعضاء الفريق وحضورهم ومستحقاتهم في المناسبات — تُفتح لمن يملك صلاحية قراءة الأجور."
+          title="المضيفون والحضور"
+          description="ملف كل مضيف، حضوره، سلفه ومستحقاته في المناسبات — تُفتح لمن يملك صلاحية قراءة الأجور."
         />
         <EmptyState
-          title="الفريق والموارد البشرية غير متاحين لدورك"
+          title="المضيفون والحضور غير متاحين لدورك"
           description="ملفات الفريق والمستحقات تظهر لمن يملك صلاحية قراءة الأجور، وهي تُمنح لكل عضو من شاشة «المستخدمون والصلاحيات»."
         />
       </div>
@@ -331,7 +331,7 @@ export function StaffPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="الفريق والموارد البشرية"
+        title="المضيفون والحضور"
         description="لكل عضو في فريقك ملف واحد: بياناته وتواريخ مستنداته، وحضوره ومستحقاته في مناسباتك. المضيفون يُستدعَون للمناسبات — فمن حضر سُجّل حضوره من داخل المناسبة، ومن لم يُستدعَ أو لم يحضر فلا يُسجَّل عنه شيء."
         actions={
           canManageStaff ? (
@@ -368,7 +368,7 @@ export function StaffPage() {
           <div
             className="flex flex-wrap items-center gap-2"
             role="group"
-            aria-label="تصفية أعضاء الفريق"
+            aria-label="تصفية المضيفين"
           >
             <span className="text-sm font-bold text-slate-600">عرض:</span>
             {(

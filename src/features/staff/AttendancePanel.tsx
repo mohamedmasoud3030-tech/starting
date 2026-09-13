@@ -194,9 +194,9 @@ export function AttendancePanel({
     <section aria-labelledby="attendance-heading" className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 id="attendance-heading" className="text-xl font-black">حضور المضيفين</h2>
+          <h2 id="attendance-heading" className="text-xl font-black">يوم المناسبة — حضور المضيفين</h2>
           <p className="mt-1 text-slate-600">
-            اضغط دخول الآن عند وصول المضيف وخروج الآن عند انصرافه. التسجيل اليدوي للتصحيح أو الغياب فقط.
+            بصمة عند التحرك، وبصمة عند الانتهاء. التسجيل اليدوي للغياب أو التصحيح فقط.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -205,8 +205,8 @@ export function AttendancePanel({
               المستحق: {formatOMR(totalEarned)}
             </p>
           )}
-          <Button variant="outline" onClick={() => setOpen(true)} disabled={recordAttendance.isPending}>
-            تسجيل يدوي
+          <Button variant="ghost" size="sm" onClick={() => setOpen(true)} disabled={recordAttendance.isPending}>
+            تسجيل يدوي (استثناء)
           </Button>
         </div>
       </div>

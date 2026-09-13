@@ -172,7 +172,7 @@ export function HomePage() {
             </div>
             <PlusCircle className="h-12 w-12 shrink-0" aria-hidden="true" />
           </button>
-          <QuickEventDialog open={quickOpen} onOpenChange={setQuickOpen} />
+          {quickOpen && <QuickEventDialog open={quickOpen} onOpenChange={setQuickOpen} />}
         </section>
       )}
 

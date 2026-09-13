@@ -18,6 +18,7 @@ import { useCustomers } from "@/features/customers/customers.api";
 import { muscatWallClockToIso } from "@/lib/dates";
 import { useStableIdempotencyKey } from "@/lib/useStableIdempotencyKey";
 import { orderEvents, type EventListSortMode } from "./eventsListOrder";
+import { QuickEventDialog } from "@/features/quickEvent/QuickEventDialog";
 import { arabicError, useCreateEvent, useEventsPage } from "./events.api";
 import { EVENT_STATUS_ARABIC, EVENT_STATUS_TONES } from "@/lib/arabic";
 
@@ -31,6 +32,7 @@ export function EventsPage() {
   const create = useCreateEvent(orgId);
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<EventFilter>("ACTIVE");
@@ -119,7 +121,17 @@ export function EventsPage() {
       <PageHeader
         title="المناسبات"
         description="بعد اعتماد العرض تُنفَّذ المناسبة هنا حتى الإغلاق والتحصيل والربح"
-        actions={<Button onClick={() => setOpen(true)}><Plus className="h-5 w-5" />مناسبة جديدة</Button>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button size="lg" onClick={() => setQuickOpen(true)}>
+              <Plus className="h-5 w-5" />
+              مناسبة جديدة
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+              مناسبة مخصصة (خارج العروض)
+            </Button>
+          </div>
+        }
       />
 
       <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center">
@@ -182,7 +194,8 @@ export function EventsPage() {
           </ul>
         </div>{paginationBar}</>}
 
-      <Dialog open={open} onOpenChange={setOpen} title="مناسبة جديدة" description="أنشئ مناسبة مباشرة لعميل مسجل. عروض العملاء المتوقعين تبدأ من شاشة عروض الأسعار.">
+      {quickOpen && <QuickEventDialog open={quickOpen} onOpenChange={setQuickOpen} />}
+      <Dialog open={open} onOpenChange={setOpen} title="مناسبة مخصصة" description="لمناسبة خارج العروض الستة لعميل مسجل مسبقاً. السعر يُحدد لاحقاً من مرحلة «العرض والعربون».">
         <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
           {!hasActiveCustomers && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-800 sm:col-span-2">

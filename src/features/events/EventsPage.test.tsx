@@ -78,7 +78,7 @@ describe("EventsPage — first-use journey (no customers yet)", () => {
     state.customers = [];
     render(<EventsPage />);
 
-    await userEvent.click(screen.getAllByRole("button", { name: /مناسبة جديدة/ })[0]!);
+    await userEvent.click(screen.getAllByRole("button", { name: /مناسبة مخصصة/ })[0]!);
 
     expect(
       screen.getByText(/أنشئ العميل الأول ثم عدّ لإنشاء المناسبة/),
@@ -95,7 +95,7 @@ describe("EventsPage — first-use journey (no customers yet)", () => {
     state.customers = [{ id: "cu-1", name: "مريم", is_active: true }];
     render(<EventsPage />);
 
-    await userEvent.click(screen.getAllByRole("button", { name: /مناسبة جديدة/ })[0]!);
+    await userEvent.click(screen.getAllByRole("button", { name: /مناسبة مخصصة/ })[0]!);
 
     expect(
       screen.queryByText(/أنشئ العميل الأول/),
@@ -110,7 +110,7 @@ describe("EventsPage — first-use journey (no customers yet)", () => {
     state.customers = [];
     render(<EventsPage />);
 
-    await userEvent.click(screen.getAllByRole("button", { name: /مناسبة جديدة/ })[0]!);
+    await userEvent.click(screen.getAllByRole("button", { name: /مناسبة مخصصة/ })[0]!);
     expect(createMutate).not.toHaveBeenCalled();
   });
 });

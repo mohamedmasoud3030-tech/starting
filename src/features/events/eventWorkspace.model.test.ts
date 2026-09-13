@@ -290,8 +290,11 @@ describe("event workspace tab grouping (M-04)", () => {
     }
     // buckets have stable ids and Arabic labels
     expect(WORKSPACE_TAB_GROUPS.map((g) => g.id)).toEqual([
-      "operations",
-      "finance",
+      "deal",
+      "hosts",
+      "kit",
+      "day",
+      "closeout",
       "history",
     ]);
     for (const g of WORKSPACE_TAB_GROUPS) {
@@ -299,10 +302,10 @@ describe("event workspace tab grouping (M-04)", () => {
     }
   });
 
-  it("an owner sees all tabs under the three buckets, nothing lost", () => {
+  it("an owner sees all tabs under the office stages, nothing lost", () => {
     const visible = visibleWorkspaceTabs(eventPermissions("OWNER", null));
     const buckets = groupWorkspaceTabs(visible.filter((t) => t !== "ملخص"));
-    expect(buckets.map((b) => b.id)).toEqual(["operations", "finance", "history"]);
+    expect(buckets.map((b) => b.id)).toEqual(["deal", "hosts", "kit", "day", "closeout", "history"]);
     const flat = buckets.flatMap((b) => b.tabs);
     expect(new Set(flat)).toEqual(new Set(WORKSPACE_TABS.filter((t) => t !== "ملخص")));
   });
@@ -315,8 +318,9 @@ describe("event workspace tab grouping (M-04)", () => {
     const visible = visibleWorkspaceTabs(eventPermissions("WAREHOUSE", null));
     const buckets = groupWorkspaceTabs(visible.filter((t) => t !== "ملخص"));
     const ids = buckets.map((b) => b.id);
-    expect(ids).not.toContain("finance");
-    expect(ids).toContain("operations");
+    // money-only stages vanish entirely for a warehouse role
+    expect(ids).not.toContain("closeout");
+    expect(ids).toContain("kit");
     expect(ids).toContain("history");
     // every shown tab really is one the role can use
     const shown = new Set(buckets.flatMap((b) => b.tabs));

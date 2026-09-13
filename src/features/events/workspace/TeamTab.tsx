@@ -63,13 +63,13 @@ export function TeamTab({
       {canAssign && (
         <Card>
           <CardBody>
-            <h2 className="mb-1 font-black">إسناد موظف</h2>
+            <h2 className="mb-1 font-black">إضافة مضيف يدوياً</h2>
             <p className="mb-3 text-sm text-slate-500">
               أسند المضيف لهذه المناسبة بأجره الافتراضي. تسجيل الدخول والخروج يتم من تبويب الحضور.
             </p>
             {staff.length === 0 ? (
               <p className="text-sm font-semibold text-slate-600">
-                أضف أفراد الفريق أولاً من صفحة «الفريق والموارد البشرية».
+                أضف المضيفين أولاً من صفحة «المضيفون والحضور».
               </p>
             ) : available.length === 0 ? (
               <p className="text-sm font-semibold text-slate-600">
@@ -95,8 +95,8 @@ export function TeamTab({
                   });
                 }}
               >
-                <Select name="staff" required aria-label="اختر الموظف">
-                  <option value="">اختر الموظف</option>
+                <Select name="staff" required aria-label="اختر المضيف">
+                  <option value="">اختر المضيف</option>
                   {available.map((row) => (
                     <option key={row.id} value={row.id}>
                       {staffOptionLabel(row, canCost)}
